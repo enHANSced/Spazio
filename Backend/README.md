@@ -8,6 +8,7 @@ Backend completo para el sistema de reservas Spazio con arquitectura limpia, val
 - ✅ **CRUD completo de Espacios** (MySQL)
 - ✅ **Sistema de Reservas** con validación de disponibilidad (MongoDB)
 - ✅ **Prevención de double-booking** mediante queries de solapamiento
+- ✅ **Validación robusta de inputs** con express-validator
 - ✅ **Arquitectura limpia** (entities, use-cases, controllers, routes)
 - ✅ **Bases de datos híbridas** (MySQL + MongoDB)
 - ✅ **Seeder de datos** para desarrollo rápido
@@ -42,6 +43,13 @@ npm run dev
 ```
 
 El servidor estará disponible en `http://localhost:3001`
+
+> 📖 **Documentación adicional:**
+> - [API_REFERENCE.md](API_REFERENCE.md) - Referencia rápida de endpoints
+> - [TESTING.md](TESTING.md) - Guía de pruebas con ejemplos
+> - [VALIDATIONS.md](VALIDATIONS.md) - **Validaciones de inputs**
+> - [COMMANDS.md](COMMANDS.md) - Comandos útiles
+> - [CHANGELOG.md](CHANGELOG.md) - Historial de cambios
 
 ### 5. (Opcional) Poblar datos de prueba
 Para facilitar el desarrollo, puedes ejecutar el seeder que crea:
@@ -167,14 +175,17 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 - **MongoDB + Mongoose** - Base de datos NoSQL
 - **JWT** - Autenticación
 - **bcryptjs** - Encriptación de contraseñas
+- **express-validator** - Validación de inputs
 
 ## 📝 Próximos Pasos
 
 - [x] Implementar CRUD de Espacios
 - [x] Implementar sistema de Reservas con validación
+- [x] Validación de inputs con express-validator
+- [x] Seeders para datos de prueba (admin + espacios)
 - [ ] Agregar documentación Swagger
 - [ ] Implementar logs y auditoría
-- [x] Seeders para datos de prueba (admin + espacios)
+- [ ] Tests unitarios y de integración
 
 ## 🎯 Características Core Implementadas
 
@@ -192,3 +203,4 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 - ✅ Autenticación JWT con roles (user, admin)
 - ✅ Middleware de autorización
 - ✅ Validaciones de negocio en capa de use-cases
+- ✅ Validaciones de inputs con express-validator

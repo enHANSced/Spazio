@@ -1,5 +1,54 @@
 # Changelog - Spazio Backend
 
+## [1.1.0] - 2025-11-02
+
+### ✨ Nuevas Características
+
+#### Validación Robusta de Inputs
+- Implementación completa de `express-validator` en todos los endpoints
+- Validadores específicos para autenticación, espacios y reservas
+- Middleware centralizado para manejo de errores de validación
+- Formato consistente de respuestas de error
+
+#### Validaciones Implementadas
+
+**Autenticación:**
+- Registro: nombre (2-100 chars, solo letras), email válido, password seguro (6-50 chars)
+- Login: email y password requeridos con formato correcto
+
+**Espacios:**
+- Creación: nombre único (3-120 chars), capacidad (1-10,000), descripción opcional
+- Actualización: validación de UUID, campos opcionales
+- Validación de IDs en parámetros de ruta
+
+**Reservas:**
+- Creación: validación de fechas ISO 8601, duración (30 min - 24 hrs)
+- Prevención de reservas en el pasado
+- Validación de rangos de fechas en consultas (máx 6 meses)
+- Validación de ObjectId de MongoDB
+
+#### Mejoras de Seguridad
+- Sanitización automática de inputs (trim, normalización de emails)
+- Validación de tipos de datos antes de llegar a la base de datos
+- Mensajes de error descriptivos sin exponer información sensible
+
+### 📚 Documentación
+- Nuevo archivo `VALIDATIONS.md` con todas las reglas de validación
+- Ejemplos de errores y respuestas válidas
+- Actualización de README con referencia a validaciones
+
+### 🛠️ Archivos Nuevos
+- `src/middleware/validation.middleware.js`
+- `src/validators/auth.validators.js`
+- `src/validators/spaces.validators.js`
+- `src/validators/bookings.validators.js`
+- `VALIDATIONS.md`
+
+### 📦 Dependencias
+- Agregado: `express-validator@^7.0.1`
+
+---
+
 ## [1.0.0] - 2025-11-02
 
 ### 🎉 Implementación Inicial Completa

@@ -2,23 +2,30 @@ const express = require('express');
 const router = express.Router();
 const bookingsController = require('../controllers/bookings.controller');
 const { authMiddleware } = require('../middleware/auth.middleware');
+const { handleValidationErrors } = require('../middleware/validation.middleware');
+const {
+  validateCreateBooking,
+  validateGetBySpace,
+  validateGetMyBookings,
+  validateBookingId
+} = require('../validators/bookings.validators');
 
 // Todas las rutas requieren autenticación
 router.use(authMiddleware);
 
 // Crear nueva reserva
-router.post('/', bookingsController.create);
+router.post('/', validateCreateBooking, handleValidationErrors, bookingsController.create);
 
 // Obtener mis reservas
-router.get('/my-bookings', bookingsController.getMyBookings);
+router.get('/my-bookings', validateGetMyBookings, handleValidationErrors, bookingsController.getMyBookings);
 
 // Obtener reservas por espacio (para calendario)
-router.get('/space/:spaceId', bookingsController.getBySpace);
+router.get('/space/:spaceId', validateGetBySpace, handleValidationErrors, bookingsController.getBySpace);
 
 // Obtener reserva por ID
-router.get('/:id', bookingsController.getById);
+router.get('/:id', validateBookingId, handleValidationErrors, bookingsController.getById);
 
 // Cancelar reserva
-router.delete('/:id', bookingsController.cancel);
+router.delete('/:id', validateBookingId, handleValidationErrors, bookingsController.cancel);
 
 module.exports = router;
