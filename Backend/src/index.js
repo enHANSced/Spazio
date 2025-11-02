@@ -29,9 +29,11 @@ app.get('/health', (req, res) => {
 
 // Importar rutas
 const authRoutes = require('./routes/auth.routes');
+const spacesRoutes = require('./routes/spaces.routes');
 
 // Usar rutas
 app.use('/api/auth', authRoutes);
+app.use('/api/spaces', spacesRoutes);
 
 // Manejo de errores 404
 app.use((req, res) => {
@@ -50,9 +52,14 @@ app.use((err, req, res, next) => {
 // Iniciar servidor
 const startServer = async () => {
   try {
-    // Conectar a las bases de datos
-    await connectMySQL();
-    await connectMongoDB();
+    const skipDB = process.env.SKIP_DB === 'true';
+    if (skipDB) {
+      console.log('⚠️  SKIP_DB habilitado: No se conectará a MySQL/MongoDB');
+    } else {
+      // Conectar a las bases de datos
+      await connectMySQL();
+      await connectMongoDB();
+    }
     
     app.listen(PORT, () => {
       console.log(`🚀 Servidor corriendo en puerto ${PORT}`);

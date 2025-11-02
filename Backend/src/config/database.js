@@ -28,6 +28,8 @@ const connectMySQL = async () => {
     
     // Sincronizar modelos (solo en desarrollo)
     if (process.env.NODE_ENV === 'development') {
+      // Importar y registrar modelos antes de sync
+      require('../entities');
       await sequelize.sync({ alter: false });
       console.log('📊 Modelos MySQL sincronizados');
     }

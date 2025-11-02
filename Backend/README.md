@@ -33,6 +33,13 @@ npm run dev
 
 El servidor estará disponible en `http://localhost:3001`
 
+### (Opcional) Arrancar sin bases de datos
+Si solo quieres probar que el servidor levanta y las rutas básicas sin conectarte a MySQL/MongoDB, puedes usar:
+
+```bash
+SKIP_DB=true npm run dev
+```
+
 ## 📚 Endpoints Disponibles
 
 ### Salud del servidor
@@ -60,13 +67,28 @@ El servidor estará disponible en `http://localhost:3001`
 - `GET /api/auth/profile` - Obtener perfil (requiere token)
   - Header: `Authorization: Bearer <token>`
 
+### Espacios
+- `GET /api/spaces` - Listar espacios activos
+- `GET /api/spaces/:id` - Obtener un espacio por ID
+- `POST /api/spaces` - Crear espacio (admin)
+  - Body ejemplo:
+  ```json
+  {
+    "name": "Sala Reuniones A",
+    "description": "Sala con proyector",
+    "capacity": 10
+  }
+  ```
+- `PUT /api/spaces/:id` - Actualizar espacio (admin)
+- `DELETE /api/spaces/:id` - Eliminar espacio (admin, soft-delete)
+
 ## 🏗️ Estructura del Proyecto
 
 ```
 Backend/
 ├── src/
 │   ├── config/           # Configuración de bases de datos
-│   ├── entities/         # Modelos de datos (User)
+│   ├── entities/         # Modelos de datos (User, Space)
 │   ├── use-cases/        # Lógica de negocio
 │   ├── controllers/      # Controladores de rutas
 │   ├── routes/           # Definición de endpoints
@@ -94,7 +116,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ## 📝 Próximos Pasos
 
-- [ ] Implementar CRUD de Espacios
+- [x] Implementar CRUD de Espacios
 - [ ] Implementar sistema de Reservas con validación
 - [ ] Agregar documentación Swagger
 - [ ] Implementar logs y auditoría
