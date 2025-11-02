@@ -30,10 +30,12 @@ app.get('/health', (req, res) => {
 // Importar rutas
 const authRoutes = require('./routes/auth.routes');
 const spacesRoutes = require('./routes/spaces.routes');
+const bookingsRoutes = require('./routes/bookings.routes');
 
 // Usar rutas
 app.use('/api/auth', authRoutes);
 app.use('/api/spaces', spacesRoutes);
+app.use('/api/bookings', bookingsRoutes);
 
 // Manejo de errores 404
 app.use((req, res) => {
