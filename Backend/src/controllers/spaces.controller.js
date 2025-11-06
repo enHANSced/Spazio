@@ -21,7 +21,12 @@ class SpacesController {
 
   async create(req, res) {
     try {
-      const data = await spacesUseCase.create(req.body);
+      // Inyectar ownerId desde el token JWT
+      const spaceData = {
+        ...req.body,
+        ownerId: req.user.id
+      };
+      const data = await spacesUseCase.create(spaceData);
       res.status(201).json({ success: true, message: 'Espacio creado', data });
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });
@@ -44,6 +49,18 @@ class SpacesController {
       res.status(200).json({ success: true, message: 'Espacio eliminado', data });
     } catch (error) {
       res.status(404).json({ success: false, message: error.message });
+    }
+  }
+
+  /**
+   * Obtener todos los espacios del owner autenticado
+   */
+  async getMySpaces(req, res) {
+    try {
+      const data = await spacesUseCase.findByOwner(req.user.id);
+      res.status(200).json({ success: true, data });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
     }
   }
 }

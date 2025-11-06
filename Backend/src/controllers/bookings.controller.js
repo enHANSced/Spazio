@@ -110,6 +110,29 @@ class BookingsController {
       });
     }
   }
+
+  /**
+   * Obtener reservas de los espacios del owner
+   */
+  async getOwnerBookings(req, res) {
+    try {
+      const { status, startDate, endDate } = req.query;
+      const bookings = await bookingsUseCase.getOwnerBookings(req.user.id, {
+        status,
+        startDate,
+        endDate
+      });
+      res.status(200).json({
+        success: true,
+        data: bookings
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
 }
 
 module.exports = new BookingsController();

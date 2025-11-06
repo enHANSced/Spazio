@@ -19,10 +19,10 @@ const authMiddleware = async (req, res, next) => {
     const user = await User.findByPk(decoded.userId);
 
     if (!user || !user.isActive) {
-      return res.status(401).json({ message: 'Usuario no válido' });
+      return res.status(401).json({ message: 'Usuario no válido o inactivo' });
     }
 
-    // Agregar usuario a la request
+    // Agregar usuario completo a la request
     req.user = user;
     next();
   } catch (error) {

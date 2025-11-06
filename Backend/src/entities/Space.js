@@ -22,6 +22,15 @@ const Space = sequelize.define('Space', {
     defaultValue: 1,
     validate: { min: 1 }
   },
+  ownerId: {
+    type: DataTypes.UUID,
+    allowNull: false,
+    references: {
+      model: 'users',
+      key: 'id'
+    },
+    comment: 'Usuario owner que gestiona este espacio'
+  },
   isActive: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
@@ -30,5 +39,13 @@ const Space = sequelize.define('Space', {
   tableName: 'spaces',
   timestamps: true
 });
+
+// Asociación con User (owner)
+Space.associate = (models) => {
+  Space.belongsTo(models.User, {
+    foreignKey: 'ownerId',
+    as: 'owner'
+  });
+};
 
 module.exports = Space;

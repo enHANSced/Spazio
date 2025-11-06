@@ -4,11 +4,24 @@ const User = require('../entities/User');
 class AuthUseCase {
   // Registrar nuevo usuario
   async register(userData) {
-    const { name, email, password } = userData;
+    const { name, email, password, role, businessName, businessDescription } = userData;
 
     // Validar datos
     if (!name || !email || !password) {
       throw new Error('Todos los campos son requeridos');
+    }
+
+    // Validar rol
+    const allowedRoles = ['user', 'owner'];
+    const userRole = role || 'user';
+    
+    if (!allowedRoles.includes(userRole)) {
+      throw new Error('Rol inválido. Solo se permiten roles: user, owner');
+    }
+
+    // Si es owner, validar campos de negocio
+    if (userRole === 'owner' && !businessName) {
+      throw new Error('El nombre del negocio es requerido para propietarios');
     }
 
     // Verificar si el usuario ya existe
@@ -22,7 +35,10 @@ class AuthUseCase {
       name,
       email,
       password,
-      role: 'user'
+      role: userRole,
+      businessName: userRole === 'owner' ? businessName : null,
+      businessDescription: userRole === 'owner' ? businessDescription : null,
+      isVerified: userRole === 'owner' ? false : true // Owners requieren aprobación
     });
 
     // Generar token
@@ -30,7 +46,10 @@ class AuthUseCase {
 
     return {
       user: user.toJSON(),
-      token
+      token,
+      message: userRole === 'owner' 
+        ? 'Cuenta de propietario creada. Pendiente de aprobación por un administrador.' 
+        : 'Cuenta creada exitosamente'
     };
   }
 

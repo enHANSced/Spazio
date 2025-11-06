@@ -31,11 +31,13 @@ app.get('/health', (req, res) => {
 const authRoutes = require('./routes/auth.routes');
 const spacesRoutes = require('./routes/spaces.routes');
 const bookingsRoutes = require('./routes/bookings.routes');
+const usersRoutes = require('./routes/users.routes');
 
 // Usar rutas
 app.use('/api/auth', authRoutes);
 app.use('/api/spaces', spacesRoutes);
 app.use('/api/bookings', bookingsRoutes);
+app.use('/api/users', usersRoutes);
 
 // Manejo de errores 404
 app.use((req, res) => {

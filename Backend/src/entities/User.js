@@ -25,12 +25,27 @@ const User = sequelize.define('User', {
     allowNull: false
   },
   role: {
-    type: DataTypes.ENUM('user', 'admin'),
+    type: DataTypes.ENUM('user', 'owner', 'admin'),
     defaultValue: 'user'
   },
   isActive: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  isVerified: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+    comment: 'Para usuarios owner, requiere aprobación de admin'
+  },
+  businessName: {
+    type: DataTypes.STRING(150),
+    allowNull: true,
+    comment: 'Nombre del negocio para usuarios owner'
+  },
+  businessDescription: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Descripción del negocio para usuarios owner'
   }
 }, {
   tableName: 'users',
@@ -59,6 +74,14 @@ User.prototype.toJSON = function() {
   const values = { ...this.get() };
   delete values.password;
   return values;
+};
+
+// Asociación con Spaces (para owners)
+User.associate = (models) => {
+  User.hasMany(models.Space, {
+    foreignKey: 'ownerId',
+    as: 'spaces'
+  });
 };
 
 module.exports = User;

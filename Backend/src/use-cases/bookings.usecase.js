@@ -43,6 +43,11 @@ class BookingsUseCase {
       throw new Error('Usuario no válido');
     }
 
+    // RESTRICCIÓN: Owners no pueden reservar espacios
+    if (user.role === 'owner') {
+      throw new Error('Los propietarios no pueden realizar reservas. Si deseas reservar espacios, crea una cuenta de usuario.');
+    }
+
     // CRITICAL: Verificar disponibilidad (prevenir double-booking)
     const overlap = await Booking.checkOverlap(spaceId, start, end);
     if (overlap) {
@@ -163,6 +168,47 @@ class BookingsUseCase {
       // Si falla el enriquecimiento, devolver la reserva básica
       return bookingObj;
     }
+  }
+
+  /**
+   * Obtener todas las reservas de los espacios de un owner
+   */
+  async getOwnerBookings(ownerId, filters = {}) {
+    // Obtener todos los espacios del owner
+    const spaces = await Space.findAll({
+      where: { ownerId, isActive: true },
+      attributes: ['id']
+    });
+
+    const spaceIds = spaces.map(s => s.id);
+
+    if (spaceIds.length === 0) {
+      return [];
+    }
+
+    // Construir query para las reservas
+    const query = {
+      spaceId: { $in: spaceIds }
+    };
+
+    // Filtrar por status si se proporciona
+    if (filters.status) {
+      query.status = filters.status;
+    } else {
+      // Por defecto, no mostrar canceladas
+      query.status = { $ne: 'cancelled' };
+    }
+
+    // Filtrar por fecha si se proporciona
+    if (filters.startDate) {
+      query.startTime = { $gte: new Date(filters.startDate) };
+    }
+    if (filters.endDate) {
+      query.endTime = { $lte: new Date(filters.endDate) };
+    }
+
+    const bookings = await Booking.find(query).sort({ startTime: -1 });
+    return Promise.all(bookings.map(b => this.enrichBooking(b)));
   }
 }
 

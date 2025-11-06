@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bookingsController = require('../controllers/bookings.controller');
 const { authMiddleware } = require('../middleware/auth.middleware');
+const { isOwnerOrAdmin, isVerifiedOwner } = require('../middleware/role.middleware');
 const { handleValidationErrors } = require('../middleware/validation.middleware');
 const {
   validateCreateBooking,
@@ -13,11 +14,14 @@ const {
 // Todas las rutas requieren autenticación
 router.use(authMiddleware);
 
-// Crear nueva reserva
+// Crear nueva reserva (solo users, no owners)
 router.post('/', validateCreateBooking, handleValidationErrors, bookingsController.create);
 
-// Obtener mis reservas
+// Obtener mis reservas (solo para users)
 router.get('/my-bookings', validateGetMyBookings, handleValidationErrors, bookingsController.getMyBookings);
+
+// Obtener reservas de mis espacios (solo para owners verificados)
+router.get('/owner/bookings', isOwnerOrAdmin, isVerifiedOwner, bookingsController.getOwnerBookings);
 
 // Obtener reservas por espacio (para calendario)
 router.get('/space/:spaceId', validateGetBySpace, handleValidationErrors, bookingsController.getBySpace);

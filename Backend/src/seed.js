@@ -1,8 +1,8 @@
 require('dotenv').config();
-const { connectMySQL, connectMongoDB } = require('./src/config/database');
-const User = require('./src/entities/User');
-const Space = require('./src/entities/Space');
-const Booking = require('./src/entities/Booking');
+const { connectMySQL, connectMongoDB } = require('./config/database');
+const User = require('./entities/User');
+const Space = require('./entities/Space');
+const Booking = require('./entities/Booking');
 
 const seedData = async () => {
   try {
@@ -38,28 +38,77 @@ const seedData = async () => {
     });
     console.log(userCreated ? '✅ Usuario creado' : 'ℹ️  Usuario ya existe');
 
-    // 3. Crear espacios
+    // 3. Crear usuarios owner (propietarios de espacios)
+    console.log('🏢 Creando usuarios propietarios...');
+    const [owner1, owner1Created] = await User.findOrCreate({
+      where: { email: 'owner1@spazio.com' },
+      defaults: {
+        name: 'María González',
+        email: 'owner1@spazio.com',
+        password: 'owner123',
+        role: 'owner',
+        businessName: 'CoWork Central',
+        businessDescription: 'Espacios de coworking y oficinas privadas en el centro de la ciudad',
+        isVerified: true // Pre-aprobado para seed
+      }
+    });
+    console.log(owner1Created ? '✅ Owner 1 creado (CoWork Central)' : 'ℹ️  Owner 1 ya existe');
+
+    const [owner2, owner2Created] = await User.findOrCreate({
+      where: { email: 'owner2@spazio.com' },
+      defaults: {
+        name: 'Carlos Rodríguez',
+        email: 'owner2@spazio.com',
+        password: 'owner123',
+        role: 'owner',
+        businessName: 'Salas Premium',
+        businessDescription: 'Salas de conferencias y eventos corporativos de alta gama',
+        isVerified: true // Pre-aprobado para seed
+      }
+    });
+    console.log(owner2Created ? '✅ Owner 2 creado (Salas Premium)' : 'ℹ️  Owner 2 ya existe');
+
+    // 4. Owner pendiente de aprobación
+    const [ownerPending, ownerPendingCreated] = await User.findOrCreate({
+      where: { email: 'pending@spazio.com' },
+      defaults: {
+        name: 'Ana Martínez',
+        email: 'pending@spazio.com',
+        password: 'pending123',
+        role: 'owner',
+        businessName: 'Espacios Creativos',
+        businessDescription: 'Estudios para artistas y creativos',
+        isVerified: false // Pendiente de aprobación
+      }
+    });
+    console.log(ownerPendingCreated ? '⏳ Owner pendiente creado' : 'ℹ️  Owner pendiente ya existe');
+
+    // 5. Crear espacios
     console.log('\n🏢 Creando espacios...');
     const spacesData = [
       {
         name: 'Sala de Reuniones A',
         description: 'Sala equipada con proyector, pizarra y capacidad para 10 personas',
-        capacity: 10
+        capacity: 10,
+        ownerId: owner1.id
       },
       {
         name: 'Sala de Conferencias',
         description: 'Sala grande para eventos y presentaciones con capacidad para 50 personas',
-        capacity: 50
+        capacity: 50,
+        ownerId: owner2.id
       },
       {
         name: 'Sala de Capacitación',
         description: 'Espacio ideal para talleres y capacitaciones con 20 sillas',
-        capacity: 20
+        capacity: 20,
+        ownerId: owner1.id
       },
       {
         name: 'Espacio de Coworking',
         description: 'Área abierta para trabajo colaborativo',
-        capacity: 30
+        capacity: 30,
+        ownerId: owner2.id
       }
     ];
 
@@ -111,7 +160,10 @@ const seedData = async () => {
     console.log('\n✅ Seed completado exitosamente!\n');
     console.log('📝 Credenciales de acceso:');
     console.log('   Admin: admin@spazio.com / admin123');
-    console.log('   Usuario: user@spazio.com / user123\n');
+    console.log('   Usuario: user@spazio.com / user123');
+    console.log('   Owner 1 (Verificado): owner1@spazio.com / owner123');
+    console.log('   Owner 2 (Verificado): owner2@spazio.com / owner123');
+    console.log('   Owner Pendiente: pending@spazio.com / pending123\n');
 
     process.exit(0);
   } catch (error) {
