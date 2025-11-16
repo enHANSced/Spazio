@@ -1,7 +1,7 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
-  
+
   devtools: { enabled: true },
 
   // Runtime Config
@@ -23,7 +23,13 @@ export default defineNuxtConfig({
         { name: 'description', content: 'Sistema de reservas de espacios inteligente' }
       ],
       link: [
-        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
+        {
+          rel: 'stylesheet',
+          href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Material+Symbols+Outlined:wght@400&display=swap'
+        }
       ]
     }
   },
@@ -35,8 +41,12 @@ export default defineNuxtConfig({
   },
 
   // CSS Configuration
-  css: [],
+  css: ['~/assets/css/tailwind.css'],
 
   // Modules
-  modules: []
+  modules: ['@nuxtjs/tailwindcss', '@pinia/nuxt'],
+
+  pinia: {
+    storesDirs: ['./app/stores']
+  }
 })
