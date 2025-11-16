@@ -180,7 +180,7 @@ const handleSubmit = async () => {
 
           <p class="text-center text-sm text-slate-500">
             ¿No tienes una cuenta?
-            <NuxtLink to="#" class="font-semibold text-primary hover:underline">Crea una cuenta</NuxtLink>
+            <NuxtLink to="/auth/register" class="font-semibold text-primary hover:underline">Crea una cuenta</NuxtLink>
           </p>
 
           <p class="text-center text-xs text-slate-400">© {{ currentYear }} Spazio. Todos los derechos reservados.</p>

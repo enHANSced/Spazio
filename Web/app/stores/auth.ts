@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import AuthService from '../services/auth.service'
-import type { AuthUser, LoginPayload } from '../types/auth'
+import type { AuthUser, LoginPayload, RegisterPayload } from '../types/auth'
 
 const isProd = process.env.NODE_ENV === 'production'
 
@@ -101,6 +101,23 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  const register = async (payload: RegisterPayload) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const data = await AuthService.register(payload)
+      token.value = data.token
+      user.value = data.user
+      return data
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'No fue posible crear la cuenta'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   const isAuthenticated = computed(() => Boolean(token.value && user.value))
   const userRole = computed(() => user.value?.role ?? null)
 
@@ -113,6 +130,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     userRole,
     login,
+    register,
     logout,
     init
   }

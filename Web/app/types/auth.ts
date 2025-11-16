@@ -17,6 +17,13 @@ export interface LoginPayload {
   password: string
 }
 
+export interface RegisterPayload extends LoginPayload {
+  name: string
+  role?: UserRole
+  businessName?: string | null
+  businessDescription?: string | null
+}
+
 export interface ApiSuccessResponse<T> {
   success: true
   message?: string
@@ -28,6 +35,12 @@ export interface ApiErrorResponse {
   message: string
 }
 
-export type LoginApiResponse = ApiSuccessResponse<{ user: AuthUser; token: string }> | ApiErrorResponse
+export interface AuthSessionPayload {
+  user: AuthUser
+  token: string
+}
+
+export type LoginApiResponse = ApiSuccessResponse<AuthSessionPayload> | ApiErrorResponse
+export type RegisterApiResponse = ApiSuccessResponse<{ user: AuthUser; token: string; message?: string }> | ApiErrorResponse
 
 export type ProfileApiResponse = ApiSuccessResponse<AuthUser> | ApiErrorResponse

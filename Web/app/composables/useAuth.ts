@@ -1,8 +1,8 @@
 import { storeToRefs } from 'pinia'
-import type { LoginPayload } from '../types/auth'
+import type { LoginPayload, RegisterPayload } from '../types/auth'
 import { useAuthStore } from '../stores/auth'
 
-interface LoginOptions {
+interface AuthActionOptions {
   redirectTo?: string
   skipRedirect?: boolean
 }
@@ -15,7 +15,7 @@ export const useAuth = () => {
     await authStore.init()
   }
 
-  const login = async (payload: LoginPayload, options?: LoginOptions) => {
+  const login = async (payload: LoginPayload, options?: AuthActionOptions) => {
     await ensureSession()
     const user = await authStore.login(payload)
 
@@ -27,6 +27,18 @@ export const useAuth = () => {
     return user
   }
 
+  const register = async (payload: RegisterPayload, options?: AuthActionOptions) => {
+    await ensureSession()
+    const result = await authStore.register(payload)
+
+    if (!options?.skipRedirect) {
+      const redirectTarget = options?.redirectTo ?? '/'
+      await navigateTo(redirectTarget)
+    }
+
+    return result
+  }
+
   const logout = async () => {
     authStore.logout()
     await navigateTo('/auth/login')
@@ -35,6 +47,7 @@ export const useAuth = () => {
   return {
     ...storeToRefs(authStore),
     login,
+    register,
     logout,
     init: ensureSession
   }

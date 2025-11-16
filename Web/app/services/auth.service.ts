@@ -1,4 +1,12 @@
-import type { AuthUser, LoginApiResponse, LoginPayload, ProfileApiResponse } from '../types/auth'
+import type {
+  AuthSessionPayload,
+  AuthUser,
+  LoginApiResponse,
+  LoginPayload,
+  ProfileApiResponse,
+  RegisterApiResponse,
+  RegisterPayload
+} from '../types/auth'
 
 const parseErrorMessage = (error: unknown): string => {
   if (error && typeof error === 'object') {
@@ -11,7 +19,7 @@ const parseErrorMessage = (error: unknown): string => {
 }
 
 export class AuthService {
-  static async login(payload: LoginPayload): Promise<{ user: AuthUser; token: string }> {
+  static async login(payload: LoginPayload): Promise<AuthSessionPayload> {
     try {
       const config = useRuntimeConfig()
       const response = await $fetch<LoginApiResponse>(`${config.public.apiBaseUrl}/auth/login`, {
@@ -21,6 +29,24 @@ export class AuthService {
 
       if (!response.success) {
         throw new Error(response.message || 'No fue posible iniciar sesión')
+      }
+
+      return response.data
+    } catch (error) {
+      throw new Error(parseErrorMessage(error))
+    }
+  }
+
+  static async register(payload: RegisterPayload): Promise<{ user: AuthUser; token: string; message?: string }> {
+    try {
+      const config = useRuntimeConfig()
+      const response = await $fetch<RegisterApiResponse>(`${config.public.apiBaseUrl}/auth/register`, {
+        method: 'POST',
+        body: payload
+      })
+
+      if (!response.success) {
+        throw new Error(response.message || 'No fue posible crear tu cuenta')
       }
 
       return response.data
