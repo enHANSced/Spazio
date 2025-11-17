@@ -15,6 +15,9 @@ export interface Space {
   createdAt: string
   updatedAt: string
   owner?: SpaceOwner | null
+  // Preparado para soporte futuro de imágenes
+  imageUrl?: string | null
+  images?: string[] | null
 }
 
 export interface SpacesApiResponse {
