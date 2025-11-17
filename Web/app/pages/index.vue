@@ -96,7 +96,7 @@ const resetFilters = () => {
   sortOption.value = 'recent'
 }
 
-const formatNumber = (value: number) => new Intl.NumberFormat('es-ES').format(value)
+const formatNumber = (value: number) => new Intl.NumberFormat('es-HN').format(value)
 </script>
 
 <template>

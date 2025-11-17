@@ -27,16 +27,21 @@ const bookingDate = ref('')
 const bookingTime = ref('')
 const bookingHours = ref(1)
 
-// Cálculos
+// Cálculos de precio en Lempiras (Honduras)
 const pricePerHour = computed(() => {
   // Por ahora precio fijo, en el futuro vendrá del backend
   if (!space.value) return 0
-  // Precio base según capacidad
-  return Math.round(space.value.capacity * 15)
+  // Precio base según capacidad (Lempiras)
+  // Espacios pequeños: ~250-400 L/h, medianos: 500-800 L/h, grandes: 1000+ L/h
+  if (space.value.capacity <= 10) return 300
+  if (space.value.capacity <= 20) return 500
+  if (space.value.capacity <= 40) return 800
+  if (space.value.capacity <= 80) return 1500
+  return 2500
 })
 
 const subtotal = computed(() => pricePerHour.value * bookingHours.value)
-const serviceFee = computed(() => Math.round(subtotal.value * 0.1))
+const serviceFee = computed(() => Math.round(subtotal.value * 0.08)) // 8% tarifa
 const total = computed(() => subtotal.value + serviceFee.value)
 
 // Características del espacio
@@ -102,13 +107,17 @@ const handleBooking = () => {
   })
 }
 
-// Formatear números
+// Formatear números en Lempiras (Honduras)
 const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('es-MX', {
+  return new Intl.NumberFormat('es-HN', {
     style: 'currency',
-    currency: 'MXN',
-    minimumFractionDigits: 0
+    currency: 'HNL',
+    minimumFractionDigits: 2
   }).format(value)
+}
+
+const formatNumber = (value: number) => {
+  return new Intl.NumberFormat('es-HN').format(value)
 }
 </script>
 
@@ -161,25 +170,39 @@ const formatCurrency = (value: number) => {
         </button>
       </div>
 
-      <!-- Título y ubicación -->
-      <div>
-        <h1 class="text-3xl lg:text-4xl font-black text-gray-900 leading-tight">
-          {{ space.name }}
-        </h1>
-        <div class="mt-3 flex flex-wrap items-center gap-4 text-sm text-gray-600">
-          <div class="flex items-center gap-1.5">
-            <span class="material-symbols-outlined !text-[20px] text-primary">group</span>
-            <span class="font-medium">Capacidad: {{ space.capacity }} personas</span>
+      <!-- Título y metadatos -->
+      <div class="space-y-4">
+        <div>
+          <h1 class="text-3xl lg:text-4xl font-black text-gray-900 leading-tight">
+            {{ space.name }}
+          </h1>
+          <div class="mt-3 flex flex-wrap items-center gap-3 text-sm">
+            <div class="inline-flex items-center gap-1.5 bg-primary/10 text-primary px-3 py-1.5 rounded-full font-medium">
+              <span class="material-symbols-outlined !text-[18px]">group</span>
+              <span>{{ formatNumber(space.capacity) }} personas</span>
+            </div>
+            <div class="inline-flex items-center gap-1.5 bg-green-100 text-green-700 px-3 py-1.5 rounded-full font-medium">
+              <span class="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+              <span>Disponible ahora</span>
+            </div>
+            <div class="inline-flex items-center gap-1.5 text-gray-600">
+              <span class="material-symbols-outlined !text-[18px]">location_on</span>
+              <span>Honduras</span>
+            </div>
           </div>
-          <span class="text-gray-300">·</span>
-          <div class="flex items-center gap-1.5">
-            <span class="material-symbols-outlined !text-[20px] text-primary">store</span>
-            <span>{{ ownerName }}</span>
+        </div>
+
+        <!-- Info del propietario en header -->
+        <div class="flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div class="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 flex-shrink-0">
+            <span class="material-symbols-outlined text-2xl text-primary">store</span>
           </div>
-          <span class="text-gray-300">·</span>
-          <div class="flex items-center gap-1.5">
-            <span class="material-symbols-outlined !text-[20px] text-green-500">check_circle</span>
-            <span class="text-green-600 font-medium">Disponible</span>
+          <div class="flex-1 min-w-0">
+            <p class="font-semibold text-gray-900 truncate">{{ ownerName }}</p>
+            <p class="text-xs text-gray-600">Propietario verificado</p>
+          </div>
+          <div class="flex items-center gap-1 text-sm">
+            <span class="material-symbols-outlined !text-[18px] text-yellow-500">verified</span>
           </div>
         </div>
       </div>
@@ -221,146 +244,300 @@ const formatCurrency = (value: number) => {
         <!-- Columna izquierda: Detalles -->
         <div class="lg:col-span-2 space-y-8">
           <!-- Descripción -->
-          <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <h2 class="text-2xl font-bold text-gray-900 mb-4">Acerca de este espacio</h2>
-            <p class="text-gray-700 leading-relaxed">
-              {{ space.description || 'Este espacio está diseñado para ofrecer el ambiente perfecto para tus reuniones, eventos o sesiones de trabajo. Con instalaciones modernas y servicios completos, garantizamos una experiencia profesional y cómoda.' }}
+          <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-200">
+            <div class="flex items-center gap-3 mb-6">
+              <div class="h-10 w-1 bg-primary rounded-full"></div>
+              <h2 class="text-2xl font-bold text-gray-900">Acerca de este espacio</h2>
+            </div>
+            
+            <p class="text-gray-700 leading-relaxed text-lg">
+              {{ space.description || 'Este espacio está diseñado para ofrecer el ambiente perfecto para tus reuniones, eventos o sesiones de trabajo. Con instalaciones modernas y servicios completos, garantizamos una experiencia profesional y cómoda para ti y tu equipo.' }}
             </p>
             
-            <div class="mt-6 grid grid-cols-2 gap-4">
-              <div class="flex items-center gap-3 text-gray-700">
-                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
-                  <span class="material-symbols-outlined text-blue-600">group</span>
+            <div class="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div class="flex flex-col items-center text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-xl">
+                <div class="flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 mb-3">
+                  <span class="material-symbols-outlined text-white text-2xl">group</span>
                 </div>
-                <div>
-                  <p class="text-xs text-gray-500">Capacidad máxima</p>
-                  <p class="font-semibold">{{ space.capacity }} personas</p>
-                </div>
+                <p class="text-xs text-gray-600 uppercase font-semibold mb-1">Capacidad</p>
+                <p class="text-2xl font-bold text-gray-900">{{ formatNumber(space.capacity) }}</p>
+                <p class="text-xs text-gray-600">personas</p>
               </div>
               
-              <div class="flex items-center gap-3 text-gray-700">
-                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
-                  <span class="material-symbols-outlined text-green-600">schedule</span>
+              <div class="flex flex-col items-center text-center p-4 bg-gradient-to-br from-green-50 to-green-100/50 rounded-xl">
+                <div class="flex h-14 w-14 items-center justify-center rounded-full bg-green-600 mb-3">
+                  <span class="material-symbols-outlined text-white text-2xl">schedule</span>
                 </div>
-                <div>
-                  <p class="text-xs text-gray-500">Reserva mínima</p>
-                  <p class="font-semibold">1 hora</p>
+                <p class="text-xs text-gray-600 uppercase font-semibold mb-1">Mínimo</p>
+                <p class="text-2xl font-bold text-gray-900">1</p>
+                <p class="text-xs text-gray-600">hora</p>
+              </div>
+
+              <div class="flex flex-col items-center text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-xl">
+                <div class="flex h-14 w-14 items-center justify-center rounded-full bg-purple-600 mb-3">
+                  <span class="material-symbols-outlined text-white text-2xl">reply</span>
                 </div>
+                <p class="text-xs text-gray-600 uppercase font-semibold mb-1">Respuesta</p>
+                <p class="text-2xl font-bold text-gray-900">&lt;1</p>
+                <p class="text-xs text-gray-600">hora</p>
               </div>
             </div>
           </div>
 
           <!-- Características -->
-          <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <h2 class="text-2xl font-bold text-gray-900 mb-6">Características y servicios</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-200">
+            <div class="flex items-center gap-3 mb-6">
+              <div class="h-10 w-1 bg-primary rounded-full"></div>
+              <h2 class="text-2xl font-bold text-gray-900">Lo que incluye</h2>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div 
                 v-for="feature in features" 
                 :key="feature.icon"
-                class="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition"
+                class="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100/50 border border-gray-200 hover:border-primary hover:shadow-md transition-all duration-200"
               >
-                <span class="material-symbols-outlined text-primary text-2xl">{{ feature.icon }}</span>
-                <span class="text-gray-700 font-medium">{{ feature.label }}</span>
+                <div class="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 flex-shrink-0">
+                  <span class="material-symbols-outlined text-primary text-xl">{{ feature.icon }}</span>
+                </div>
+                <span class="text-gray-900 font-semibold">{{ feature.label }}</span>
+              </div>
+            </div>
+
+            <div class="mt-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+              <div class="flex items-start gap-3">
+                <span class="material-symbols-outlined text-green-600 text-2xl flex-shrink-0">verified</span>
+                <div>
+                  <p class="font-semibold text-green-900">Espacio verificado</p>
+                  <p class="text-sm text-green-700 mt-1">
+                    Todas las características han sido verificadas por nuestro equipo para garantizar tu satisfacción.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
 
           <!-- Propietario -->
-          <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <h2 class="text-2xl font-bold text-gray-900 mb-4">Anfitrión del espacio</h2>
-            <div class="flex items-center gap-4">
-              <div class="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                <span class="material-symbols-outlined text-3xl text-primary">store</span>
+          <div class="bg-gradient-to-br from-primary/5 via-blue-50 to-white rounded-2xl p-8 shadow-sm border-2 border-primary/20">
+            <div class="flex items-center gap-3 mb-6">
+              <div class="h-10 w-1 bg-primary rounded-full"></div>
+              <h2 class="text-2xl font-bold text-gray-900">Conoce a tu anfitrión</h2>
+            </div>
+
+            <div class="flex items-start gap-4 mb-6">
+              <div class="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-blue-600 shadow-lg flex-shrink-0">
+                <span class="material-symbols-outlined text-4xl text-white">store</span>
               </div>
-              <div>
-                <p class="text-lg font-bold text-gray-900">{{ ownerName }}</p>
-                <p class="text-sm text-gray-600">Propietario verificado</p>
+              <div class="flex-1">
+                <p class="text-xl font-bold text-gray-900">{{ ownerName }}</p>
+                <div class="flex items-center gap-2 mt-2">
+                  <span class="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-semibold">
+                    <span class="material-symbols-outlined !text-[14px]">verified</span>
+                    Verificado
+                  </span>
+                  <span class="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-semibold">
+                    <span class="material-symbols-outlined !text-[14px]">star</span>
+                    Anfitrión destacado
+                  </span>
+                </div>
               </div>
             </div>
-            <p v-if="space.owner?.businessDescription" class="mt-4 text-gray-700">
+
+            <p v-if="space.owner?.businessDescription" class="text-gray-700 leading-relaxed mb-6">
               {{ space.owner.businessDescription }}
             </p>
+            <p v-else class="text-gray-700 leading-relaxed mb-6">
+              Anfitrión profesional comprometido con brindarte la mejor experiencia en su espacio. Responde rápidamente y se asegura de que todo esté en perfecto estado para tu visita.
+            </p>
+
+            <div class="grid grid-cols-3 gap-4 mb-6">
+              <div class="text-center p-3 bg-white rounded-xl border border-gray-200">
+                <p class="text-2xl font-bold text-primary">5.0</p>
+                <p class="text-xs text-gray-600 mt-1">Calificación</p>
+              </div>
+              <div class="text-center p-3 bg-white rounded-xl border border-gray-200">
+                <p class="text-2xl font-bold text-primary">24</p>
+                <p class="text-xs text-gray-600 mt-1">Reservas</p>
+              </div>
+              <div class="text-center p-3 bg-white rounded-xl border border-gray-200">
+                <p class="text-2xl font-bold text-primary">&lt;1h</p>
+                <p class="text-xs text-gray-600 mt-1">Respuesta</p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-white border-2 border-primary px-6 py-3 text-sm font-bold text-primary hover:bg-primary hover:text-white transition-all duration-200"
+            >
+              <span class="material-symbols-outlined !text-[20px]">contact_mail</span>
+              Enviar mensaje
+            </button>
           </div>
         </div>
 
         <!-- Columna derecha: Panel de reserva -->
         <div class="lg:col-span-1">
-          <div class="sticky top-24">
-            <div class="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
-              <div class="mb-6">
-                <div class="flex items-baseline gap-2">
-                  <p class="text-3xl font-bold text-gray-900">{{ formatCurrency(pricePerHour) }}</p>
-                  <span class="text-gray-600">/ hora</span>
-                </div>
-                <p class="text-xs text-gray-500 mt-1">Precio estimado</p>
-              </div>
-
-              <!-- Formulario de reserva -->
-              <div class="space-y-4 mb-6">
+          <div class="sticky top-24 space-y-4">
+            <!-- Tarjeta de precio -->
+            <div class="bg-gradient-to-br from-primary/5 to-blue-50 rounded-2xl p-6 border-2 border-primary/20">
+              <div class="flex items-center justify-between mb-2">
                 <div>
-                  <label class="block text-xs font-semibold text-gray-700 uppercase mb-2">
-                    Fecha
+                  <p class="text-4xl font-black text-gray-900">{{ formatCurrency(pricePerHour) }}</p>
+                  <p class="text-sm text-gray-600 mt-1">por hora de uso</p>
+                </div>
+                <div class="flex items-center gap-1 text-yellow-500">
+                  <span class="material-symbols-outlined text-2xl">star</span>
+                  <span class="font-bold text-lg text-gray-900">5.0</span>
+                </div>
+              </div>
+              <div class="mt-4 grid grid-cols-3 gap-2 text-center">
+                <div class="bg-white/80 rounded-lg p-2">
+                  <p class="text-xs text-gray-600">Min.</p>
+                  <p class="font-bold text-gray-900">1h</p>
+                </div>
+                <div class="bg-white/80 rounded-lg p-2">
+                  <p class="text-xs text-gray-600">Máx.</p>
+                  <p class="font-bold text-gray-900">24h</p>
+                </div>
+                <div class="bg-white/80 rounded-lg p-2">
+                  <p class="text-xs text-gray-600">Resp.</p>
+                  <p class="font-bold text-gray-900">1h</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Formulario de reserva -->
+            <div class="bg-white rounded-2xl p-6 shadow-lg border border-gray-200">
+              <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">calendar_month</span>
+                Programa tu visita
+              </h3>
+
+              <div class="space-y-4">
+                <!-- Fecha -->
+                <div>
+                  <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                    <span class="material-symbols-outlined !text-[18px] text-primary">event</span>
+                    ¿Qué día?
                   </label>
                   <input
                     v-model="bookingDate"
                     type="date"
-                    class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    :min="new Date().toISOString().split('T')[0]"
+                    class="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-gray-900 focus:border-primary focus:ring-4 focus:ring-primary/10 transition"
+                    placeholder="Selecciona una fecha"
                   />
                 </div>
 
+                <!-- Hora -->
                 <div>
-                  <label class="block text-xs font-semibold text-gray-700 uppercase mb-2">
-                    Hora de inicio
+                  <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                    <span class="material-symbols-outlined !text-[18px] text-primary">schedule</span>
+                    ¿A qué hora?
                   </label>
                   <input
                     v-model="bookingTime"
                     type="time"
-                    class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    class="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-gray-900 focus:border-primary focus:ring-4 focus:ring-primary/10 transition"
+                    placeholder="Hora de inicio"
                   />
                 </div>
 
+                <!-- Duración con botones rápidos -->
                 <div>
-                  <label class="block text-xs font-semibold text-gray-700 uppercase mb-2">
-                    Duración (horas)
+                  <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                    <span class="material-symbols-outlined !text-[18px] text-primary">hourglass_empty</span>
+                    ¿Por cuánto tiempo?
                   </label>
+                  
+                  <!-- Botones rápidos -->
+                  <div class="grid grid-cols-4 gap-2 mb-2">
+                    <button
+                      v-for="h in [1, 2, 4, 8]"
+                      :key="h"
+                      type="button"
+                      class="px-3 py-2 rounded-lg text-sm font-semibold transition"
+                      :class="bookingHours === h 
+                        ? 'bg-primary text-white' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                      @click="bookingHours = h"
+                    >
+                      {{ h }}h
+                    </button>
+                  </div>
+                  
                   <input
                     v-model.number="bookingHours"
                     type="number"
                     min="1"
                     max="24"
-                    class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    class="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-gray-900 focus:border-primary focus:ring-4 focus:ring-primary/10 transition"
+                    placeholder="O ingresa las horas"
                   />
                 </div>
               </div>
 
+              <!-- Desglose de precio con animación -->
+              <div class="mt-6 space-y-3 bg-gray-50 rounded-lg p-4">
+                <div class="flex justify-between text-sm text-gray-700">
+                  <span class="flex items-center gap-1">
+                    <span class="material-symbols-outlined !text-[16px]">payments</span>
+                    {{ formatCurrency(pricePerHour) }} × {{ bookingHours }} {{ bookingHours === 1 ? 'hora' : 'horas' }}
+                  </span>
+                  <span class="font-semibold">{{ formatCurrency(subtotal) }}</span>
+                </div>
+                <div class="flex justify-between text-sm text-gray-700">
+                  <span class="flex items-center gap-1">
+                    <span class="material-symbols-outlined !text-[16px]">receipt_long</span>
+                    Tarifa de servicio (8%)
+                  </span>
+                  <span class="font-semibold">{{ formatCurrency(serviceFee) }}</span>
+                </div>
+                <div class="flex justify-between items-center text-xl font-bold text-gray-900 border-t-2 border-gray-300 pt-3 mt-3">
+                  <span>Total a pagar</span>
+                  <span class="text-primary">{{ formatCurrency(total) }}</span>
+                </div>
+              </div>
+
+              <!-- Botón de reserva -->
               <button
                 type="button"
-                class="w-full rounded-lg bg-primary px-4 py-3 text-base font-bold text-white hover:bg-primary/90 transition shadow-md"
+                class="mt-6 w-full rounded-xl bg-gradient-to-r from-primary to-blue-600 px-6 py-4 text-base font-bold text-white shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                :class="bookingDate && bookingTime ? 'hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]' : ''"
                 :disabled="!bookingDate || !bookingTime"
                 @click="handleBooking"
               >
-                Reservar ahora
+                <span v-if="!bookingDate || !bookingTime" class="flex items-center justify-center gap-2">
+                  <span class="material-symbols-outlined">lock</span>
+                  Completa los datos para reservar
+                </span>
+                <span v-else class="flex items-center justify-center gap-2">
+                  <span class="material-symbols-outlined">check_circle</span>
+                  Confirmar reserva por {{ formatCurrency(total) }}
+                </span>
               </button>
               
-              <p class="text-center text-xs text-gray-500 mt-3">
-                No se te cobrará nada aún
-              </p>
-
-              <!-- Desglose de precio -->
-              <div class="mt-6 space-y-3 border-t border-gray-200 pt-4">
-                <div class="flex justify-between text-sm text-gray-700">
-                  <span>{{ formatCurrency(pricePerHour) }} × {{ bookingHours }} {{ bookingHours === 1 ? 'hora' : 'horas' }}</span>
-                  <span class="font-medium">{{ formatCurrency(subtotal) }}</span>
-                </div>
-                <div class="flex justify-between text-sm text-gray-700">
-                  <span>Tarifa de servicio</span>
-                  <span class="font-medium">{{ formatCurrency(serviceFee) }}</span>
-                </div>
-                <div class="flex justify-between text-lg font-bold text-gray-900 border-t border-gray-200 pt-3">
-                  <span>Total</span>
-                  <span>{{ formatCurrency(total) }}</span>
-                </div>
+              <div class="mt-4 flex items-start gap-2 text-xs text-gray-600 bg-blue-50 p-3 rounded-lg">
+                <span class="material-symbols-outlined !text-[16px] text-blue-600 flex-shrink-0">info</span>
+                <p>
+                  <strong class="text-blue-900">Reserva sin cargo inmediato.</strong> El propietario confirmará tu solicitud y luego podrás proceder con el pago.
+                </p>
               </div>
+            </div>
+
+            <!-- Tarjeta de contacto rápido -->
+            <div class="bg-white rounded-2xl p-6 border border-gray-200">
+              <h3 class="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                <span class="material-symbols-outlined !text-[18px] text-primary">support_agent</span>
+                ¿Tienes preguntas?
+              </h3>
+              <button
+                type="button"
+                class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-gray-100 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-200 transition"
+              >
+                <span class="material-symbols-outlined !text-[18px]">chat</span>
+                Contactar al propietario
+              </button>
             </div>
           </div>
         </div>
