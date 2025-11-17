@@ -7,22 +7,12 @@ import type {
   RegisterApiResponse,
   RegisterPayload
 } from '../types/auth'
-
-const parseErrorMessage = (error: unknown): string => {
-  if (error && typeof error === 'object') {
-    const data = (error as { data?: { message?: string }; message?: string }).data
-    if (data?.message) return data.message
-    if ('message' in error && typeof error.message === 'string') return error.message
-  }
-  if (error instanceof Error) return error.message
-  return 'Ocurrió un error inesperado. Inténtalo de nuevo.'
-}
+import { buildApiUrl, extractApiErrorMessage } from '../utils/http'
 
 export class AuthService {
   static async login(payload: LoginPayload): Promise<AuthSessionPayload> {
     try {
-      const config = useRuntimeConfig()
-      const response = await $fetch<LoginApiResponse>(`${config.public.apiBaseUrl}/auth/login`, {
+      const response = await $fetch<LoginApiResponse>(buildApiUrl('/auth/login'), {
         method: 'POST',
         body: payload
       })
@@ -33,14 +23,13 @@ export class AuthService {
 
       return response.data
     } catch (error) {
-      throw new Error(parseErrorMessage(error))
+      throw new Error(extractApiErrorMessage(error))
     }
   }
 
   static async register(payload: RegisterPayload): Promise<{ user: AuthUser; token: string; message?: string }> {
     try {
-      const config = useRuntimeConfig()
-      const response = await $fetch<RegisterApiResponse>(`${config.public.apiBaseUrl}/auth/register`, {
+      const response = await $fetch<RegisterApiResponse>(buildApiUrl('/auth/register'), {
         method: 'POST',
         body: payload
       })
@@ -51,14 +40,13 @@ export class AuthService {
 
       return response.data
     } catch (error) {
-      throw new Error(parseErrorMessage(error))
+      throw new Error(extractApiErrorMessage(error))
     }
   }
 
   static async profile(token: string): Promise<AuthUser> {
     try {
-      const config = useRuntimeConfig()
-      const response = await $fetch<ProfileApiResponse>(`${config.public.apiBaseUrl}/auth/profile`, {
+      const response = await $fetch<ProfileApiResponse>(buildApiUrl('/auth/profile'), {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -70,7 +58,7 @@ export class AuthService {
 
       return response.data
     } catch (error) {
-      throw new Error(parseErrorMessage(error))
+      throw new Error(extractApiErrorMessage(error))
     }
   }
 }
