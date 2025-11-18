@@ -30,6 +30,41 @@ const bookingSchema = new mongoose.Schema({
   notes: {
     type: String,
     maxlength: 500
+  },
+  // Campos de pago
+  paymentMethod: {
+    type: String,
+    enum: ['cash', 'card', 'transfer'],
+    default: 'cash'
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'paid', 'refunded'],
+    default: 'pending'
+  },
+  totalAmount: {
+    type: Number,
+    min: 0
+  },
+  subtotal: {
+    type: Number,
+    min: 0
+  },
+  serviceFee: {
+    type: Number,
+    min: 0
+  },
+  pricePerHour: {
+    type: Number,
+    min: 0
+  },
+  durationHours: {
+    type: Number,
+    min: 0.5,
+    max: 24
+  },
+  paidAt: {
+    type: Date
   }
 }, {
   timestamps: true

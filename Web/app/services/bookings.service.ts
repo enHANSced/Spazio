@@ -1,7 +1,29 @@
 import type { Booking, BookingsApiResponse } from '~/types/booking'
 
 class BookingsService {
-  private readonly baseUrl = '/api/bookings'
+  private getHeaders() {
+    if (process.client) {
+      // Obtener el token de las cookies
+      const tokenCookie = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('spazio_token='))
+      const token = tokenCookie ? tokenCookie.split('=')[1] : null
+
+      return {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` })
+      }
+    }
+    return {
+      'Content-Type': 'application/json'
+    }
+  }
+
+  private getApiUrl(path: string = '') {
+    const config = useRuntimeConfig()
+    const baseUrl = config.public.apiBaseUrl
+    return `${baseUrl}/bookings${path}`
+  }
 
   /**
    * Crear una nueva reserva
@@ -10,9 +32,17 @@ class BookingsService {
     spaceId: string
     startTime: string
     endTime: string
+    paymentMethod?: string
+    paymentStatus?: string
+    totalAmount?: number
+    subtotal?: number
+    serviceFee?: number
+    pricePerHour?: number
+    durationHours?: number
   }): Promise<Booking> {
-    const response = await $fetch<{ success: boolean; data: Booking }>(this.baseUrl, {
+    const response = await $fetch<{ success: boolean; data: Booking }>(this.getApiUrl(), {
       method: 'POST',
+      headers: this.getHeaders(),
       body: data
     })
     return response.data
@@ -22,7 +52,9 @@ class BookingsService {
    * Obtener todas las reservas del usuario autenticado
    */
   async list(): Promise<Booking[]> {
-    const response = await $fetch<BookingsApiResponse>(this.baseUrl)
+    const response = await $fetch<BookingsApiResponse>(this.getApiUrl('/my-bookings'), {
+      headers: this.getHeaders()
+    })
     return response.data
   }
 
@@ -30,7 +62,9 @@ class BookingsService {
    * Obtener una reserva específica por ID
    */
   async getById(id: string): Promise<Booking> {
-    const response = await $fetch<{ success: boolean; data: Booking }>(`${this.baseUrl}/${id}`)
+    const response = await $fetch<{ success: boolean; data: Booking }>(this.getApiUrl(`/${id}`), {
+      headers: this.getHeaders()
+    })
     return response.data
   }
 
@@ -38,9 +72,38 @@ class BookingsService {
    * Cancelar una reserva
    */
   async cancel(id: string): Promise<Booking> {
-    const response = await $fetch<{ success: boolean; data: Booking }>(`${this.baseUrl}/${id}`, {
+    const response = await $fetch<{ success: boolean; data: Booking }>(this.getApiUrl(`/${id}`), {
       method: 'PATCH',
+      headers: this.getHeaders(),
       body: { status: 'cancelled' }
+    })
+    return response.data
+  }
+
+  /**
+   * Actualizar información de pago de una reserva
+   */
+  async updatePayment(id: string, data: {
+    paymentMethod?: string
+    paymentStatus?: string
+    paidAt?: string
+  }): Promise<Booking> {
+    const response = await $fetch<{ success: boolean; data: Booking }>(this.getApiUrl(`/${id}`), {
+      method: 'PATCH',
+      headers: this.getHeaders(),
+      body: data
+    })
+    return response.data
+  }
+
+  /**
+   * Actualizar una reserva (para reprogramación u otros cambios)
+   */
+  async update(id: string, data: Partial<Booking>): Promise<Booking> {
+    const response = await $fetch<{ success: boolean; data: Booking }>(this.getApiUrl(`/${id}`), {
+      method: 'PATCH',
+      headers: this.getHeaders(),
+      body: data
     })
     return response.data
   }

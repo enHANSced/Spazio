@@ -29,6 +29,9 @@ router.get('/space/:spaceId', validateGetBySpace, handleValidationErrors, bookin
 // Obtener reserva por ID
 router.get('/:id', validateBookingId, handleValidationErrors, bookingsController.getById);
 
+// Actualizar reserva (para pagos, reprogramación, etc.)
+router.patch('/:id', validateBookingId, handleValidationErrors, bookingsController.update);
+
 // Cancelar reserva
 router.delete('/:id', validateBookingId, handleValidationErrors, bookingsController.cancel);
 

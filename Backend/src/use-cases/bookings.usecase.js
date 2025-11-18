@@ -7,7 +7,19 @@ class BookingsUseCase {
    * Crear nueva reserva con validación de disponibilidad
    */
   async create(data, userId) {
-    const { spaceId, startTime, endTime, notes } = data;
+    const { 
+      spaceId, 
+      startTime, 
+      endTime, 
+      notes,
+      paymentMethod,
+      paymentStatus,
+      totalAmount,
+      subtotal,
+      serviceFee,
+      pricePerHour,
+      durationHours
+    } = data;
 
     // Validaciones básicas
     if (!spaceId || !startTime || !endTime) {
@@ -54,15 +66,32 @@ class BookingsUseCase {
       throw new Error('El espacio no está disponible en el horario seleccionado');
     }
 
-    // Crear reserva
-    const booking = await Booking.create({
+    // Preparar datos de la reserva
+    const bookingData = {
       spaceId,
       userId,
       startTime: start,
       endTime: end,
       notes,
       status: 'confirmed'
-    });
+    };
+
+    // Agregar campos de pago si se proporcionan
+    if (paymentMethod) bookingData.paymentMethod = paymentMethod;
+    if (paymentStatus) {
+      bookingData.paymentStatus = paymentStatus;
+      if (paymentStatus === 'paid') {
+        bookingData.paidAt = new Date();
+      }
+    }
+    if (totalAmount !== undefined) bookingData.totalAmount = totalAmount;
+    if (subtotal !== undefined) bookingData.subtotal = subtotal;
+    if (serviceFee !== undefined) bookingData.serviceFee = serviceFee;
+    if (pricePerHour !== undefined) bookingData.pricePerHour = pricePerHour;
+    if (durationHours !== undefined) bookingData.durationHours = durationHours;
+
+    // Crear reserva
+    const booking = await Booking.create(bookingData);
 
     return this.enrichBooking(booking);
   }
@@ -148,6 +177,50 @@ class BookingsUseCase {
   }
 
   /**
+   * Actualizar una reserva
+   */
+  async update(bookingId, userId, updates, isAdmin = false) {
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      throw new Error('Reserva no encontrada');
+    }
+
+    // Solo el dueño o un admin pueden actualizar
+    if (booking.userId !== userId && !isAdmin) {
+      throw new Error('No tienes permiso para actualizar esta reserva');
+    }
+
+    // Campos permitidos para actualización
+    const allowedFields = [
+      'status',
+      'paymentMethod',
+      'paymentStatus',
+      'notes',
+      'totalAmount',
+      'subtotal',
+      'serviceFee',
+      'pricePerHour',
+      'durationHours'
+    ];
+
+    // Actualizar solo campos permitidos
+    Object.keys(updates).forEach(key => {
+      if (allowedFields.includes(key)) {
+        booking[key] = updates[key];
+      }
+    });
+
+    // Si se marca como pagado, registrar la fecha
+    if (updates.paymentStatus === 'paid' && !booking.paidAt) {
+      booking.paidAt = new Date();
+    }
+
+    await booking.save();
+
+    return this.enrichBooking(booking);
+  }
+
+  /**
    * Enriquecer reserva con información de espacio y usuario
    */
   async enrichBooking(booking) {
@@ -161,7 +234,15 @@ class BookingsUseCase {
 
       return {
         ...bookingObj,
-        space: space ? { id: space.id, name: space.name, capacity: space.capacity } : null,
+        space: space ? { 
+          id: space.id, 
+          name: space.name, 
+          capacity: space.capacity,
+          address: space.address,
+          size: space.size,
+          type: space.type,
+          description: space.description
+        } : null,
         user: user ? { id: user.id, name: user.name, email: user.email } : null
       };
     } catch (error) {

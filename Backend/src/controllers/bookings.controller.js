@@ -133,6 +133,32 @@ class BookingsController {
       });
     }
   }
+
+  /**
+   * Actualizar una reserva (para pagos, reprogramación, etc.)
+   */
+  async update(req, res) {
+    try {
+      const isAdmin = req.user.role === 'admin';
+      const booking = await bookingsUseCase.update(
+        req.params.id,
+        req.user.id,
+        req.body,
+        isAdmin
+      );
+      res.status(200).json({
+        success: true,
+        message: 'Reserva actualizada',
+        data: booking
+      });
+    } catch (error) {
+      const status = error.message.includes('permiso') ? 403 : 404;
+      res.status(status).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
 }
 
 module.exports = new BookingsController();

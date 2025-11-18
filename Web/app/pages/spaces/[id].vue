@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import SpacesService from '~/services/spaces.service'
+import BookingsService from '~/services/bookings.service'
 import type { Space } from '~/types/space'
+import type { PaymentMethod } from '~/types/booking'
 
 definePageMeta({
   middleware: 'auth'
@@ -26,6 +28,12 @@ const space = computed(() => spaceData.value)
 const bookingDate = ref('')
 const bookingTime = ref('')
 const bookingHours = ref(1)
+const showBookingModal = ref(false)
+const selectedPaymentMethod = ref<PaymentMethod>('cash')
+const payNow = ref(false)
+const isSubmitting = ref(false)
+const bookingError = ref('')
+const bookingSuccess = ref(false)
 
 // Cálculos de precio en Lempiras (Honduras)
 const pricePerHour = computed(() => {
@@ -97,14 +105,60 @@ const goBack = () => {
 }
 
 const handleBooking = () => {
-  // TODO: Implementar lógica de reserva
-  console.log('Reserva:', {
-    spaceId: spaceId.value,
-    date: bookingDate.value,
-    time: bookingTime.value,
-    hours: bookingHours.value,
-    total: total.value
-  })
+  if (!bookingDate.value || !bookingTime.value) {
+    return
+  }
+  bookingError.value = ''
+  showBookingModal.value = true
+}
+
+const confirmBooking = async () => {
+  if (!bookingDate.value || !bookingTime.value) {
+    bookingError.value = 'Por favor completa todos los campos requeridos'
+    return
+  }
+
+  isSubmitting.value = true
+  bookingError.value = ''
+
+  try {
+    const startDateTime = new Date(`${bookingDate.value}T${bookingTime.value}`)
+    const endDateTime = new Date(startDateTime.getTime() + bookingHours.value * 60 * 60 * 1000)
+
+    const bookingData = {
+      spaceId: spaceId.value,
+      startTime: startDateTime.toISOString(),
+      endTime: endDateTime.toISOString(),
+      paymentMethod: selectedPaymentMethod.value,
+      paymentStatus: payNow.value ? 'paid' : 'pending',
+      totalAmount: total.value,
+      subtotal: subtotal.value,
+      serviceFee: serviceFee.value,
+      pricePerHour: pricePerHour.value,
+      durationHours: bookingHours.value
+    }
+
+    const booking = await BookingsService.create(bookingData)
+    
+    bookingSuccess.value = true
+    
+    setTimeout(() => {
+      router.push('/bookings')
+    }, 2000)
+  } catch (error: any) {
+    console.error('Error al crear reserva:', error)
+    bookingError.value = error?.data?.message || 'Error al procesar la reserva. Por favor intenta nuevamente.'
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+const closeModal = () => {
+  if (!isSubmitting.value) {
+    showBookingModal.value = false
+    bookingError.value = ''
+    bookingSuccess.value = false
+  }
 }
 
 // Formatear números en Lempiras (Honduras)
@@ -543,5 +597,216 @@ const formatNumber = (value: number) => {
         </div>
       </div>
     </div>
+
+    <!-- Modal de confirmación de reserva -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div
+          v-if="showBookingModal"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          @click.self="closeModal"
+        >
+          <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <!-- Header -->
+            <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <h3 class="text-xl font-bold text-gray-900">Confirmar reserva</h3>
+              <button
+                type="button"
+                class="text-gray-400 hover:text-gray-600 transition"
+                :disabled="isSubmitting"
+                @click="closeModal"
+              >
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <!-- Success State -->
+            <div v-if="bookingSuccess" class="p-8 text-center">
+              <div class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-green-100 mb-4">
+                <span class="material-symbols-outlined text-4xl text-green-600">check_circle</span>
+              </div>
+              <h4 class="text-2xl font-bold text-gray-900 mb-2">¡Reserva creada!</h4>
+              <p class="text-gray-600 mb-4">
+                Tu solicitud de reserva ha sido enviada al propietario. Te notificaremos cuando sea confirmada.
+              </p>
+              <p class="text-sm text-gray-500">Redirigiendo a tus reservas...</p>
+            </div>
+
+            <!-- Form Content -->
+            <div v-else class="p-6 space-y-6">
+              <!-- Resumen de reserva -->
+              <div class="bg-gray-50 rounded-xl p-4 space-y-3">
+                <h4 class="font-semibold text-gray-900 mb-3">Resumen de tu reserva</h4>
+                
+                <div class="flex items-start gap-3">
+                  <span class="material-symbols-outlined text-primary">home_work</span>
+                  <div class="flex-1">
+                    <p class="font-semibold text-gray-900">{{ space?.name }}</p>
+                    <p class="text-sm text-gray-600">{{ space?.address }}</p>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                  <span class="material-symbols-outlined text-primary">event</span>
+                  <div>
+                    <p class="font-semibold text-gray-900">
+                      {{ new Date(bookingDate).toLocaleDateString('es-HN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) }}
+                    </p>
+                    <p class="text-sm text-gray-600">{{ bookingTime }} por {{ bookingHours }} {{ bookingHours === 1 ? 'hora' : 'horas' }}</p>
+                  </div>
+                </div>
+
+                <div class="border-t border-gray-200 pt-3 space-y-2">
+                  <div class="flex justify-between text-sm">
+                    <span class="text-gray-600">Subtotal</span>
+                    <span class="font-semibold text-gray-900">{{ formatCurrency(subtotal) }}</span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-gray-600">Tarifa de servicio</span>
+                    <span class="font-semibold text-gray-900">{{ formatCurrency(serviceFee) }}</span>
+                  </div>
+                  <div class="flex justify-between text-lg font-bold border-t border-gray-300 pt-2">
+                    <span class="text-gray-900">Total</span>
+                    <span class="text-primary">{{ formatCurrency(total) }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Método de pago -->
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-3">
+                  <span class="flex items-center gap-2">
+                    <span class="material-symbols-outlined !text-[18px] text-primary">payments</span>
+                    Método de pago
+                  </span>
+                </label>
+                <div class="grid grid-cols-3 gap-3">
+                  <button
+                    type="button"
+                    class="flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition"
+                    :class="selectedPaymentMethod === 'cash' 
+                      ? 'border-primary bg-primary/5' 
+                      : 'border-gray-200 hover:border-gray-300'"
+                    @click="selectedPaymentMethod = 'cash'"
+                  >
+                    <span class="material-symbols-outlined text-2xl" :class="selectedPaymentMethod === 'cash' ? 'text-primary' : 'text-gray-400'">
+                      payments
+                    </span>
+                    <span class="text-sm font-semibold" :class="selectedPaymentMethod === 'cash' ? 'text-gray-900' : 'text-gray-600'">
+                      Efectivo
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition"
+                    :class="selectedPaymentMethod === 'card' 
+                      ? 'border-primary bg-primary/5' 
+                      : 'border-gray-200 hover:border-gray-300'"
+                    @click="selectedPaymentMethod = 'card'"
+                  >
+                    <span class="material-symbols-outlined text-2xl" :class="selectedPaymentMethod === 'card' ? 'text-primary' : 'text-gray-400'">
+                      credit_card
+                    </span>
+                    <span class="text-sm font-semibold" :class="selectedPaymentMethod === 'card' ? 'text-gray-900' : 'text-gray-600'">
+                      Tarjeta
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition"
+                    :class="selectedPaymentMethod === 'transfer' 
+                      ? 'border-primary bg-primary/5' 
+                      : 'border-gray-200 hover:border-gray-300'"
+                    @click="selectedPaymentMethod = 'transfer'"
+                  >
+                    <span class="material-symbols-outlined text-2xl" :class="selectedPaymentMethod === 'transfer' ? 'text-primary' : 'text-gray-400'">
+                      account_balance
+                    </span>
+                    <span class="text-sm font-semibold" :class="selectedPaymentMethod === 'transfer' ? 'text-gray-900' : 'text-gray-600'">
+                      Transfer.
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Opción de pago -->
+              <div class="bg-blue-50 rounded-xl p-4">
+                <label class="flex items-start gap-3 cursor-pointer">
+                  <input
+                    v-model="payNow"
+                    type="checkbox"
+                    class="mt-1 h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <div class="flex-1">
+                    <p class="font-semibold text-gray-900 mb-1">Pagar ahora (Simulado)</p>
+                    <p class="text-sm text-gray-600">
+                      Si no marcas esta opción, podrás pagar más tarde antes del día de tu reserva. 
+                      <span class="font-semibold">El pago es simulado para propósitos de demostración.</span>
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              <!-- Error message -->
+              <div v-if="bookingError" class="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+                <span class="material-symbols-outlined text-red-600">error</span>
+                <p class="text-sm text-red-800">{{ bookingError }}</p>
+              </div>
+
+              <!-- Actions -->
+              <div class="flex gap-3">
+                <button
+                  type="button"
+                  class="flex-1 rounded-xl border-2 border-gray-300 px-6 py-3 font-semibold text-gray-700 hover:bg-gray-50 transition"
+                  :disabled="isSubmitting"
+                  @click="closeModal"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  class="flex-1 rounded-xl bg-gradient-to-r from-primary to-blue-600 px-6 py-3 font-semibold text-white hover:shadow-lg transition disabled:opacity-50"
+                  :disabled="isSubmitting"
+                  @click="confirmBooking"
+                >
+                  <span v-if="isSubmitting" class="flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined animate-spin">progress_activity</span>
+                    Procesando...
+                  </span>
+                  <span v-else class="flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined">check_circle</span>
+                    Confirmar reserva
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
+
+<style scoped>
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+
+.modal-enter-active > div,
+.modal-leave-active > div {
+  transition: transform 0.3s ease;
+}
+
+.modal-enter-from > div,
+.modal-leave-to > div {
+  transform: scale(0.9);
+}
+</style>
