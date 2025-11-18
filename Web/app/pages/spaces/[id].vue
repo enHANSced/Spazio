@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import SpacesService from '~/services/spaces.service'
 import BookingsService from '~/services/bookings.service'
 import type { Space } from '~/types/space'
@@ -34,6 +34,128 @@ const paymentChoice = ref<'now' | 'later' | null>(null)
 const isSubmitting = ref(false)
 const bookingError = ref('')
 const bookingSuccess = ref(false)
+
+// Selectores personalizados
+const showDatePicker = ref(false)
+const showTimePicker = ref(false)
+const currentMonth = ref(new Date())
+const selectedDate = ref<Date | null>(null)
+const selectedTime = ref<string>('')
+
+// Generar días del mes actual
+const calendarDays = computed(() => {
+  const year = currentMonth.value.getFullYear()
+  const month = currentMonth.value.getMonth()
+  const firstDay = new Date(year, month, 1)
+  const lastDay = new Date(year, month + 1, 0)
+  const daysInMonth = lastDay.getDate()
+  const startingDayOfWeek = firstDay.getDay()
+  
+  const days: (Date | null)[] = []
+  
+  // Días vacíos al inicio
+  for (let i = 0; i < startingDayOfWeek; i++) {
+    days.push(null)
+  }
+  
+  // Días del mes
+  for (let i = 1; i <= daysInMonth; i++) {
+    days.push(new Date(year, month, i))
+  }
+  
+  return days
+})
+
+// Generar horas disponibles (8:00 AM - 10:00 PM en intervalos de 30 min)
+const availableTimes = computed(() => {
+  const times: string[] = []
+  for (let hour = 8; hour <= 22; hour++) {
+    for (let minute of [0, 30]) {
+      if (hour === 22 && minute === 30) break // No más de 10:00 PM
+      const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+      times.push(timeString)
+    }
+  }
+  return times
+})
+
+// Formatear fecha
+const formatDateDisplay = (date: Date | null) => {
+  if (!date) return 'Selecciona una fecha'
+  return date.toLocaleDateString('es-HN', { 
+    weekday: 'short', 
+    year: 'numeric', 
+    month: 'short', 
+    day: 'numeric' 
+  })
+}
+
+// Formatear hora
+const formatTimeDisplay = (time: string) => {
+  if (!time) return 'Selecciona una hora'
+  const [hour, minute] = time.split(':')
+  const hourNum = parseInt(hour)
+  const ampm = hourNum >= 12 ? 'PM' : 'AM'
+  const hour12 = hourNum > 12 ? hourNum - 12 : hourNum === 0 ? 12 : hourNum
+  return `${hour12}:${minute} ${ampm}`
+}
+
+// Verificar si una fecha es hoy o pasada
+const isDateDisabled = (date: Date | null) => {
+  if (!date) return true
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return date < today
+}
+
+// Verificar si una fecha es la seleccionada
+const isDateSelected = (date: Date | null) => {
+  if (!date || !selectedDate.value) return false
+  return date.toDateString() === selectedDate.value.toDateString()
+}
+
+// Seleccionar fecha
+const selectDate = (date: Date | null) => {
+  if (!date || isDateDisabled(date)) return
+  selectedDate.value = date
+  bookingDate.value = date.toISOString().split('T')[0]
+  showDatePicker.value = false
+}
+
+// Seleccionar hora
+const selectTime = (time: string) => {
+  selectedTime.value = time
+  bookingTime.value = time
+  showTimePicker.value = false
+}
+
+// Navegar meses
+const previousMonth = () => {
+  currentMonth.value = new Date(currentMonth.value.getFullYear(), currentMonth.value.getMonth() - 1, 1)
+}
+
+const nextMonth = () => {
+  currentMonth.value = new Date(currentMonth.value.getFullYear(), currentMonth.value.getMonth() + 1, 1)
+}
+
+// Cerrar pickers al hacer click fuera
+const closePickers = () => {
+  showDatePicker.value = false
+  showTimePicker.value = false
+}
+
+// Listener para cerrar pickers al hacer click fuera
+onMounted(() => {
+  if (process.client) {
+    document.addEventListener('click', closePickers)
+  }
+})
+
+onBeforeUnmount(() => {
+  if (process.client) {
+    document.removeEventListener('click', closePickers)
+  }
+})
 
 // Cálculos de precio en Lempiras (Honduras)
 const pricePerHour = computed(() => {
@@ -484,33 +606,123 @@ const formatNumber = (value: number) => {
               </h3>
 
               <div class="space-y-4">
-                <!-- Fecha -->
-                <div>
+                <!-- Fecha con selector personalizado -->
+                <div class="relative">
                   <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
                     <span class="material-symbols-outlined !text-[18px] text-primary">event</span>
                     ¿Qué día?
                   </label>
-                  <input
-                    v-model="bookingDate"
-                    type="date"
-                    :min="new Date().toISOString().split('T')[0]"
-                    class="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-gray-900 focus:border-primary focus:ring-4 focus:ring-primary/10 transition"
-                    placeholder="Selecciona una fecha"
-                  />
+                  <button
+                    type="button"
+                    class="w-full rounded-lg border-2 px-4 py-3 text-left transition flex items-center justify-between"
+                    :class="bookingDate 
+                      ? 'border-primary bg-primary/5 text-gray-900' 
+                      : 'border-gray-300 text-gray-500 hover:border-gray-400'"
+                    @click.stop="showDatePicker = !showDatePicker; showTimePicker = false"
+                  >
+                    <span class="font-medium">{{ formatDateDisplay(selectedDate) }}</span>
+                    <span class="material-symbols-outlined">calendar_today</span>
+                  </button>
+
+                  <!-- Calendario desplegable -->
+                  <Transition name="dropdown">
+                    <div
+                      v-if="showDatePicker"
+                      class="absolute z-50 mt-2 w-full bg-white rounded-xl shadow-2xl border border-gray-200 p-4"
+                      @click.stop
+                    >
+                      <!-- Header del calendario -->
+                      <div class="flex items-center justify-between mb-4">
+                        <button
+                          type="button"
+                          class="p-2 hover:bg-gray-100 rounded-lg transition"
+                          @click="previousMonth"
+                        >
+                          <span class="material-symbols-outlined">chevron_left</span>
+                        </button>
+                        <h4 class="font-bold text-gray-900">
+                          {{ currentMonth.toLocaleDateString('es-HN', { month: 'long', year: 'numeric' }) }}
+                        </h4>
+                        <button
+                          type="button"
+                          class="p-2 hover:bg-gray-100 rounded-lg transition"
+                          @click="nextMonth"
+                        >
+                          <span class="material-symbols-outlined">chevron_right</span>
+                        </button>
+                      </div>
+
+                      <!-- Días de la semana -->
+                      <div class="grid grid-cols-7 gap-1 mb-2">
+                        <div v-for="day in ['D', 'L', 'M', 'M', 'J', 'V', 'S']" :key="day" class="text-center text-xs font-semibold text-gray-600 py-2">
+                          {{ day }}
+                        </div>
+                      </div>
+
+                      <!-- Días del mes -->
+                      <div class="grid grid-cols-7 gap-1">
+                        <button
+                          v-for="(day, index) in calendarDays"
+                          :key="index"
+                          type="button"
+                          class="aspect-square rounded-lg text-sm font-semibold transition"
+                          :class="{
+                            'text-gray-400 cursor-not-allowed': !day || isDateDisabled(day),
+                            'bg-primary text-white': day && isDateSelected(day),
+                            'hover:bg-primary/10 text-gray-900': day && !isDateDisabled(day) && !isDateSelected(day),
+                            'invisible': !day
+                          }"
+                          :disabled="!day || isDateDisabled(day)"
+                          @click="selectDate(day)"
+                        >
+                          {{ day?.getDate() }}
+                        </button>
+                      </div>
+                    </div>
+                  </Transition>
                 </div>
 
-                <!-- Hora -->
-                <div>
+                <!-- Hora con selector personalizado -->
+                <div class="relative">
                   <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
                     <span class="material-symbols-outlined !text-[18px] text-primary">schedule</span>
                     ¿A qué hora?
                   </label>
-                  <input
-                    v-model="bookingTime"
-                    type="time"
-                    class="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-gray-900 focus:border-primary focus:ring-4 focus:ring-primary/10 transition"
-                    placeholder="Hora de inicio"
-                  />
+                  <button
+                    type="button"
+                    class="w-full rounded-lg border-2 px-4 py-3 text-left transition flex items-center justify-between"
+                    :class="bookingTime 
+                      ? 'border-primary bg-primary/5 text-gray-900' 
+                      : 'border-gray-300 text-gray-500 hover:border-gray-400'"
+                    @click.stop="showTimePicker = !showTimePicker; showDatePicker = false"
+                  >
+                    <span class="font-medium">{{ formatTimeDisplay(selectedTime) }}</span>
+                    <span class="material-symbols-outlined">access_time</span>
+                  </button>
+
+                  <!-- Selector de hora desplegable -->
+                  <Transition name="dropdown">
+                    <div
+                      v-if="showTimePicker"
+                      class="absolute z-50 mt-2 w-full bg-white rounded-xl shadow-2xl border border-gray-200 max-h-64 overflow-y-auto"
+                      @click.stop
+                    >
+                      <div class="p-2">
+                        <button
+                          v-for="time in availableTimes"
+                          :key="time"
+                          type="button"
+                          class="w-full text-left px-4 py-2.5 rounded-lg font-medium transition"
+                          :class="selectedTime === time 
+                            ? 'bg-primary text-white' 
+                            : 'text-gray-900 hover:bg-gray-100'"
+                          @click="selectTime(time)"
+                        >
+                          {{ formatTimeDisplay(time) }}
+                        </button>
+                      </div>
+                    </div>
+                  </Transition>
                 </div>
 
                 <!-- Duración con botones rápidos -->
@@ -891,5 +1103,39 @@ const formatNumber = (value: number) => {
 .modal-enter-from > div,
 .modal-leave-to > div {
   transform: scale(0.9);
+}
+
+.dropdown-enter-active,
+.dropdown-leave-active {
+  transition: all 0.2s ease;
+}
+
+.dropdown-enter-from,
+.dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+/* Estilos personalizados para el scroll del selector de tiempo */
+.dropdown-enter-active div::-webkit-scrollbar,
+.dropdown-leave-active div::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dropdown-enter-active div::-webkit-scrollbar-track,
+.dropdown-leave-active div::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+.dropdown-enter-active div::-webkit-scrollbar-thumb,
+.dropdown-leave-active div::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.dropdown-enter-active div::-webkit-scrollbar-thumb:hover,
+.dropdown-leave-active div::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 </style>
