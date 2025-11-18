@@ -29,8 +29,8 @@ const bookingDate = ref('')
 const bookingTime = ref('')
 const bookingHours = ref(1)
 const showBookingModal = ref(false)
-const selectedPaymentMethod = ref<PaymentMethod>('cash')
-const payNow = ref(false)
+const selectedPaymentMethod = ref<PaymentMethod>('card')
+const paymentChoice = ref<'now' | 'later' | null>(null)
 const isSubmitting = ref(false)
 const bookingError = ref('')
 const bookingSuccess = ref(false)
@@ -109,12 +109,27 @@ const handleBooking = () => {
     return
   }
   bookingError.value = ''
+  paymentChoice.value = null
   showBookingModal.value = true
+}
+
+const selectPaymentChoice = (choice: 'now' | 'later') => {
+  paymentChoice.value = choice
+  if (choice === 'later') {
+    selectedPaymentMethod.value = 'cash' // Por defecto para pago posterior
+  } else {
+    selectedPaymentMethod.value = 'card' // Por defecto para pago inmediato
+  }
 }
 
 const confirmBooking = async () => {
   if (!bookingDate.value || !bookingTime.value) {
     bookingError.value = 'Por favor completa todos los campos requeridos'
+    return
+  }
+
+  if (!paymentChoice.value) {
+    bookingError.value = 'Por favor selecciona una opción de pago'
     return
   }
 
@@ -130,7 +145,7 @@ const confirmBooking = async () => {
       startTime: startDateTime.toISOString(),
       endTime: endDateTime.toISOString(),
       paymentMethod: selectedPaymentMethod.value,
-      paymentStatus: payNow.value ? 'paid' : 'pending',
+      paymentStatus: paymentChoice.value === 'now' ? 'paid' : 'pending',
       totalAmount: total.value,
       subtotal: subtotal.value,
       serviceFee: serviceFee.value,
@@ -158,6 +173,7 @@ const closeModal = () => {
     showBookingModal.value = false
     bookingError.value = ''
     bookingSuccess.value = false
+    paymentChoice.value = null
   }
 }
 
@@ -672,81 +688,148 @@ const formatNumber = (value: number) => {
                 </div>
               </div>
 
-              <!-- Método de pago -->
-              <div>
+              <!-- Selección de opción de pago -->
+              <div v-if="!paymentChoice">
                 <label class="block text-sm font-semibold text-gray-700 mb-3">
                   <span class="flex items-center gap-2">
-                    <span class="material-symbols-outlined !text-[18px] text-primary">payments</span>
-                    Método de pago
+                    <span class="material-symbols-outlined !text-[18px] text-primary">schedule</span>
+                    ¿Cuándo deseas pagar?
                   </span>
                 </label>
-                <div class="grid grid-cols-3 gap-3">
+                <div class="grid grid-cols-2 gap-4">
                   <button
                     type="button"
-                    class="flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition"
-                    :class="selectedPaymentMethod === 'cash' 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-gray-200 hover:border-gray-300'"
-                    @click="selectedPaymentMethod = 'cash'"
+                    class="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-gray-200 hover:border-primary hover:bg-primary/5 transition group"
+                    @click="selectPaymentChoice('now')"
                   >
-                    <span class="material-symbols-outlined text-2xl" :class="selectedPaymentMethod === 'cash' ? 'text-primary' : 'text-gray-400'">
-                      payments
-                    </span>
-                    <span class="text-sm font-semibold" :class="selectedPaymentMethod === 'cash' ? 'text-gray-900' : 'text-gray-600'">
-                      Efectivo
-                    </span>
+                    <div class="h-12 w-12 rounded-full bg-green-100 group-hover:bg-green-200 flex items-center justify-center transition">
+                      <span class="material-symbols-outlined text-2xl text-green-600">
+                        bolt
+                      </span>
+                    </div>
+                    <div class="text-center">
+                      <p class="font-bold text-gray-900 mb-1">Pagar ahora</p>
+                      <p class="text-xs text-gray-600">Pago digital instantáneo</p>
+                    </div>
                   </button>
 
                   <button
                     type="button"
-                    class="flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition"
-                    :class="selectedPaymentMethod === 'card' 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-gray-200 hover:border-gray-300'"
-                    @click="selectedPaymentMethod = 'card'"
+                    class="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-gray-200 hover:border-primary hover:bg-primary/5 transition group"
+                    @click="selectPaymentChoice('later')"
                   >
-                    <span class="material-symbols-outlined text-2xl" :class="selectedPaymentMethod === 'card' ? 'text-primary' : 'text-gray-400'">
-                      credit_card
-                    </span>
-                    <span class="text-sm font-semibold" :class="selectedPaymentMethod === 'card' ? 'text-gray-900' : 'text-gray-600'">
-                      Tarjeta
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    class="flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition"
-                    :class="selectedPaymentMethod === 'transfer' 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-gray-200 hover:border-gray-300'"
-                    @click="selectedPaymentMethod = 'transfer'"
-                  >
-                    <span class="material-symbols-outlined text-2xl" :class="selectedPaymentMethod === 'transfer' ? 'text-primary' : 'text-gray-400'">
-                      account_balance
-                    </span>
-                    <span class="text-sm font-semibold" :class="selectedPaymentMethod === 'transfer' ? 'text-gray-900' : 'text-gray-600'">
-                      Transfer.
-                    </span>
+                    <div class="h-12 w-12 rounded-full bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center transition">
+                      <span class="material-symbols-outlined text-2xl text-blue-600">
+                        schedule
+                      </span>
+                    </div>
+                    <div class="text-center">
+                      <p class="font-bold text-gray-900 mb-1">Pagar más tarde</p>
+                      <p class="text-xs text-gray-600">Antes de tu reserva</p>
+                    </div>
                   </button>
                 </div>
               </div>
 
-              <!-- Opción de pago -->
-              <div class="bg-blue-50 rounded-xl p-4">
-                <label class="flex items-start gap-3 cursor-pointer">
-                  <input
-                    v-model="payNow"
-                    type="checkbox"
-                    class="mt-1 h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary"
-                  />
-                  <div class="flex-1">
-                    <p class="font-semibold text-gray-900 mb-1">Pagar ahora (Simulado)</p>
-                    <p class="text-sm text-gray-600">
-                      Si no marcas esta opción, podrás pagar más tarde antes del día de tu reserva. 
-                      <span class="font-semibold">El pago es simulado para propósitos de demostración.</span>
-                    </p>
+              <!-- Paso 2: Método de pago (solo si eligió "pagar ahora") -->
+              <div v-else>
+                <!-- Botón para volver -->
+                <button
+                  type="button"
+                  class="flex items-center gap-2 text-sm text-gray-600 hover:text-primary mb-4 transition"
+                  @click="paymentChoice = null"
+                >
+                  <span class="material-symbols-outlined !text-[18px]">arrow_back</span>
+                  Cambiar opción de pago
+                </button>
+
+                <!-- Si eligió pagar ahora -->
+                <div v-if="paymentChoice === 'now'">
+                  <label class="block text-sm font-semibold text-gray-700 mb-3">
+                    <span class="flex items-center gap-2">
+                      <span class="material-symbols-outlined !text-[18px] text-primary">payments</span>
+                      Selecciona método de pago digital
+                    </span>
+                  </label>
+                  <div class="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      class="flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition"
+                      :class="selectedPaymentMethod === 'card' 
+                        ? 'border-primary bg-primary/5' 
+                        : 'border-gray-200 hover:border-gray-300'"
+                      @click="selectedPaymentMethod = 'card'"
+                    >
+                      <span class="material-symbols-outlined text-2xl" :class="selectedPaymentMethod === 'card' ? 'text-primary' : 'text-gray-400'">
+                        credit_card
+                      </span>
+                      <span class="text-sm font-semibold" :class="selectedPaymentMethod === 'card' ? 'text-gray-900' : 'text-gray-600'">
+                        Tarjeta
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      class="flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition"
+                      :class="selectedPaymentMethod === 'transfer' 
+                        ? 'border-primary bg-primary/5' 
+                        : 'border-gray-200 hover:border-gray-300'"
+                      @click="selectedPaymentMethod = 'transfer'"
+                    >
+                      <span class="material-symbols-outlined text-2xl" :class="selectedPaymentMethod === 'transfer' ? 'text-primary' : 'text-gray-400'">
+                        account_balance
+                      </span>
+                      <span class="text-sm font-semibold" :class="selectedPaymentMethod === 'transfer' ? 'text-gray-900' : 'text-gray-600'">
+                        Transferencia
+                      </span>
+                    </button>
                   </div>
-                </label>
+                  <div class="mt-4 bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
+                    <span class="material-symbols-outlined text-green-600">check_circle</span>
+                    <div class="flex-1">
+                      <p class="text-sm font-semibold text-green-900 mb-1">Pago simulado</p>
+                      <p class="text-xs text-green-700">
+                        Esta es una simulación. Tu reserva será marcada como "Pagada" instantáneamente para propósitos de demostración.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Si eligió pagar más tarde -->
+                <div v-else-if="paymentChoice === 'later'">
+                  <div class="bg-blue-50 border border-blue-200 rounded-xl p-5">
+                    <div class="flex items-start gap-3 mb-4">
+                      <span class="material-symbols-outlined text-blue-600">info</span>
+                      <div class="flex-1">
+                        <p class="text-sm font-semibold text-blue-900 mb-2">Instrucciones de pago</p>
+                        <ul class="text-sm text-blue-800 space-y-2">
+                          <li class="flex items-start gap-2">
+                            <span class="material-symbols-outlined !text-[16px] mt-0.5">schedule</span>
+                            <span>Debes completar el pago <strong>antes del día de tu reserva</strong></span>
+                          </li>
+                          <li class="flex items-start gap-2">
+                            <span class="material-symbols-outlined !text-[16px] mt-0.5">payments</span>
+                            <span>Podrás pagar con efectivo directamente al propietario o mediante transferencia</span>
+                          </li>
+                          <li class="flex items-start gap-2">
+                            <span class="material-symbols-outlined !text-[16px] mt-0.5">notifications</span>
+                            <span>Recibirás recordatorios para completar tu pago</span>
+                          </li>
+                          <li class="flex items-start gap-2">
+                            <span class="material-symbols-outlined !text-[16px] mt-0.5">bookmark</span>
+                            <span>Puedes gestionar tu pago desde "Mis Reservas"</span>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                    <div class="bg-white rounded-lg p-3 border border-blue-300">
+                      <p class="text-xs text-gray-700">
+                        <strong class="text-gray-900">Total a pagar:</strong> 
+                        <span class="text-lg font-bold text-primary ml-2">{{ formatCurrency(total) }}</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <!-- Error message -->
