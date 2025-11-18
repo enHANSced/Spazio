@@ -11,7 +11,10 @@ const { user, logout } = useAuth()
 
 const searchQuery = ref('')
 const minCapacity = ref<number | null>(null)
-const sortOption = ref<'recent' | 'capacity'>('recent')
+const maxCapacity = ref<number | null>(null)
+const sortOption = ref<'recent' | 'capacity' | 'name'>('recent')
+const viewMode = ref<'grid' | 'list'>('grid')
+const selectedCategory = ref<'all' | 'small' | 'medium' | 'large'>('all')
 
 const { data: spacesData, pending, error: spacesError, refresh } = await useAsyncData<Space[]>(
   'spaces:list',
@@ -34,6 +37,16 @@ const statsSummary = computed(() => {
   }
 })
 
+// Categorías por capacidad
+const categories = computed(() => {
+  const active = spaces.value.filter(s => s.isActive)
+  return {
+    small: active.filter(s => s.capacity < 20).length,
+    medium: active.filter(s => s.capacity >= 20 && s.capacity < 50).length,
+    large: active.filter(s => s.capacity >= 50).length
+  }
+})
+
 const normalizeText = (value?: string | null) => value?.toLowerCase().trim() ?? ''
 const getTimestamp = (space: Space) => {
   const target = space.updatedAt || space.createdAt
@@ -53,11 +66,21 @@ const filteredSpaces = computed(() => {
         .join(' ')
       return haystack.includes(query)
     })
-    .filter((space) => (minCapacity.value ? space.capacity >= minCapacity.value : true))
+    .filter((space) => {
+      if (minCapacity.value && space.capacity < minCapacity.value) return false
+      if (maxCapacity.value && space.capacity > maxCapacity.value) return false
+      return true
+    })
+    .filter((space) => {
+      if (selectedCategory.value === 'all') return true
+      if (selectedCategory.value === 'small') return space.capacity < 20
+      if (selectedCategory.value === 'medium') return space.capacity >= 20 && space.capacity < 50
+      if (selectedCategory.value === 'large') return space.capacity >= 50
+      return true
+    })
     .sort((a, b) => {
-      if (sortOption.value === 'capacity') {
-        return b.capacity - a.capacity
-      }
+      if (sortOption.value === 'capacity') return b.capacity - a.capacity
+      if (sortOption.value === 'name') return a.name.localeCompare(b.name)
       return getTimestamp(b) - getTimestamp(a)
     })
 })
@@ -79,6 +102,8 @@ const capacityInput = computed({
 
 const errorMessage = computed(() => spacesError.value?.message ?? null)
 const isRefreshing = ref(false)
+const isSearching = ref(false)
+const resultsRef = ref<HTMLElement | null>(null)
 
 const reloadSpaces = async () => {
   if (isRefreshing.value) return
@@ -90,10 +115,36 @@ const reloadSpaces = async () => {
   }
 }
 
+const handleSearch = async () => {
+  isSearching.value = true
+  
+  // Pequeño delay para efecto visual
+  await new Promise(resolve => setTimeout(resolve, 300))
+  
+  // Scroll suave a los resultados
+  if (resultsRef.value) {
+    resultsRef.value.scrollIntoView({ 
+      behavior: 'smooth', 
+      block: 'start',
+      inline: 'nearest'
+    })
+  }
+  
+  isSearching.value = false
+}
+
+const handleSearchKeypress = (event: KeyboardEvent) => {
+  if (event.key === 'Enter') {
+    handleSearch()
+  }
+}
+
 const resetFilters = () => {
   searchQuery.value = ''
   minCapacity.value = null
+  maxCapacity.value = null
   sortOption.value = 'recent'
+  selectedCategory.value = 'all'
 }
 
 const formatNumber = (value: number) => new Intl.NumberFormat('es-HN').format(value)
@@ -101,89 +152,152 @@ const formatNumber = (value: number) => new Intl.NumberFormat('es-HN').format(va
 
 <template>
   <div class="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30">
-    <!-- Hero Section -->
-    <section class="relative overflow-hidden bg-gradient-to-br from-primary via-blue-600 to-indigo-700 pb-12 pt-8">
-      <!-- Patrón de fondo decorativo -->
+    <!-- Hero Section Mejorado -->
+    <section class="relative overflow-hidden bg-gradient-to-br from-primary via-blue-600 to-indigo-700 pb-16 pt-8">
+      <!-- Patrón de fondo animado -->
       <div class="absolute inset-0 opacity-10">
-        <div class="absolute left-1/4 top-0 h-96 w-96 rounded-full bg-white blur-3xl"></div>
-        <div class="absolute right-1/4 bottom-0 h-96 w-96 rounded-full bg-white blur-3xl"></div>
+        <div class="absolute left-1/4 top-0 h-96 w-96 rounded-full bg-white blur-3xl animate-pulse"></div>
+        <div class="absolute right-1/4 bottom-0 h-96 w-96 rounded-full bg-white blur-3xl animate-pulse" style="animation-delay: 1s;"></div>
+        <div class="absolute left-1/2 top-1/2 h-64 w-64 rounded-full bg-white blur-2xl animate-pulse" style="animation-delay: 2s;"></div>
+      </div>
+
+      <!-- Partículas decorativas -->
+      <div class="absolute inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute top-20 left-10 h-2 w-2 rounded-full bg-white/30 animate-bounce" style="animation-duration: 3s;"></div>
+        <div class="absolute top-40 right-20 h-3 w-3 rounded-full bg-white/20 animate-bounce" style="animation-duration: 4s; animation-delay: 1s;"></div>
+        <div class="absolute bottom-20 left-1/3 h-2 w-2 rounded-full bg-white/25 animate-bounce" style="animation-duration: 5s; animation-delay: 2s;"></div>
       </div>
 
       <div class="relative px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <!-- Header con usuario y logout -->
-        <div class="flex items-center justify-between mb-8">
-          <div class="flex items-center gap-3">
-            <div class="h-10 w-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
-              <span class="material-symbols-outlined text-white text-2xl">account_circle</span>
+        <!-- Header mejorado -->
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-10">
+          <div class="flex items-center gap-4">
+            <div class="relative">
+              <div class="h-12 w-12 rounded-full bg-gradient-to-br from-white/30 to-white/10 backdrop-blur flex items-center justify-center ring-2 ring-white/20">
+                <span class="material-symbols-outlined text-white text-2xl">account_circle</span>
+              </div>
+              <div class="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-green-400 border-2 border-white"></div>
             </div>
             <div>
-              <p class="text-xs text-white/70 uppercase tracking-wide">Bienvenido de vuelta</p>
-              <p class="text-white font-semibold">{{ user?.name ?? user?.email ?? 'Usuario' }}</p>
+              <p class="text-xs text-white/70 uppercase tracking-wider font-medium">Hola de nuevo 👋</p>
+              <p class="text-white font-bold text-lg">{{ user?.name ?? user?.email ?? 'Usuario' }}</p>
             </div>
           </div>
           
-          <button
-            type="button"
-            class="inline-flex items-center gap-2 rounded-lg bg-white/10 backdrop-blur border border-white/20 px-4 py-2 text-sm font-medium text-white hover:bg-white/20 transition"
-            @click="logout"
-          >
-            <span class="material-symbols-outlined !text-[18px]">logout</span>
-            Cerrar sesión
-          </button>
+          <div class="flex items-center gap-3">
+            <NuxtLink
+              to="/bookings"
+              class="inline-flex items-center gap-2 rounded-xl bg-white/10 backdrop-blur border border-white/20 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/20 transition"
+            >
+              <span class="material-symbols-outlined !text-[18px]">calendar_month</span>
+              <span class="hidden sm:inline">Mis Reservas</span>
+            </NuxtLink>
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 rounded-xl bg-white/10 backdrop-blur border border-white/20 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/20 transition"
+              @click="logout"
+            >
+              <span class="material-symbols-outlined !text-[18px]">logout</span>
+              <span class="hidden sm:inline">Salir</span>
+            </button>
+          </div>
         </div>
 
-        <!-- Título y descripción -->
-        <div class="text-center max-w-3xl mx-auto mb-10">
-          <h1 class="text-4xl md:text-5xl font-black text-white tracking-tight leading-tight">
-            Encuentra y reserva el espacio perfecto
+        <!-- Título animado -->
+        <div class="text-center max-w-4xl mx-auto mb-12">
+          <div class="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur border border-white/20 px-4 py-2 mb-6">
+            <span class="material-symbols-outlined text-white !text-[18px]">verified</span>
+            <span class="text-white text-sm font-semibold">Espacios verificados y listos para reservar</span>
+          </div>
+          <h1 class="text-5xl md:text-6xl font-black text-white tracking-tight leading-tight mb-6">
+            Descubre espacios <span class="bg-gradient-to-r from-yellow-200 to-orange-200 bg-clip-text text-transparent">increíbles</span>
           </h1>
-          <p class="mt-4 text-lg text-white/90">
-            Explora espacios únicos cerca de ti. Ideal para reuniones, eventos, coworking y más.
+          <p class="text-xl text-white/90 max-w-2xl mx-auto leading-relaxed">
+            Encuentra el lugar perfecto para tu próxima reunión, evento o proyecto. 
+            <span class="font-semibold text-white">Reserva en segundos.</span>
           </p>
         </div>
 
-        <!-- Barra de búsqueda principal -->
-        <div class="max-w-4xl mx-auto">
-          <div class="flex flex-col sm:flex-row gap-3">
-            <div class="flex-1 flex items-center gap-3 rounded-2xl bg-white px-5 py-4 shadow-2xl">
-              <span class="material-symbols-outlined text-2xl text-gray-400">search</span>
-              <input
-                v-model.trim="searchQuery"
-                type="text"
-                placeholder="Buscar por nombre, descripción o propietario..."
-                class="flex-1 bg-transparent text-gray-900 placeholder:text-gray-400 focus:outline-none text-base"
-              />
+        <!-- Barra de búsqueda mejorada -->
+        <div class="max-w-5xl mx-auto mb-10">
+          <div class="relative">
+            <div class="flex flex-col lg:flex-row gap-3 p-3 rounded-2xl bg-white shadow-2xl">
+              <div class="flex-1 flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50">
+                <span class="material-symbols-outlined text-2xl text-primary">search</span>
+                <input
+                  v-model.trim="searchQuery"
+                  type="text"
+                  placeholder="¿Qué tipo de espacio necesitas?"
+                  class="flex-1 bg-transparent text-gray-900 placeholder:text-gray-500 focus:outline-none font-medium"
+                  @keypress="handleSearchKeypress"
+                />
+                <button
+                  v-if="searchQuery"
+                  type="button"
+                  class="text-gray-400 hover:text-gray-600 transition"
+                  @click="searchQuery = ''"
+                >
+                  <span class="material-symbols-outlined !text-[20px]">close</span>
+                </button>
+              </div>
+              
+              <button
+                type="button"
+                class="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-blue-600 px-8 py-3 font-bold text-white shadow-lg transition hover:shadow-xl hover:scale-105 active:scale-95"
+                :disabled="isSearching || pending"
+                @click="handleSearch"
+              >
+                <span class="material-symbols-outlined" :class="{ 'animate-spin': isSearching }">search</span>
+                <span>Buscar</span>
+              </button>
             </div>
-            
-            <button
-              type="button"
-              class="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-6 py-4 text-base font-bold text-primary shadow-2xl transition hover:bg-gray-50"
-              :disabled="isRefreshing"
-              @click="reloadSpaces"
-            >
-              <span class="material-symbols-outlined" :class="{ 'animate-spin': isRefreshing }">refresh</span>
-              Actualizar
-            </button>
+          </div>
+        </div>
+
+        <!-- Cards promocionales -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl mx-auto">
+          <!-- Reserva rápida -->
+          <div class="relative group cursor-pointer" @click="handleSearch">
+            <div class="absolute inset-0 bg-gradient-to-br from-emerald-400/30 to-green-400/20 rounded-2xl blur-xl group-hover:blur-2xl transition"></div>
+            <div class="relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 hover:bg-white/15 hover:scale-105 transition-all">
+              <div class="flex items-center justify-between mb-3">
+                <div class="h-12 w-12 rounded-xl bg-emerald-400/20 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-white text-2xl">bolt</span>
+                </div>
+                <span class="material-symbols-outlined text-white/60">arrow_forward</span>
+              </div>
+              <p class="text-xl font-black text-white mb-1">Reserva Rápida</p>
+              <p class="text-sm text-white/80 font-medium">Encuentra y reserva en minutos</p>
+            </div>
           </div>
 
-          <!-- Stats rápidas -->
-          <div class="mt-6 flex flex-wrap items-center justify-center gap-6 text-white/90">
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-white/70">home_work</span>
-              <span class="font-semibold">{{ formatNumber(statsSummary.totalActive) }}</span>
-              <span class="text-sm text-white/70">espacios activos</span>
+          <!-- Verificación -->
+          <div class="relative group">
+            <div class="absolute inset-0 bg-gradient-to-br from-blue-400/30 to-cyan-400/20 rounded-2xl blur-xl group-hover:blur-2xl transition"></div>
+            <div class="relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all">
+              <div class="flex items-center justify-between mb-3">
+                <div class="h-12 w-12 rounded-xl bg-blue-400/20 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-white text-2xl">verified</span>
+                </div>
+                <span class="h-2 w-2 rounded-full bg-green-400 animate-pulse"></span>
+              </div>
+              <p class="text-xl font-black text-white mb-1">100% Verificado</p>
+              <p class="text-sm text-white/80 font-medium">Espacios confiables y seguros</p>
             </div>
-            <div class="h-4 w-px bg-white/30 hidden sm:block"></div>
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-white/70">groups</span>
-              <span class="font-semibold">{{ formatNumber(statsSummary.averageCapacity) }}</span>
-              <span class="text-sm text-white/70">capacidad promedio</span>
-            </div>
-            <div class="h-4 w-px bg-white/30 hidden sm:block"></div>
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-white/70">celebration</span>
-              <span class="font-semibold">{{ formatNumber(statsSummary.highCapacity) }}</span>
-              <span class="text-sm text-white/70">alta capacidad</span>
+          </div>
+
+          <!-- Soporte -->
+          <div class="relative group">
+            <div class="absolute inset-0 bg-gradient-to-br from-purple-400/30 to-pink-400/20 rounded-2xl blur-xl group-hover:blur-2xl transition"></div>
+            <div class="relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all">
+              <div class="flex items-center justify-between mb-3">
+                <div class="h-12 w-12 rounded-xl bg-purple-400/20 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-white text-2xl">support_agent</span>
+                </div>
+                <span class="text-xs font-bold text-white/90 bg-white/20 px-2 py-1 rounded-full">24/7</span>
+              </div>
+              <p class="text-xl font-black text-white mb-1">Soporte Total</p>
+              <p class="text-sm text-white/80 font-medium">Asistencia cuando la necesites</p>
             </div>
           </div>
         </div>
@@ -191,127 +305,303 @@ const formatNumber = (value: number) => new Intl.NumberFormat('es-HN').format(va
     </section>
 
     <!-- Sección de contenido principal -->
-    <section class="px-4 sm:px-6 lg:px-8 py-10 max-w-7xl mx-auto space-y-8">
-      <!-- Filtros avanzados -->
-      <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <div class="flex flex-wrap gap-4 items-end">
-          <div class="flex-1 min-w-[200px]">
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              <span class="flex items-center gap-2">
-                <span class="material-symbols-outlined !text-[18px]">filter_list</span>
-                Capacidad mínima
-              </span>
-            </label>
-            <input
-              v-model="capacityInput"
-              type="number"
-              min="1"
-              placeholder="Ej: 10"
-              class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 placeholder:text-gray-400 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
-            />
-          </div>
-
-          <div class="flex-1 min-w-[200px]">
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              <span class="flex items-center gap-2">
-                <span class="material-symbols-outlined !text-[18px]">sort</span>
-                Ordenar por
-              </span>
-            </label>
-            <select
-              v-model="sortOption"
-              class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
-            >
-              <option value="recent">Actualizados recientemente</option>
-              <option value="capacity">Mayor capacidad</option>
-            </select>
-          </div>
+    <section ref="resultsRef" class="px-4 sm:px-6 lg:px-8 py-12 max-w-7xl mx-auto space-y-8">
+      <!-- Categorías rápidas -->
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 font-semibold transition"
+            :class="selectedCategory === 'all' 
+              ? 'bg-primary text-white shadow-lg shadow-primary/30' 
+              : 'bg-white text-gray-700 border border-gray-200 hover:border-primary hover:text-primary'"
+            @click="selectedCategory = 'all'"
+          >
+            <span class="material-symbols-outlined !text-[20px]">home_work</span>
+            <span>Todos</span>
+            <span class="text-sm opacity-80">({{ filteredSpaces.length }})</span>
+          </button>
 
           <button
             type="button"
-            class="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition"
-            @click="resetFilters"
+            class="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 font-semibold transition"
+            :class="selectedCategory === 'small' 
+              ? 'bg-green-500 text-white shadow-lg shadow-green-500/30' 
+              : 'bg-white text-gray-700 border border-gray-200 hover:border-green-500 hover:text-green-600'"
+            @click="selectedCategory = 'small'"
           >
-            <span class="material-symbols-outlined !text-[18px]">clear_all</span>
-            Limpiar filtros
+            <span class="material-symbols-outlined !text-[20px]">meeting_room</span>
+            <span>Pequeños</span>
+            <span class="text-sm opacity-80">({{ categories.small }})</span>
+          </button>
+
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 font-semibold transition"
+            :class="selectedCategory === 'medium' 
+              ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30' 
+              : 'bg-white text-gray-700 border border-gray-200 hover:border-orange-500 hover:text-orange-600'"
+            @click="selectedCategory = 'medium'"
+          >
+            <span class="material-symbols-outlined !text-[20px]">groups</span>
+            <span>Medianos</span>
+            <span class="text-sm opacity-80">({{ categories.medium }})</span>
+          </button>
+
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 font-semibold transition"
+            :class="selectedCategory === 'large' 
+              ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30' 
+              : 'bg-white text-gray-700 border border-gray-200 hover:border-purple-500 hover:text-purple-600'"
+            @click="selectedCategory = 'large'"
+          >
+            <span class="material-symbols-outlined !text-[20px]">celebration</span>
+            <span>Grandes</span>
+            <span class="text-sm opacity-80">({{ categories.large }})</span>
+          </button>
+        </div>
+
+        <!-- Controles de vista -->
+        <div class="flex items-center gap-2 bg-white rounded-xl border border-gray-200 p-1">
+          <button
+            type="button"
+            class="rounded-lg px-3 py-2 transition"
+            :class="viewMode === 'grid' ? 'bg-primary text-white' : 'text-gray-600 hover:text-primary'"
+            @click="viewMode = 'grid'"
+          >
+            <span class="material-symbols-outlined !text-[20px]">grid_view</span>
+          </button>
+          <button
+            type="button"
+            class="rounded-lg px-3 py-2 transition"
+            :class="viewMode === 'list' ? 'bg-primary text-white' : 'text-gray-600 hover:text-primary'"
+            @click="viewMode = 'list'"
+          >
+            <span class="material-symbols-outlined !text-[20px]">view_list</span>
           </button>
         </div>
       </div>
 
-      <!-- Mensajes de error -->
-      <div v-if="errorMessage" class="rounded-xl border border-red-200 bg-red-50 p-6">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div class="flex items-start gap-3">
-            <span class="material-symbols-outlined text-2xl text-red-600">error</span>
+      <!-- Filtros avanzados -->
+      <div class="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+        <div class="bg-gradient-to-r from-gray-50 to-white px-6 py-4 border-b border-gray-200">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-gray-900 flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary">tune</span>
+              Filtros avanzados
+            </h3>
+            <button
+              type="button"
+              class="text-sm font-semibold text-primary hover:text-primary/80 transition flex items-center gap-1"
+              @click="resetFilters"
+            >
+              <span class="material-symbols-outlined !text-[18px]">restart_alt</span>
+              Restablecer
+            </button>
+          </div>
+        </div>
+
+        <div class="p-6">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
             <div>
-              <p class="font-semibold text-red-900">Error al cargar los espacios</p>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">
+                <span class="flex items-center gap-2">
+                  <span class="material-symbols-outlined !text-[18px] text-primary">group_add</span>
+                  Capacidad mínima
+                </span>
+              </label>
+              <input
+                v-model="capacityInput"
+                type="number"
+                min="1"
+                placeholder="Ej: 10 personas"
+                class="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:border-primary focus:ring-4 focus:ring-primary/10 transition"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">
+                <span class="flex items-center gap-2">
+                  <span class="material-symbols-outlined !text-[18px] text-primary">group_remove</span>
+                  Capacidad máxima
+                </span>
+              </label>
+              <input
+                v-model.number="maxCapacity"
+                type="number"
+                min="1"
+                placeholder="Ej: 100 personas"
+                class="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:border-primary focus:ring-4 focus:ring-primary/10 transition"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">
+                <span class="flex items-center gap-2">
+                  <span class="material-symbols-outlined !text-[18px] text-primary">sort</span>
+                  Ordenar por
+                </span>
+              </label>
+              <select
+                v-model="sortOption"
+                class="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-gray-900 focus:border-primary focus:ring-4 focus:ring-primary/10 transition bg-white"
+              >
+                <option value="recent">Más recientes</option>
+                <option value="capacity">Mayor capacidad</option>
+                <option value="name">Nombre (A-Z)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mensajes de error -->
+      <div v-if="errorMessage" class="rounded-2xl border-2 border-red-200 bg-gradient-to-br from-red-50 to-red-100/50 p-8 shadow-lg">
+        <div class="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex items-start gap-4">
+            <div class="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 ring-4 ring-red-200/50">
+              <span class="material-symbols-outlined text-2xl text-red-600">error</span>
+            </div>
+            <div>
+              <p class="text-lg font-bold text-red-900">No pudimos cargar los espacios</p>
               <p class="mt-1 text-sm text-red-700">{{ errorMessage }}</p>
+              <p class="mt-2 text-xs text-red-600">Verifica tu conexión e inténtalo nuevamente</p>
             </div>
           </div>
           <button
             type="button"
-            class="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition"
+            class="inline-flex items-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-bold text-white hover:bg-red-700 transition shadow-lg hover:shadow-xl"
             @click="reloadSpaces"
           >
-            <span class="material-symbols-outlined !text-[18px]">refresh</span>
+            <span class="material-symbols-outlined">refresh</span>
             Reintentar
           </button>
         </div>
       </div>
 
-      <!-- Loading skeletons -->
+      <!-- Loading skeletons mejorado -->
       <div v-else-if="pending">
-        <div class="mb-4">
-          <div class="h-8 w-48 animate-pulse bg-gray-200 rounded"></div>
+        <div class="mb-6 flex items-center gap-3">
+          <div class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-primary"></div>
+          <div class="h-8 w-64 animate-pulse bg-gray-200 rounded-lg"></div>
         </div>
-        <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          <div v-for="n in 8" :key="`skeleton-${n}`" class="h-96 animate-pulse rounded-xl bg-gray-100"></div>
-        </div>
-      </div>
-
-      <!-- Estado vacío -->
-      <div v-else-if="!filteredSpaces.length" class="rounded-2xl border border-gray-200 bg-white p-12 text-center">
-        <div class="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-gray-100">
-          <span class="material-symbols-outlined text-4xl text-gray-400">search_off</span>
-        </div>
-        <h2 class="mt-6 text-2xl font-bold text-gray-900">No se encontraron espacios</h2>
-        <p class="mt-2 text-gray-600">Intenta ajustar los filtros para ver más resultados</p>
-        <button
-          type="button"
-          class="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-white hover:bg-primary/90 transition"
-          @click="resetFilters"
+        <div 
+          class="grid gap-6"
+          :class="viewMode === 'grid' ? 'sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'"
         >
-          <span class="material-symbols-outlined !text-[18px]">refresh</span>
-          Restablecer filtros
-        </button>
+          <div v-for="n in 8" :key="`skeleton-${n}`" class="rounded-2xl bg-white border border-gray-200 overflow-hidden">
+            <div class="h-48 animate-pulse bg-gradient-to-br from-gray-100 to-gray-200"></div>
+            <div class="p-5 space-y-3">
+              <div class="h-6 w-3/4 animate-pulse bg-gray-200 rounded"></div>
+              <div class="h-4 w-full animate-pulse bg-gray-100 rounded"></div>
+              <div class="h-4 w-2/3 animate-pulse bg-gray-100 rounded"></div>
+              <div class="flex gap-2 pt-2">
+                <div class="h-8 w-20 animate-pulse bg-gray-200 rounded-lg"></div>
+                <div class="h-8 w-24 animate-pulse bg-gray-200 rounded-lg"></div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- Grid de espacios -->
-      <div v-else class="space-y-10">
-        <!-- Espacios destacados -->
-        <div v-if="featuredSpaces.length">
-          <div class="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p class="text-sm font-medium text-primary uppercase tracking-wider">Destacados</p>
-              <h2 class="text-2xl font-bold text-gray-900 mt-1">Los espacios más populares</h2>
-            </div>
-            <p class="text-sm text-gray-600">{{ featuredSpaces.length }} disponibles</p>
+      <!-- Estado vacío mejorado -->
+      <div v-else-if="!filteredSpaces.length" class="rounded-2xl border-2 border-dashed border-gray-300 bg-white p-16 text-center">
+        <div class="mx-auto flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-br from-gray-100 to-gray-200">
+          <span class="material-symbols-outlined text-6xl text-gray-400">search_off</span>
+        </div>
+        <h2 class="mt-8 text-3xl font-black text-gray-900">No encontramos espacios</h2>
+        <p class="mt-3 text-lg text-gray-600 max-w-md mx-auto">
+          Intenta ajustar tus filtros o buscar con otros términos para ver más resultados
+        </p>
+        <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 font-bold text-white hover:bg-primary/90 transition shadow-lg hover:shadow-xl"
+            @click="resetFilters"
+          >
+            <span class="material-symbols-outlined">restart_alt</span>
+            Restablecer filtros
+          </button>
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-xl bg-white border-2 border-gray-300 px-6 py-3 font-bold text-gray-700 hover:border-primary hover:text-primary transition"
+            @click="reloadSpaces"
+          >
+            <span class="material-symbols-outlined">refresh</span>
+            Recargar
+          </button>
+        </div>
+      </div>
+
+      <!-- Resultados -->
+      <div v-else>
+        <!-- Header de resultados -->
+        <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white rounded-2xl border border-gray-200 p-5">
+          <div>
+            <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
+              <span class="material-symbols-outlined text-primary text-3xl">explore</span>
+              Espacios disponibles
+            </h2>
+            <p class="text-sm text-gray-600 mt-1">
+              <span class="font-semibold text-gray-900">{{ filteredSpaces.length }}</span> 
+              {{ filteredSpaces.length === 1 ? 'resultado' : 'resultados' }}
+              <span v-if="searchQuery"> para "<span class="font-semibold text-primary">{{ searchQuery }}</span>"</span>
+            </p>
           </div>
-          <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            <SpaceCard v-for="space in featuredSpaces" :key="`featured-${space.id}`" :space="space" />
+
+          <!-- Quick actions -->
+          <div class="flex items-center gap-2">
+            <button
+              v-if="filteredSpaces.length !== spaces.length"
+              type="button"
+              class="inline-flex items-center gap-2 rounded-xl bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200 transition"
+              @click="resetFilters"
+            >
+              <span class="material-symbols-outlined !text-[18px]">filter_list_off</span>
+              Ver todos
+            </button>
           </div>
         </div>
 
-        <!-- Todos los espacios -->
-        <div v-if="secondarySpaces.length">
-          <div class="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p class="text-sm font-medium text-gray-500 uppercase tracking-wider">Catálogo completo</p>
-              <h2 class="text-2xl font-bold text-gray-900 mt-1">Más espacios disponibles</h2>
+        <!-- Grid de espacios destacados -->
+        <div v-if="featuredSpaces.length" class="mb-10">
+          <div class="mb-6 flex items-center gap-3">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500">
+              <span class="material-symbols-outlined text-white text-xl">star</span>
             </div>
-            <p class="text-sm text-gray-600">{{ filteredSpaces.length }} resultados totales</p>
+            <div>
+              <h3 class="text-xl font-bold text-gray-900">Destacados</h3>
+              <p class="text-sm text-gray-600">Los más populares del momento</p>
+            </div>
           </div>
-          <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div 
+            class="grid gap-6"
+            :class="viewMode === 'grid' ? 'sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'"
+          >
+            <SpaceCard 
+              v-for="space in featuredSpaces" 
+              :key="`featured-${space.id}`" 
+              :space="space" 
+            />
+          </div>
+        </div>
+
+        <!-- Grid de todos los espacios -->
+        <div v-if="secondarySpaces.length" class="mb-10">
+          <div class="mb-6 flex items-center gap-3">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-blue-600">
+              <span class="material-symbols-outlined text-white text-xl">apps</span>
+            </div>
+            <div>
+              <h3 class="text-xl font-bold text-gray-900">Todos los espacios</h3>
+              <p class="text-sm text-gray-600">{{ secondarySpaces.length }} opciones adicionales</p>
+            </div>
+          </div>
+          <div 
+            class="grid gap-6"
+            :class="viewMode === 'grid' ? 'sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'"
+          >
             <SpaceCard
               v-for="space in secondarySpaces"
               :key="space.id"
@@ -320,13 +610,12 @@ const formatNumber = (value: number) => new Intl.NumberFormat('es-HN').format(va
           </div>
         </div>
 
-        <!-- Si no hay secundarios, mostrar todos en un solo grid -->
-        <div v-else-if="!featuredSpaces.length">
-          <div class="mb-6">
-            <h2 class="text-2xl font-bold text-gray-900">Espacios disponibles</h2>
-            <p class="text-sm text-gray-600 mt-1">{{ filteredSpaces.length }} resultados encontrados</p>
-          </div>
-          <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <!-- Si solo hay espacios sin destacados -->
+        <div v-if="!featuredSpaces.length && filteredSpaces.length">
+          <div 
+            class="grid gap-6"
+            :class="viewMode === 'grid' ? 'sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'"
+          >
             <SpaceCard
               v-for="space in filteredSpaces"
               :key="space.id"
