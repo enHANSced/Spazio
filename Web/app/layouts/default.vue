@@ -26,7 +26,10 @@ const handleLogout = async () => {
             <span class="material-symbols-outlined !text-[20px]">explore</span>
             Explorar
           </NuxtLink>
+          
+          <!-- Link condicional: Mis Reservas solo para users regulares -->
           <NuxtLink 
+            v-if="user?.role === 'user'"
             to="/bookings" 
             class="text-gray-700 hover:text-primary font-semibold transition flex items-center gap-1"
             active-class="text-primary"
@@ -34,6 +37,18 @@ const handleLogout = async () => {
             <span class="material-symbols-outlined !text-[20px]">calendar_month</span>
             Mis Reservas
           </NuxtLink>
+          
+          <!-- Link al Dashboard para owners y admins -->
+          <NuxtLink 
+            v-if="user?.role === 'owner' || user?.role === 'admin'"
+            :to="user.role === 'owner' ? '/owner' : '/admin'" 
+            class="text-gray-700 hover:text-primary font-semibold transition flex items-center gap-1"
+            active-class="text-primary"
+          >
+            <span class="material-symbols-outlined !text-[20px]">dashboard</span>
+            Dashboard
+          </NuxtLink>
+          
           <div v-if="user" class="flex items-center gap-4 ml-4 pl-4 border-l border-gray-200">
             <div class="text-sm">
               <p class="font-semibold text-gray-900">{{ user.name }}</p>

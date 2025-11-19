@@ -20,7 +20,21 @@ export const useAuth = () => {
     const user = await authStore.login(payload)
 
     if (!options?.skipRedirect) {
-      const redirectTarget = options?.redirectTo ?? (typeof route.query.redirect === 'string' ? route.query.redirect : '/')
+      let redirectTarget = options?.redirectTo ?? (typeof route.query.redirect === 'string' ? route.query.redirect : null)
+      
+      // Si no hay redirectTo explícito, redirigir según el rol del usuario
+      if (!redirectTarget) {
+        if (user.role === 'owner') {
+          // Si es owner no verificado, ir a pending-verification
+          redirectTarget = user.isVerified ? '/owner' : '/owner/pending-verification'
+        } else if (user.role === 'admin') {
+          redirectTarget = '/admin'
+        } else {
+          // Usuario normal va al home
+          redirectTarget = '/'
+        }
+      }
+      
       await navigateTo(redirectTarget)
     }
 

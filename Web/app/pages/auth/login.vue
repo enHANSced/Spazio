@@ -78,7 +78,12 @@ const handleSubmit = async () => {
   serverError.value = ''
 
   try {
-    await login({ ...form }, { redirectTo: redirectPath.value })
+    // Solo pasar redirectTo si hay un query param específico
+    const options = redirectPath.value !== '/' 
+      ? { redirectTo: redirectPath.value } 
+      : undefined
+    
+    await login({ ...form }, options)
   } catch (err) {
     serverError.value = err instanceof Error ? err.message : 'No fue posible iniciar sesión'
   }

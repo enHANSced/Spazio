@@ -31,3 +31,20 @@ export interface SpaceApiResponse {
   message?: string
   data: Space
 }
+
+export interface CreateSpacePayload {
+  name: string
+  description?: string
+  capacity: number
+  imageUrl?: string
+  images?: string[]
+}
+
+export interface UpdateSpacePayload {
+  name?: string
+  description?: string
+  capacity?: number
+  isActive?: boolean
+  imageUrl?: string
+  images?: string[]
+}

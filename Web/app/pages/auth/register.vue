@@ -21,6 +21,8 @@ const form = reactive({
   email: '',
   password: '',
   role: 'user' as RegisterPayload['role'],
+  businessName: '',
+  businessDescription: '',
   acceptTerms: false,
   subscribe: true
 })
@@ -29,6 +31,7 @@ const fieldErrors = reactive({
   name: '',
   email: '',
   password: '',
+  businessName: '',
   acceptTerms: ''
 })
 
@@ -76,6 +79,11 @@ const validate = () => {
     isValid = false
   }
 
+  if (form.role === 'owner' && !form.businessName.trim()) {
+    fieldErrors.businessName = 'El nombre del negocio es obligatorio para propietarios'
+    isValid = false
+  }
+
   return isValid
 }
 
@@ -92,7 +100,14 @@ const handleSubmit = async () => {
       role: form.role
     }
 
-    await register(payload, { redirectTo: '/' })
+    if (form.role === 'owner') {
+      payload.businessName = form.businessName.trim()
+      if (form.businessDescription.trim()) {
+        payload.businessDescription = form.businessDescription.trim()
+      }
+    }
+
+    await register(payload, { redirectTo: form.role === 'owner' ? '/owner/pending-verification' : '/' })
   } catch (err) {
     serverError.value = err instanceof Error ? err.message : 'No fue posible crear tu cuenta'
   }
@@ -140,6 +155,26 @@ const handleSubmit = async () => {
 
       <form class="mt-8 space-y-5" novalidate @submit.prevent="handleSubmit">
         <div class="space-y-2">
+          <label class="text-sm font-medium text-[#111418]">Tipo de cuenta</label>
+          <div class="flex gap-3">
+            <label class="flex flex-1 cursor-pointer items-center gap-3 rounded-xl border-2 p-4 transition" :class="form.role === 'user' ? 'border-primary bg-primary/5' : 'border-slate-200 hover:border-slate-300'">
+              <input v-model="form.role" type="radio" value="user" class="h-4 w-4 text-primary focus:ring-primary/40" />
+              <div class="flex-1">
+                <p class="text-sm font-semibold text-[#111418]">Usuario</p>
+                <p class="text-xs text-slate-500">Reservar espacios</p>
+              </div>
+            </label>
+            <label class="flex flex-1 cursor-pointer items-center gap-3 rounded-xl border-2 p-4 transition" :class="form.role === 'owner' ? 'border-primary bg-primary/5' : 'border-slate-200 hover:border-slate-300'">
+              <input v-model="form.role" type="radio" value="owner" class="h-4 w-4 text-primary focus:ring-primary/40" />
+              <div class="flex-1">
+                <p class="text-sm font-semibold text-[#111418]">Propietario</p>
+                <p class="text-xs text-slate-500">Gestionar espacios</p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="space-y-2">
           <label for="name" class="text-sm font-medium text-[#111418]">Nombre completo</label>
           <input
             id="name"
@@ -163,6 +198,30 @@ const handleSubmit = async () => {
             autocomplete="email"
           />
           <p v-if="fieldErrors.email" class="text-sm text-rose-600">{{ fieldErrors.email }}</p>
+        </div>
+
+        <div v-if="form.role === 'owner'" class="space-y-2">
+          <label for="businessName" class="text-sm font-medium text-[#111418]">Nombre del negocio <span class="text-rose-500">*</span></label>
+          <input
+            id="businessName"
+            v-model.trim="form.businessName"
+            type="text"
+            class="h-12 w-full rounded-xl border border-slate-200 bg-white/80 px-4 text-base text-[#111418] shadow-sm placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            placeholder="Ej: Cowork Central, Salas Premium"
+            autocomplete="organization"
+          />
+          <p v-if="fieldErrors.businessName" class="text-sm text-rose-600">{{ fieldErrors.businessName }}</p>
+        </div>
+
+        <div v-if="form.role === 'owner'" class="space-y-2">
+          <label for="businessDescription" class="text-sm font-medium text-[#111418]">Descripción del negocio <span class="text-xs text-slate-400">(opcional)</span></label>
+          <textarea
+            id="businessDescription"
+            v-model.trim="form.businessDescription"
+            rows="3"
+            class="w-full rounded-xl border border-slate-200 bg-white/80 px-4 py-3 text-base text-[#111418] shadow-sm placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            placeholder="Describe brevemente tu negocio y los espacios que ofreces"
+          />
         </div>
 
         <div class="space-y-2">

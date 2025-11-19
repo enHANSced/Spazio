@@ -1,0 +1,63 @@
+import type { AuthUser } from '../types/auth'
+import { buildApiUrl, extractApiErrorMessage } from '../utils/http'
+
+interface UserApiResponse {
+  success: boolean
+  message?: string
+  data: AuthUser
+}
+
+interface UpdateProfilePayload {
+  name?: string
+  businessName?: string
+  businessDescription?: string
+}
+
+export class UsersService {
+  /**
+   * Obtener perfil del usuario autenticado
+   */
+  static async getMe(token: string): Promise<AuthUser> {
+    try {
+      const response = await $fetch<UserApiResponse>(buildApiUrl('/users/me'), {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+
+      if (!response.success) {
+        throw new Error(response.message || 'No fue posible obtener tu perfil')
+      }
+
+      return response.data
+    } catch (error) {
+      throw new Error(extractApiErrorMessage(error))
+    }
+  }
+
+  /**
+   * Actualizar perfil del usuario autenticado
+   */
+  static async updateProfile(token: string, payload: UpdateProfilePayload): Promise<AuthUser> {
+    try {
+      const response = await $fetch<UserApiResponse>(buildApiUrl('/users/me'), {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: payload
+      })
+
+      if (!response.success) {
+        throw new Error(response.message || 'No fue posible actualizar tu perfil')
+      }
+
+      return response.data
+    } catch (error) {
+      throw new Error(extractApiErrorMessage(error))
+    }
+  }
+}
+
+export default UsersService
