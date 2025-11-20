@@ -17,7 +17,7 @@ export interface Space {
   owner?: SpaceOwner | null
   // Preparado para soporte futuro de imágenes
   imageUrl?: string | null
-  images?: string[] | null
+  images?: (string | { url: string; publicId?: string | null })[] | null
 }
 
 export interface SpacesApiResponse {
@@ -37,7 +37,7 @@ export interface CreateSpacePayload {
   description?: string
   capacity: number
   imageUrl?: string
-  images?: string[]
+  images?: (string | { url: string })[]
 }
 
 export interface UpdateSpacePayload {
@@ -46,5 +46,6 @@ export interface UpdateSpacePayload {
   capacity?: number
   isActive?: boolean
   imageUrl?: string
-  images?: string[]
+  images?: (string | { url: string })[]
+  imagesToDelete?: string[] // publicIds de Cloudinary a eliminar
 }

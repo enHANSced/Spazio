@@ -187,6 +187,61 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 - [ ] Implementar logs y auditoría
 - [ ] Tests unitarios y de integración
 
+## 🖼️ Imágenes con Cloudinary
+
+El backend soporta carga de imágenes para espacios usando **Cloudinary** o bien referencias a URLs ya existentes.
+
+### Variables requeridas
+Configura en `.env` (ya presentes en `.env.example`):
+```
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+SKIP_CLOUDINARY=false
+```
+Si `SKIP_CLOUDINARY=true` se ignora cualquier base64 y solo se aceptan URLs externas.
+
+### Formato del campo `images`
+Al crear o actualizar un espacio puedes enviar:
+```jsonc
+{
+  "name": "Sala Creativa",
+  "capacity": 12,
+  "images": [
+    "data:image/png;base64,iVBORw0KGgoAAA...", // base64 -> se sube a Cloudinary
+    "https://ejemplo.com/static/fotos/sala1.jpg" // URL directa -> solo se guarda la URL
+  ]
+}
+```
+
+Respuesta del backend incluirá:
+```jsonc
+"images": [
+  { "url": "https://res.cloudinary.com/.../image/upload/v123/spazio/spaces/abc.png", "publicId": "spazio/spaces/abc" },
+  { "url": "https://ejemplo.com/static/fotos/sala1.jpg", "publicId": null }
+]
+```
+
+### Actualizar un espacio (gestión de imágenes)
+Puedes añadir nuevas imágenes y eliminar existentes:
+```jsonc
+{
+  "images": ["data:image/jpeg;base64,/9j/4AAQ..."], // nuevas a añadir
+  "imagesToDelete": ["spazio/spaces/abc"] // publicId de Cloudinary a eliminar
+}
+```
+Las URLs que fueron guardadas sin `publicId` no se pueden eliminar vía Cloudinary; para quitarlas del espacio basta incluir su `publicId` inexistente (no hará nada) o implementar en el futuro limpieza por URL.
+
+### Consideraciones
+- Si Cloudinary no está configurado se mostrará un aviso en el arranque y las imágenes base64 se ignorarán silenciosamente.
+- Se evita duplicar imágenes por URL final.
+- No se hace resize/optimización aún; se puede extender el servicio para presets.
+- Carpeta usada: `spazio/spaces`.
+
+### Frontend
+El frontend puede construir transformaciones usando el `cloud_name` público (`NUXT_PUBLIC_CLOUDINARY_CLOUD_NAME`). Para previews rápidas puedes mostrar directamente `url`.
+
+
 ## 🎯 Características Core Implementadas
 
 ### Sistema de Reservas

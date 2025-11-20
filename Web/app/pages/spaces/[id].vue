@@ -210,7 +210,12 @@ const placeholderImage = computed(() => {
 const imageUrl = computed(() => {
   if (!space.value) return null
   if (space.value.imageUrl) return space.value.imageUrl
-  if (space.value.images && space.value.images.length > 0) return space.value.images[0]
+  const imgs = space.value.images as any[] | null | undefined
+  if (imgs && imgs.length > 0) {
+    const first = imgs[0]
+    if (typeof first === 'string') return first
+    if (first && typeof first === 'object' && 'url' in first) return (first as any).url as string
+  }
   return null
 })
 

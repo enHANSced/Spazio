@@ -30,7 +30,7 @@ class SpacesUseCase {
   }
 
   async create(data) {
-    const { name, description, capacity, ownerId } = data;
+    const { name, description, capacity, ownerId, images } = data;
     if (!name || !capacity || !ownerId) {
       throw new Error('Nombre, capacidad y propietario son requeridos');
     }
@@ -51,7 +51,13 @@ class SpacesUseCase {
     if (exists) {
       throw new Error('Ya existe un espacio con ese nombre');
     }
-    const space = await Space.create({ name, description, capacity, ownerId });
+    let processedImages = [];
+    if (Array.isArray(images) && images.length) {
+      const { uploadImages } = require('../services/cloudinary.service');
+      processedImages = await uploadImages(images);
+    }
+
+    const space = await Space.create({ name, description, capacity, ownerId, images: processedImages });
     return space.toJSON();
   }
 
@@ -71,6 +77,38 @@ class SpacesUseCase {
       if (dup && dup.id !== space.id) {
         throw new Error('Ya existe un espacio con ese nombre');
       }
+    }
+
+    // Manejo de imágenes
+    const { images: newImages, imagesToDelete } = data;
+    let changed = false;
+    if (Array.isArray(imagesToDelete) && imagesToDelete.length && Array.isArray(space.images)) {
+      const { deleteImage } = require('../services/cloudinary.service');
+      space.images = space.images.filter(img => {
+        if (img.publicId && imagesToDelete.includes(img.publicId)) {
+          deleteImage(img.publicId).catch(() => {}); // Best-effort
+          changed = true;
+          return false;
+        }
+        return true;
+      });
+    }
+    if (Array.isArray(newImages) && newImages.length) {
+      const { uploadImages } = require('../services/cloudinary.service');
+      const uploaded = await uploadImages(newImages);
+      if (!Array.isArray(space.images)) space.images = [];
+      space.images = space.images.concat(uploaded);
+      changed = true;
+    }
+    if (changed) {
+      // Garantizar no duplicados por URL pública
+      const seen = new Set();
+      space.images = space.images.filter(img => {
+        if (!img || !img.url) return false;
+        if (seen.has(img.url)) return false;
+        seen.add(img.url);
+        return true;
+      });
     }
 
     await space.save();

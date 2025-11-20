@@ -34,6 +34,11 @@ const Space = sequelize.define('Space', {
   isActive: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  images: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    comment: 'Array de objetos { url, publicId } provenientes de Cloudinary o URLs externas'
   }
 }, {
   tableName: 'spaces',

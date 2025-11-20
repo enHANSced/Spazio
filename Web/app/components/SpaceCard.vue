@@ -42,7 +42,12 @@ const placeholderImage = computed(() => {
 const imageUrl = computed(() => {
   // Si hay imageUrl o images[0], usar la imagen real
   if (props.space.imageUrl) return props.space.imageUrl
-  if (props.space.images && props.space.images.length > 0) return props.space.images[0]
+  const imgs = props.space.images
+  if (imgs && imgs.length > 0) {
+    const first = imgs[0] as any
+    if (typeof first === 'string') return first
+    if (first && typeof first === 'object' && 'url' in first) return first.url as string
+  }
   // Si no, retornar null para usar placeholder
   return null
 })

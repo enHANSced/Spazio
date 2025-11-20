@@ -24,7 +24,8 @@ class SpacesController {
       // Inyectar ownerId desde el token JWT
       const spaceData = {
         ...req.body,
-        ownerId: req.user.id
+        ownerId: req.user.id,
+        images: req.body.images // array de base64 o URLs
       };
       const data = await spacesUseCase.create(spaceData);
       res.status(201).json({ success: true, message: 'Espacio creado', data });
@@ -35,7 +36,12 @@ class SpacesController {
 
   async update(req, res) {
     try {
-      const data = await spacesUseCase.update(req.params.id, req.body);
+      const payload = {
+        ...req.body,
+        images: req.body.images, // nuevas imágenes a añadir
+        imagesToDelete: req.body.imagesToDelete // lista de publicId a eliminar
+      };
+      const data = await spacesUseCase.update(req.params.id, payload);
       res.status(200).json({ success: true, message: 'Espacio actualizado', data });
     } catch (error) {
       const status = error.message.includes('no encontrado') ? 404 : 400;
