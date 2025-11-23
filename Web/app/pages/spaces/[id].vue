@@ -207,19 +207,47 @@ const placeholderImage = computed(() => {
   return colors[colorIndex]
 })
 
+// Gallery state
+const currentImageIndex = ref(0)
+
+const images = computed(() => {
+  if (!space.value) return []
+  const imgs = space.value.images as any[] | null | undefined
+  if (!imgs || imgs.length === 0) return []
+  
+  return imgs.map((img: any) => {
+    if (typeof img === 'string') return img
+    if (img && typeof img === 'object' && 'url' in img) return img.url
+    return null
+  }).filter((url): url is string => !!url)
+})
+
 const imageUrl = computed(() => {
   if (!space.value) return null
   if (space.value.imageUrl) return space.value.imageUrl
-  const imgs = space.value.images as any[] | null | undefined
-  if (imgs && imgs.length > 0) {
-    const first = imgs[0]
-    if (typeof first === 'string') return first
-    if (first && typeof first === 'object' && 'url' in first) return (first as any).url as string
-  }
+  if (images.value.length > 0) return images.value[currentImageIndex.value]
   return null
 })
 
 const hasRealImage = computed(() => !!imageUrl.value)
+const hasMultipleImages = computed(() => images.value.length > 1)
+
+// Gallery navigation
+const nextImage = () => {
+  if (images.value.length > 0) {
+    currentImageIndex.value = (currentImageIndex.value + 1) % images.value.length
+  }
+}
+
+const prevImage = () => {
+  if (images.value.length > 0) {
+    currentImageIndex.value = (currentImageIndex.value - 1 + images.value.length) % images.value.length
+  }
+}
+
+const selectImage = (index: number) => {
+  currentImageIndex.value = index
+}
 
 const ownerName = computed(() => {
   if (!space.value?.owner) return 'Propietario verificado'
@@ -406,14 +434,42 @@ const formatNumber = (value: number) => {
 
       <!-- Galería de imágenes -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-2 rounded-xl overflow-hidden h-[400px] md:h-[500px]">
-        <!-- Imagen principal -->
-        <div class="md:col-span-3 h-full">
+        <!-- Imagen principal con controles de navegación -->
+        <div class="md:col-span-3 h-full relative group/gallery">
           <div v-if="hasRealImage" class="h-full">
             <img 
               :src="imageUrl!" 
               :alt="space.name"
               class="h-full w-full object-cover"
             />
+            
+            <!-- Controles de navegación (solo si hay múltiples imágenes) -->
+            <template v-if="hasMultipleImages">
+              <!-- Botón anterior -->
+              <button
+                type="button"
+                @click="prevImage"
+                class="absolute left-4 top-1/2 -translate-y-1/2 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-gray-800 shadow-xl opacity-0 group-hover/gallery:opacity-100 hover:bg-white hover:scale-110 transition-all duration-200"
+                aria-label="Imagen anterior"
+              >
+                <span class="material-symbols-outlined !text-[28px]">chevron_left</span>
+              </button>
+
+              <!-- Botón siguiente -->
+              <button
+                type="button"
+                @click="nextImage"
+                class="absolute right-4 top-1/2 -translate-y-1/2 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-gray-800 shadow-xl opacity-0 group-hover/gallery:opacity-100 hover:bg-white hover:scale-110 transition-all duration-200"
+                aria-label="Imagen siguiente"
+              >
+                <span class="material-symbols-outlined !text-[28px]">chevron_right</span>
+              </button>
+
+              <!-- Contador de imágenes -->
+              <div class="absolute bottom-4 right-4 z-10 bg-black/70 text-white px-3 py-1.5 rounded-full text-sm font-medium backdrop-blur">
+                {{ currentImageIndex + 1 }} / {{ images.length }}
+              </div>
+            </template>
           </div>
           <div v-else class="h-full bg-gradient-to-br" :class="placeholderImage">
             <div class="h-full flex items-center justify-center bg-black/10">
@@ -425,8 +481,38 @@ const formatNumber = (value: number) => {
           </div>
         </div>
 
-        <!-- Miniaturas (placeholders para futuras imágenes) -->
-        <div class="hidden md:grid md:grid-rows-2 gap-2 h-full">
+        <!-- Miniaturas de imágenes reales -->
+        <div v-if="hasRealImage && images.length > 0" class="hidden md:flex md:flex-col gap-2 h-full overflow-y-auto custom-scrollbar">
+          <button
+            v-for="(img, index) in images"
+            :key="index"
+            type="button"
+            @click="selectImage(index)"
+            :class="[
+              'relative flex-shrink-0 rounded-lg overflow-hidden transition-all duration-200 hover:ring-4 hover:ring-primary/50',
+              index === currentImageIndex ? 'ring-4 ring-primary' : '',
+              images.length === 1 ? 'h-full' : images.length === 2 ? 'h-[calc(50%-4px)]' : 'h-40'
+            ]"
+          >
+            <img 
+              :src="img" 
+              :alt="`${space.name} - Imagen ${index + 1}`"
+              class="h-full w-full object-cover"
+            />
+            <!-- Overlay cuando está seleccionada -->
+            <div 
+              v-if="index === currentImageIndex"
+              class="absolute inset-0 bg-primary/20 flex items-center justify-center"
+            >
+              <div class="bg-white rounded-full p-1">
+                <span class="material-symbols-outlined text-primary !text-[20px]">check_circle</span>
+              </div>
+            </div>
+          </button>
+        </div>
+
+        <!-- Miniaturas placeholder (solo si no hay imágenes reales) -->
+        <div v-else class="hidden md:grid md:grid-rows-2 gap-2 h-full">
           <div class="bg-gradient-to-br from-gray-300 to-gray-400 rounded-lg flex items-center justify-center">
             <span class="material-symbols-outlined text-4xl text-white opacity-50">photo_camera</span>
           </div>

@@ -38,21 +38,55 @@ const placeholderImage = computed(() => {
   return colors[colorIndex]
 })
 
+// Carousel state
+const currentImageIndex = ref(0)
+
+const images = computed(() => {
+  const imgs = props.space.images
+  if (!imgs || imgs.length === 0) return []
+  
+  return imgs.map((img: any) => {
+    if (typeof img === 'string') return img
+    if (img && typeof img === 'object' && 'url' in img) return img.url
+    return null
+  }).filter((url): url is string => !!url)
+})
+
 // Determinar si usar imagen real o placeholder
 const imageUrl = computed(() => {
-  // Si hay imageUrl o images[0], usar la imagen real
+  // Si hay imageUrl, usarlo primero
   if (props.space.imageUrl) return props.space.imageUrl
-  const imgs = props.space.images
-  if (imgs && imgs.length > 0) {
-    const first = imgs[0] as any
-    if (typeof first === 'string') return first
-    if (first && typeof first === 'object' && 'url' in first) return first.url as string
-  }
+  // Si hay imágenes en el array, usar la actual según el índice del carousel
+  if (images.value.length > 0) return images.value[currentImageIndex.value]
   // Si no, retornar null para usar placeholder
   return null
 })
 
 const hasRealImage = computed(() => !!imageUrl.value)
+const hasMultipleImages = computed(() => images.value.length > 1)
+
+// Carousel navigation
+const nextImage = (e: Event) => {
+  e.preventDefault()
+  e.stopPropagation()
+  if (images.value.length > 0) {
+    currentImageIndex.value = (currentImageIndex.value + 1) % images.value.length
+  }
+}
+
+const prevImage = (e: Event) => {
+  e.preventDefault()
+  e.stopPropagation()
+  if (images.value.length > 0) {
+    currentImageIndex.value = (currentImageIndex.value - 1 + images.value.length) % images.value.length
+  }
+}
+
+const goToImage = (index: number, e: Event) => {
+  e.preventDefault()
+  e.stopPropagation()
+  currentImageIndex.value = index
+}
 
 const amenities = computed(() => {
   const items = []
@@ -77,8 +111,8 @@ const amenities = computed(() => {
   <article
     class="group flex h-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
   >
-    <!-- Imagen (con soporte para imágenes reales o placeholder) -->
-    <div class="relative aspect-[4/3] w-full overflow-hidden">
+    <!-- Imagen (con soporte para imágenes reales o placeholder y carousel) -->
+    <div class="relative aspect-[4/3] w-full overflow-hidden group/carousel">
       <!-- Imagen real si está disponible -->
       <img 
         v-if="hasRealImage"
@@ -105,6 +139,46 @@ const amenities = computed(() => {
           </div>
         </div>
       </div>
+
+      <!-- Controles de navegación del carousel (solo si hay múltiples imágenes) -->
+      <template v-if="hasMultipleImages">
+        <!-- Botón anterior -->
+        <button
+          type="button"
+          @click="prevImage"
+          class="absolute left-2 top-1/2 -translate-y-1/2 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-gray-800 shadow-lg opacity-0 group-hover/carousel:opacity-100 hover:bg-white transition-all duration-200"
+          aria-label="Imagen anterior"
+        >
+          <span class="material-symbols-outlined !text-[20px]">chevron_left</span>
+        </button>
+
+        <!-- Botón siguiente -->
+        <button
+          type="button"
+          @click="nextImage"
+          class="absolute right-2 top-1/2 -translate-y-1/2 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-gray-800 shadow-lg opacity-0 group-hover/carousel:opacity-100 hover:bg-white transition-all duration-200"
+          aria-label="Imagen siguiente"
+        >
+          <span class="material-symbols-outlined !text-[20px]">chevron_right</span>
+        </button>
+
+        <!-- Indicadores de puntos -->
+        <div class="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5">
+          <button
+            v-for="(img, index) in images"
+            :key="index"
+            type="button"
+            @click="(e) => goToImage(index, e)"
+            :class="[
+              'h-1.5 rounded-full transition-all duration-200',
+              index === currentImageIndex 
+                ? 'w-6 bg-white' 
+                : 'w-1.5 bg-white/60 hover:bg-white/80'
+            ]"
+            :aria-label="`Ir a imagen ${index + 1}`"
+          />
+        </div>
+      </template>
       
       <!-- Badge flotante -->
       <div class="absolute left-3 top-3 z-10">
