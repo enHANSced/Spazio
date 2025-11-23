@@ -152,13 +152,34 @@ const hasRealImage = computed(() => !!imageUrl.value)
           <span class="text-sm font-medium">{{ space.capacity }} personas</span>
         </div>
         
-        <button
-          class="flex items-center gap-1 text-sm font-medium text-rose-600 transition hover:text-rose-700"
-          @click.stop="emit('delete')"
-        >
-          <span class="material-symbols-outlined !text-[18px]">delete</span>
-          Eliminar
-        </button>
+        <div class="flex items-center gap-2">
+          <button
+            class="flex items-center gap-1 text-sm font-medium text-primary transition hover:text-primary/80"
+            @click.stop="emit('edit')"
+            title="Editar espacio"
+          >
+            <span class="material-symbols-outlined !text-[18px]">edit</span>
+          </button>
+          
+          <button
+            class="flex items-center gap-1 text-sm font-medium transition"
+            :class="space.isActive ? 'text-slate-600 hover:text-slate-800' : 'text-green-600 hover:text-green-700'"
+            @click.stop="emit('toggleStatus')"
+            :title="space.isActive ? 'Desactivar espacio' : 'Activar espacio'"
+          >
+            <span class="material-symbols-outlined !text-[18px]">
+              {{ space.isActive ? 'toggle_on' : 'toggle_off' }}
+            </span>
+          </button>
+          
+          <button
+            class="flex items-center gap-1 text-sm font-medium text-rose-600 transition hover:text-rose-700"
+            @click.stop="emit('delete')"
+            title="Eliminar espacio"
+          >
+            <span class="material-symbols-outlined !text-[18px]">delete</span>
+          </button>
+        </div>
       </div>
     </div>
   </article>

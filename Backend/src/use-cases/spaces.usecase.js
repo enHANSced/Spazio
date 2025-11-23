@@ -63,7 +63,7 @@ class SpacesUseCase {
 
   async update(id, data) {
     const space = await Space.findByPk(id);
-    if (!space || !space.isActive) {
+    if (!space) {
       throw new Error('Espacio no encontrado');
     }
     const fields = ['name', 'description', 'capacity', 'isActive'];
@@ -117,20 +117,21 @@ class SpacesUseCase {
 
   async remove(id) {
     const space = await Space.findByPk(id);
-    if (!space || !space.isActive) {
+    if (!space) {
       throw new Error('Espacio no encontrado');
     }
+    // Soft delete - marcar como inactivo
     space.isActive = false;
     await space.save();
     return { id: space.id };
   }
 
   /**
-   * Obtener espacios de un owner específico
+   * Obtener espacios de un owner específico (incluyendo inactivos)
    */
   async findByOwner(ownerId) {
     const spaces = await Space.findAll({
-      where: { ownerId, isActive: true },
+      where: { ownerId },
       order: [['createdAt', 'DESC']]
     });
     return spaces.map(s => s.toJSON());

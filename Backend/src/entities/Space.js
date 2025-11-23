@@ -38,6 +38,32 @@ const Space = sequelize.define('Space', {
   images: {
     type: DataTypes.JSON,
     allowNull: true,
+    defaultValue: [],
+    get() {
+      const rawValue = this.getDataValue('images');
+      if (!rawValue) return [];
+      // Si ya es un array, retornarlo
+      if (Array.isArray(rawValue)) return rawValue;
+      // Si es string, intentar parsear
+      if (typeof rawValue === 'string') {
+        try {
+          return JSON.parse(rawValue);
+        } catch (e) {
+          return [];
+        }
+      }
+      return [];
+    },
+    set(value) {
+      // Asegurar que siempre se guarde como array JSON válido
+      if (!value) {
+        this.setDataValue('images', []);
+      } else if (Array.isArray(value)) {
+        this.setDataValue('images', value);
+      } else {
+        this.setDataValue('images', []);
+      }
+    },
     comment: 'Array de objetos { url, publicId } provenientes de Cloudinary o URLs externas'
   }
 }, {
