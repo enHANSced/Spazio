@@ -8,8 +8,8 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' })); // Aumentado para soportar imágenes base64
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Rutas básicas
 app.get('/', (req, res) => {

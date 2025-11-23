@@ -96,3 +96,67 @@ export class OwnerSpacesService {
 }
 
 export default OwnerSpacesService
+
+// Versión con manejo automático de token
+export const ownerSpacesService = {
+  async getMySpaces() {
+    const token = useCookie('spazio_token').value
+    if (!token) throw new Error('No autenticado')
+    
+    try {
+      const response = await $fetch<SpacesApiResponse>(buildApiUrl('/spaces/owner/my-spaces'), {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      return { success: response.success, data: response.data, message: response.message }
+    } catch (error: any) {
+      return { success: false, data: [], message: extractApiErrorMessage(error) }
+    }
+  },
+
+  async createSpace(payload: CreateSpacePayload) {
+    const token = useCookie('spazio_token').value
+    if (!token) throw new Error('No autenticado')
+    
+    try {
+      const response = await $fetch<SpaceApiResponse>(buildApiUrl('/spaces'), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: payload
+      })
+      return { success: response.success, data: response.data, message: response.message }
+    } catch (error: any) {
+      return { success: false, data: null, message: extractApiErrorMessage(error) }
+    }
+  },
+
+  async updateSpace(id: string, payload: UpdateSpacePayload) {
+    const token = useCookie('spazio_token').value
+    if (!token) throw new Error('No autenticado')
+    
+    try {
+      const response = await $fetch<SpaceApiResponse>(buildApiUrl(`/spaces/${id}`), {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` },
+        body: payload
+      })
+      return { success: response.success, data: response.data, message: response.message }
+    } catch (error: any) {
+      return { success: false, data: null, message: extractApiErrorMessage(error) }
+    }
+  },
+
+  async deleteSpace(id: string) {
+    const token = useCookie('spazio_token').value
+    if (!token) throw new Error('No autenticado')
+    
+    try {
+      const response = await $fetch<{ success: boolean; message?: string }>(buildApiUrl(`/spaces/${id}`), {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      return { success: response.success, message: response.message }
+    } catch (error: any) {
+      return { success: false, message: extractApiErrorMessage(error) }
+    }
+  }
+}

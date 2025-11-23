@@ -53,3 +53,64 @@ export class OwnerBookingsService {
 }
 
 export default OwnerBookingsService
+
+// Versión con manejo automático de token
+export const ownerBookingsService = {
+  async getOwnerBookings(filters?: OwnerBookingsFilters) {
+    const token = useCookie('spazio_token').value
+    if (!token) throw new Error('No autenticado')
+    
+    try {
+      const queryParams = new URLSearchParams()
+      
+      if (filters?.status) queryParams.append('status', filters.status)
+      if (filters?.startDate) queryParams.append('startDate', filters.startDate)
+      if (filters?.endDate) queryParams.append('endDate', filters.endDate)
+
+      const url = buildApiUrl(`/bookings/owner/bookings${queryParams.toString() ? `?${queryParams.toString()}` : ''}`)
+
+      const response = await $fetch<BookingsApiResponse>(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      return { success: response.success, data: response.data, message: response.message }
+    } catch (error: any) {
+      return { success: false, data: [], message: extractApiErrorMessage(error) }
+    }
+  },
+
+  async update(bookingId: string, updates: Partial<Booking>) {
+    const token = useCookie('spazio_token').value
+    if (!token) throw new Error('No autenticado')
+    
+    try {
+      const url = buildApiUrl(`/bookings/${bookingId}`)
+      const response = await $fetch<{ success: boolean; data?: Booking; message?: string }>(url, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` },
+        body: updates
+      })
+
+      return { success: response.success, data: response.data, message: response.message }
+    } catch (error: any) {
+      return { success: false, message: extractApiErrorMessage(error) }
+    }
+  },
+
+  async cancel(bookingId: string) {
+    const token = useCookie('spazio_token').value
+    if (!token) throw new Error('No autenticado')
+    
+    try {
+      const url = buildApiUrl(`/bookings/${bookingId}/cancel`)
+      const response = await $fetch<{ success: boolean; data?: Booking; message?: string }>(url, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      return { success: response.success, data: response.data, message: response.message }
+    } catch (error: any) {
+      return { success: false, message: extractApiErrorMessage(error) }
+    }
+  }
+}

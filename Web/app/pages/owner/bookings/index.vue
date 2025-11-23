@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useAuthStore } from '../../../stores/auth'
 import type { Booking } from '../../../types/booking'
-import OwnerBookingsService from '../../../services/owner-bookings.service'
+import { ownerBookingsService } from '../../../services/owner-bookings.service'
 import type { Space } from '../../../types/space'
-import OwnerSpacesService from '../../../services/owner-spaces.service'
+import { ownerSpacesService } from '../../../services/owner-spaces.service'
 
 definePageMeta({
   layout: 'owner',
@@ -16,7 +15,6 @@ useSeoMeta({
   description: 'Gestiona las reservas de tus espacios'
 })
 
-const authStore = useAuthStore()
 const bookings = ref<Booking[]>([])
 const spaces = ref<Space[]>([])
 const loading = ref(true)
@@ -24,6 +22,8 @@ const error = ref('')
 const searchQuery = ref('')
 const statusFilter = ref<'all' | 'pending' | 'confirmed' | 'cancelled' | 'completed'>('all')
 const spaceFilter = ref<string>('all')
+const selectedBooking = ref<Booking | null>(null)
+const showDetailModal = ref(false)
 
 const filteredBookings = computed(() => {
   let filtered = bookings.value
@@ -65,17 +65,20 @@ const loadBookings = async () => {
   error.value = ''
   
   try {
-    if (!authStore.token) throw new Error('No autenticado')
-    
-    const [bookingsData, spacesData] = await Promise.all([
-      OwnerBookingsService.getOwnerBookings(authStore.token),
-      OwnerSpacesService.getMySpaces(authStore.token)
+    const [bookingsResponse, spacesResponse] = await Promise.all([
+      ownerBookingsService.getOwnerBookings(),
+      ownerSpacesService.getMySpaces()
     ])
     
-    bookings.value = bookingsData
-    spaces.value = spacesData
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Error al cargar reservas'
+    if (bookingsResponse.success && bookingsResponse.data) {
+      bookings.value = bookingsResponse.data
+    }
+    
+    if (spacesResponse.success && spacesResponse.data) {
+      spaces.value = spacesResponse.data
+    }
+  } catch (err: any) {
+    error.value = err.data?.message || err.message || 'Error al cargar reservas'
   } finally {
     loading.value = false
   }
@@ -126,6 +129,15 @@ const formatTime = (dateString: string) => {
 
 const formatTimeRange = (start: string, end: string) => {
   return `${formatTime(start)} - ${formatTime(end)}`
+}
+
+const handleViewDetail = (booking: Booking) => {
+  selectedBooking.value = booking
+  showDetailModal.value = true
+}
+
+const handleBookingUpdated = () => {
+  loadBookings()
 }
 
 onMounted(() => {
@@ -325,6 +337,9 @@ onMounted(() => {
               <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
                 Estado
               </th>
+              <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">
+                Acciones
+              </th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
@@ -371,10 +386,30 @@ onMounted(() => {
                   {{ getStatusLabel(booking.status) }}
                 </span>
               </td>
+              <td class="px-6 py-4">
+                <div class="flex items-center justify-end gap-2">
+                  <button
+                    @click="handleViewDetail(booking)"
+                    class="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors"
+                    title="Ver detalle"
+                  >
+                    <span class="material-symbols-outlined !text-[18px]">visibility</span>
+                    Ver detalle
+                  </button>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
+
+    <!-- Modal de detalle -->
+    <OwnerBookingDetail
+      v-if="selectedBooking"
+      v-model="showDetailModal"
+      :booking="selectedBooking"
+      @updated="handleBookingUpdated"
+    />
   </div>
 </template>

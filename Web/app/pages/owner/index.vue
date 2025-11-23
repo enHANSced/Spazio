@@ -1,22 +1,23 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useAuthStore } from '../../stores/auth'
 import type { Space } from '../../types/space'
 import type { Booking } from '../../types/booking'
-import OwnerSpacesService from '../../services/owner-spaces.service'
-import OwnerBookingsService from '../../services/owner-bookings.service'
+import { ownerSpacesService } from '../../services/owner-spaces.service'
+import { ownerBookingsService } from '../../services/owner-bookings.service'
+import { useAuthStore } from '../../stores/auth'
 
 definePageMeta({
   layout: 'owner',
   middleware: 'verified-owner'
 })
 
+const authStore = useAuthStore()
+
 useSeoMeta({
   title: 'Dashboard - Spazio Owner',
   description: 'Panel de control para propietarios'
 })
 
-const authStore = useAuthStore()
 const spaces = ref<Space[]>([])
 const recentBookings = ref<Booking[]>([])
 const loading = ref(true)
@@ -37,15 +38,18 @@ const loadDashboardData = async () => {
   loading.value = true
   
   try {
-    if (!authStore.token) throw new Error('No autenticado')
-    
-    const [spacesData, bookingsData] = await Promise.all([
-      OwnerSpacesService.getMySpaces(authStore.token),
-      OwnerBookingsService.getOwnerBookings(authStore.token)
+    const [spacesResponse, bookingsResponse] = await Promise.all([
+      ownerSpacesService.getMySpaces(),
+      ownerBookingsService.getOwnerBookings()
     ])
     
-    spaces.value = spacesData
-    recentBookings.value = bookingsData.slice(0, 5) // Solo las 5 más recientes
+    if (spacesResponse.success && spacesResponse.data) {
+      spaces.value = spacesResponse.data
+    }
+    
+    if (bookingsResponse.success && bookingsResponse.data) {
+      recentBookings.value = bookingsResponse.data.slice(0, 5) // Solo las 5 más recientes
+    }
   } catch (err) {
     console.error('Error cargando datos del dashboard:', err)
   } finally {

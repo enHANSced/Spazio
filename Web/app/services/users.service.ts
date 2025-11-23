@@ -61,3 +61,40 @@ export class UsersService {
 }
 
 export default UsersService
+
+// Versión con manejo automático de token
+export const usersService = {
+  async getMyProfile() {
+    const token = useCookie('spazio_token').value
+    if (!token) throw new Error('No autenticado')
+    
+    try {
+      const url = buildApiUrl('/users/me')
+      const response = await $fetch<UserApiResponse>(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      return { success: response.success, data: response.data, message: response.message }
+    } catch (error: any) {
+      return { success: false, message: extractApiErrorMessage(error) }
+    }
+  },
+
+  async updateMyProfile(updates: UpdateProfilePayload) {
+    const token = useCookie('spazio_token').value
+    if (!token) throw new Error('No autenticado')
+    
+    try {
+      const url = buildApiUrl('/users/me')
+      const response = await $fetch<UserApiResponse>(url, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: updates
+      })
+
+      return { success: response.success, data: response.data, message: response.message }
+    } catch (error: any) {
+      return { success: false, message: extractApiErrorMessage(error) }
+    }
+  }
+}

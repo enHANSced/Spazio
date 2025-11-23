@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useAuthStore } from '../../../stores/auth'
 import type { Space } from '../../../types/space'
-import OwnerSpacesService from '../../../services/owner-spaces.service'
+import { ownerSpacesService } from '../../../services/owner-spaces.service'
 
 definePageMeta({
   layout: 'owner',
@@ -14,12 +13,12 @@ useSeoMeta({
   description: 'Gestiona tus espacios'
 })
 
-const authStore = useAuthStore()
 const spaces = ref<Space[]>([])
 const loading = ref(true)
 const error = ref('')
 const searchQuery = ref('')
 const statusFilter = ref<'all' | 'active' | 'inactive'>('all')
+const toast = useToast()
 
 const filteredSpaces = computed(() => {
   let filtered = spaces.value
@@ -51,10 +50,14 @@ const loadSpaces = async () => {
   error.value = ''
   
   try {
-    if (!authStore.token) throw new Error('No autenticado')
-    spaces.value = await OwnerSpacesService.getMySpaces(authStore.token)
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Error al cargar espacios'
+    const response = await ownerSpacesService.getMySpaces()
+    if (response.success && response.data) {
+      spaces.value = response.data
+    } else {
+      error.value = response.message || 'Error al cargar espacios'
+    }
+  } catch (err: any) {
+    error.value = err.data?.message || err.message || 'Error al cargar espacios'
   } finally {
     loading.value = false
   }
@@ -66,15 +69,18 @@ const handleEdit = (space: Space) => {
 
 const handleToggleStatus = async (space: Space) => {
   try {
-    if (!authStore.token) throw new Error('No autenticado')
-    
-    await OwnerSpacesService.updateSpace(authStore.token, space.id, {
+    const response = await ownerSpacesService.updateSpace(space.id, {
       isActive: !space.isActive
     })
     
-    await loadSpaces()
-  } catch (err) {
-    alert(err instanceof Error ? err.message : 'Error al actualizar estado')
+    if (response.success) {
+      toast.success(space.isActive ? 'Espacio desactivado' : 'Espacio activado')
+      await loadSpaces()
+    } else {
+      toast.error(response.message || 'Error al actualizar estado')
+    }
+  } catch (err: any) {
+    toast.error(err.data?.message || err.message || 'Error al actualizar estado')
   }
 }
 
@@ -84,12 +90,16 @@ const handleDelete = async (space: Space) => {
   }
   
   try {
-    if (!authStore.token) throw new Error('No autenticado')
+    const response = await ownerSpacesService.deleteSpace(space.id)
     
-    await OwnerSpacesService.deleteSpace(authStore.token, space.id)
-    await loadSpaces()
-  } catch (err) {
-    alert(err instanceof Error ? err.message : 'Error al eliminar espacio')
+    if (response.success) {
+      toast.success('Espacio eliminado exitosamente')
+      await loadSpaces()
+    } else {
+      toast.error(response.message || 'Error al eliminar espacio')
+    }
+  } catch (err: any) {
+    toast.error(err.data?.message || err.message || 'Error al eliminar espacio')
   }
 }
 

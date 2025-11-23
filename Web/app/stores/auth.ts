@@ -42,8 +42,16 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const persistSession = () => {
-    tokenCookie.value = token.value
-    userCookie.value = user.value ? JSON.stringify(user.value) : null
+    try {
+      tokenCookie.value = token.value
+      if (user.value) {
+        userCookie.value = JSON.stringify(user.value)
+      } else {
+        userCookie.value = null
+      }
+    } catch (error) {
+      console.error('[auth] Error al persistir sesión', error)
+    }
   }
 
   const logout = () => {

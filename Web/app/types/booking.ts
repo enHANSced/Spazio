@@ -23,6 +23,7 @@ export interface Booking {
   pricePerHour?: number
   durationHours?: number
   paidAt?: string
+  notes?: string
   // Enriquecido con datos relacionados
   space?: Space
   user?: AuthUser
