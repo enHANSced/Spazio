@@ -1,0 +1,164 @@
+const bookingsUseCase = require('../use-cases/bookings.usecase');
+
+class BookingsController {
+  /**
+   * Crear nueva reserva
+   */
+  async create(req, res) {
+    try {
+      const booking = await bookingsUseCase.create(req.body, req.user.id);
+      res.status(201).json({
+        success: true,
+        message: 'Reserva creada exitosamente',
+        data: booking
+      });
+    } catch (error) {
+      const status = error.message.includes('no está disponible') ? 409 : 400;
+      res.status(status).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * Obtener mis reservas
+   */
+  async getMyBookings(req, res) {
+    try {
+      const { startDate, endDate } = req.query;
+      const bookings = await bookingsUseCase.getUserBookings(req.user.id, {
+        startDate,
+        endDate
+      });
+      res.status(200).json({
+        success: true,
+        data: bookings
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * Obtener reservas por espacio (para calendario)
+   */
+  async getBySpace(req, res) {
+    try {
+      const { spaceId } = req.params;
+      const { startDate, endDate } = req.query;
+
+      if (!startDate || !endDate) {
+        return res.status(400).json({
+          success: false,
+          message: 'Se requieren startDate y endDate como query params'
+        });
+      }
+
+      const bookings = await bookingsUseCase.getBySpace(spaceId, startDate, endDate);
+      res.status(200).json({
+        success: true,
+        data: bookings
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * Obtener una reserva por ID
+   */
+  async getById(req, res) {
+    try {
+      const booking = await bookingsUseCase.getById(req.params.id, req.user.id);
+      res.status(200).json({
+        success: true,
+        data: booking
+      });
+    } catch (error) {
+      const status = error.message.includes('permiso') ? 403 : 404;
+      res.status(status).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * Cancelar reserva
+   */
+  async cancel(req, res) {
+    try {
+      const isAdmin = req.user.role === 'admin';
+      const booking = await bookingsUseCase.cancel(req.params.id, req.user.id, isAdmin);
+      res.status(200).json({
+        success: true,
+        message: 'Reserva cancelada',
+        data: booking
+      });
+    } catch (error) {
+      const status = error.message.includes('permiso') ? 403 : 404;
+      res.status(status).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * Obtener reservas de los espacios del owner
+   */
+  async getOwnerBookings(req, res) {
+    try {
+      const { status, startDate, endDate } = req.query;
+      const bookings = await bookingsUseCase.getOwnerBookings(req.user.id, {
+        status,
+        startDate,
+        endDate
+      });
+      res.status(200).json({
+        success: true,
+        data: bookings
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * Actualizar una reserva (para pagos, reprogramación, etc.)
+   */
+  async update(req, res) {
+    try {
+      const isAdmin = req.user.role === 'admin';
+      const booking = await bookingsUseCase.update(
+        req.params.id,
+        req.user.id,
+        req.body,
+        isAdmin
+      );
+      res.status(200).json({
+        success: true,
+        message: 'Reserva actualizada',
+        data: booking
+      });
+    } catch (error) {
+      const status = error.message.includes('permiso') ? 403 : 404;
+      res.status(status).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+}
+
+module.exports = new BookingsController();
