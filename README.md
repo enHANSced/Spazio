@@ -2,8 +2,6 @@
 
 <div align="center">
 
-![Spazio Logo](https://github.com/user-attachments/assets/12f6cce3-abbe-494d-9f41-82d2496a1cae)
-
 **Plataforma moderna para reservar y gestionar espacios de trabajo y eventos**
 
 [![Nuxt.js](https://img.shields.io/badge/Nuxt.js-4.x-00DC82?logo=nuxt.js&logoColor=white)](https://nuxt.com/)
@@ -50,20 +48,27 @@
 ## 🖼️ Capturas de Pantalla
 
 ### Vista de Detalle de Espacio
-![Detalle de Espacio](https://github.com/user-attachments/assets/12f6cce3-abbe-494d-9f41-82d2496a1cae)
+![Detalle de Espacio](.playwright-mcp/espacio-detalles-completo.png)
 *Página de detalle mostrando información completa del espacio, imágenes, amenidades y opciones de reserva*
 
-### Formulario de Creación de Espacio (Owner)
-<div align="center">
-<img src="https://github.com/user-attachments/assets/cc7c9615-ab3b-43cf-b9dd-69345591769d" width="45%" alt="Formulario Owner 1"/>
-<img src="https://github.com/user-attachments/assets/899350de-68c9-44d6-b3d1-d2d3bf321def" width="45%" alt="Formulario Owner 2"/>
-</div>
+### Panel de Propietarios - Creación de Espacios
 
-*Panel de propietarios para crear y configurar espacios con todos los detalles*
+<table>
+<tr>
+<td width="50%">
+<img src=".playwright-mcp/formulario-owner-rellenado.png" alt="Formulario de ubicación y precio"/>
+<p align="center"><em>Configuración de ubicación y precio</em></p>
+</td>
+<td width="50%">
+<img src=".playwright-mcp/formulario-owner-extendido.png" alt="Formulario de amenidades"/>
+<p align="center"><em>Selección de amenidades</em></p>
+</td>
+</tr>
+</table>
 
-### Formulario Completo con Amenidades
-![Formulario Completo](https://github.com/user-attachments/assets/9e7eb52e-0e16-4fd7-b102-58be4540995c)
-*Configuración de amenidades, horarios y reglas del espacio*
+### Configuración Completa del Espacio
+![Formulario Completo](.playwright-mcp/formulario-rellenado-completo.png)
+*Vista completa con amenidades, horarios de operación, reglas del espacio y política de cancelación*
 
 ---
 
