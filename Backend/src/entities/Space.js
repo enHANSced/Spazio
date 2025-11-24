@@ -65,6 +65,145 @@ const Space = sequelize.define('Space', {
       }
     },
     comment: 'Array de objetos { url, publicId } provenientes de Cloudinary o URLs externas'
+  },
+  pricePerHour: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: 0,
+    validate: { min: 0 },
+    comment: 'Precio por hora en HNL'
+  },
+  amenities: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+    get() {
+      const rawValue = this.getDataValue('amenities');
+      if (!rawValue) return [];
+      if (Array.isArray(rawValue)) return rawValue;
+      if (typeof rawValue === 'string') {
+        try {
+          return JSON.parse(rawValue);
+        } catch (e) {
+          return [];
+        }
+      }
+      return [];
+    },
+    comment: 'Array de amenidades: ["Wi-Fi", "Aire acondicionado", etc.]'
+  },
+  rules: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Reglas del espacio (no fumar, etc.)'
+  },
+  virtualTourUrl: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'URL de tour virtual (Matterport, etc.)'
+  },
+  cancellationPolicy: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    defaultValue: 'flexible',
+    validate: {
+      isIn: [['flexible', 'moderate', 'strict']]
+    },
+    comment: 'Política de cancelación'
+  },
+  address: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'Dirección completa del espacio'
+  },
+  city: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: 'Ciudad'
+  },
+  state: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: 'Departamento/Estado'
+  },
+  country: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    defaultValue: 'Honduras',
+    comment: 'País'
+  },
+  latitude: {
+    type: DataTypes.DECIMAL(10, 8),
+    allowNull: true,
+    validate: { min: -90, max: 90 },
+    comment: 'Latitud GPS'
+  },
+  longitude: {
+    type: DataTypes.DECIMAL(11, 8),
+    allowNull: true,
+    validate: { min: -180, max: 180 },
+    comment: 'Longitud GPS'
+  },
+  zipCode: {
+    type: DataTypes.STRING(10),
+    allowNull: true,
+    comment: 'Código postal'
+  },
+  workingHours: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: { start: '08:00', end: '22:00' },
+    get() {
+      const rawValue = this.getDataValue('workingHours');
+      if (!rawValue) return { start: '08:00', end: '22:00' };
+      if (typeof rawValue === 'string') {
+        try {
+          return JSON.parse(rawValue);
+        } catch (e) {
+          return { start: '08:00', end: '22:00' };
+        }
+      }
+      return rawValue;
+    },
+    comment: 'Horario de operación: { start: "08:00", end: "22:00" }'
+  },
+  videos: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+    get() {
+      const rawValue = this.getDataValue('videos');
+      if (!rawValue) return [];
+      if (Array.isArray(rawValue)) return rawValue;
+      if (typeof rawValue === 'string') {
+        try {
+          return JSON.parse(rawValue);
+        } catch (e) {
+          return [];
+        }
+      }
+      return [];
+    },
+    comment: 'Array de videos: [{ url, publicId, thumbnail }]'
+  },
+  images360: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+    get() {
+      const rawValue = this.getDataValue('images360');
+      if (!rawValue) return [];
+      if (Array.isArray(rawValue)) return rawValue;
+      if (typeof rawValue === 'string') {
+        try {
+          return JSON.parse(rawValue);
+        } catch (e) {
+          return [];
+        }
+      }
+      return [];
+    },
+    comment: 'Array de imágenes 360°: [{ url, publicId }]'
   }
 }, {
   tableName: 'spaces',

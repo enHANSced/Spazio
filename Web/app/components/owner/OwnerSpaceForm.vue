@@ -59,6 +59,162 @@
       <p class="mt-1 text-sm text-gray-500">Número de personas que puede acomodar</p>
     </div>
 
+    <!-- Precio por hora -->
+    <div>
+      <label for="pricePerHour" class="block text-sm font-medium text-gray-700 mb-2">
+        Precio por hora (HNL) <span class="text-red-500">*</span>
+      </label>
+      <div class="relative">
+        <span class="absolute left-3 top-2.5 text-gray-500">L</span>
+        <input
+          id="pricePerHour"
+          v-model.number="form.pricePerHour"
+          type="number"
+          required
+          min="0"
+          step="0.01"
+          class="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+          placeholder="300.00"
+        />
+      </div>
+      <p class="mt-1 text-sm text-gray-500">
+        Precio sugerido: <strong>L {{ suggestedPrice }}</strong> por hora (basado en capacidad)
+      </p>
+    </div>
+
+    <!-- Ubicación -->
+    <div class="space-y-4 p-4 bg-gray-50 rounded-lg">
+      <h3 class="text-sm font-semibold text-gray-700">📍 Ubicación</h3>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="md:col-span-2">
+          <label for="address" class="block text-sm font-medium text-gray-700 mb-2">
+            Dirección completa
+          </label>
+          <input
+            id="address"
+            v-model="form.address"
+            type="text"
+            maxlength="255"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            placeholder="Ej: Boulevard Morazán, Edificio Plaza Azul, 3er piso"
+          />
+        </div>
+
+        <div>
+          <label for="city" class="block text-sm font-medium text-gray-700 mb-2">
+            Ciudad
+          </label>
+          <input
+            id="city"
+            v-model="form.city"
+            type="text"
+            maxlength="100"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            placeholder="Ej: Tegucigalpa"
+          />
+        </div>
+
+        <div>
+          <label for="state" class="block text-sm font-medium text-gray-700 mb-2">
+            Departamento
+          </label>
+          <input
+            id="state"
+            v-model="form.state"
+            type="text"
+            maxlength="100"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            placeholder="Ej: Francisco Morazán"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Amenidades -->
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-2">
+        Amenidades
+      </label>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <label
+          v-for="amenity in availableAmenities"
+          :key="amenity"
+          class="flex items-center gap-2 p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+        >
+          <input
+            v-model="form.amenities"
+            type="checkbox"
+            :value="amenity"
+            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          />
+          <span class="text-sm text-gray-700">{{ amenity }}</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Horarios de operación -->
+    <div class="space-y-4 p-4 bg-gray-50 rounded-lg">
+      <h3 class="text-sm font-semibold text-gray-700">🕐 Horarios de operación</h3>
+      
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label for="workingHoursStart" class="block text-sm font-medium text-gray-700 mb-2">
+            Apertura
+          </label>
+          <input
+            id="workingHoursStart"
+            v-model="form.workingHours.start"
+            type="time"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+          />
+        </div>
+
+        <div>
+          <label for="workingHoursEnd" class="block text-sm font-medium text-gray-700 mb-2">
+            Cierre
+          </label>
+          <input
+            id="workingHoursEnd"
+            v-model="form.workingHours.end"
+            type="time"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Reglas del espacio -->
+    <div>
+      <label for="rules" class="block text-sm font-medium text-gray-700 mb-2">
+        Reglas del espacio
+      </label>
+      <textarea
+        id="rules"
+        v-model="form.rules"
+        rows="3"
+        maxlength="2000"
+        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
+        placeholder="Ej: No fumar, No se permiten mascotas, Respetar el horario..."
+      />
+      <p class="mt-1 text-sm text-gray-500">{{ form.rules.length }}/2000 caracteres</p>
+    </div>
+
+    <!-- Política de cancelación -->
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-2">
+        Política de cancelación
+      </label>
+      <select
+        v-model="form.cancellationPolicy"
+        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+      >
+        <option value="flexible">Flexible - Reembolso hasta 24h antes</option>
+        <option value="moderate">Moderada - Reembolso hasta 5 días antes</option>
+        <option value="strict">Estricta - Reembolso hasta 7 días antes</option>
+      </select>
+    </div>
+
     <!-- Estado (solo en modo edición) -->
     <div v-if="mode === 'edit'" class="flex items-center gap-3">
       <label class="relative inline-flex items-center cursor-pointer">
@@ -175,11 +331,39 @@ const generalError = ref('')
 const images = ref<any[]>([])
 const existingImages = ref<Array<{ url: string; publicId: string }>>([])
 
+// Lista de amenidades disponibles
+const availableAmenities = [
+  'Wi-Fi',
+  'Aire acondicionado',
+  'Proyector',
+  'Pizarra',
+  'Sonido',
+  'Estacionamiento',
+  'Café/Bebidas',
+  'Cocina',
+  'Baños privados',
+  'Acceso 24/7',
+  'Seguridad',
+  'Recepción'
+]
+
 // Formulario
 const form = reactive({
   name: '',
   description: '',
   capacity: 1,
+  pricePerHour: 0,
+  address: '',
+  city: '',
+  state: '',
+  country: 'Honduras',
+  amenities: [] as string[],
+  workingHours: {
+    start: '08:00',
+    end: '22:00'
+  },
+  rules: '',
+  cancellationPolicy: 'flexible',
   isActive: true
 })
 
@@ -189,12 +373,44 @@ const errors = reactive({
   capacity: ''
 })
 
+// Calcular precio sugerido basado en capacidad
+const suggestedPrice = computed(() => {
+  const capacity = form.capacity || 1
+  if (capacity <= 10) return 300
+  if (capacity <= 20) return 500
+  if (capacity <= 40) return 800
+  if (capacity <= 80) return 1500
+  return 2500
+})
+
+// Auto-sugerir precio si no está establecido
+watch(() => form.capacity, (newCapacity) => {
+  if (!form.pricePerHour || form.pricePerHour === 0) {
+    form.pricePerHour = suggestedPrice.value
+  }
+})
+
 // Cargar datos existentes en modo edición
 if (props.mode === 'edit' && props.space) {
   form.name = props.space.name || ''
   form.description = props.space.description || ''
   form.capacity = props.space.capacity || 1
+  form.pricePerHour = props.space.pricePerHour || 0
+  form.address = props.space.address || ''
+  form.city = props.space.city || ''
+  form.state = props.space.state || ''
+  form.country = props.space.country || 'Honduras'
+  form.amenities = props.space.amenities || []
+  form.rules = props.space.rules || ''
+  form.cancellationPolicy = props.space.cancellationPolicy || 'flexible'
   form.isActive = props.space.isActive ?? true
+
+  if (props.space.workingHours) {
+    form.workingHours = {
+      start: props.space.workingHours.start || '08:00',
+      end: props.space.workingHours.end || '22:00'
+    }
+  }
 
   if (props.space.images && Array.isArray(props.space.images)) {
     // @ts-ignore - Tipo de imagen puede ser string o objeto según backend
@@ -248,7 +464,16 @@ const handleSubmit = async () => {
     const data: any = {
       name: form.name.trim(),
       description: form.description.trim(),
-      capacity: form.capacity
+      capacity: form.capacity,
+      pricePerHour: form.pricePerHour,
+      address: form.address.trim(),
+      city: form.city.trim(),
+      state: form.state.trim(),
+      country: form.country,
+      amenities: form.amenities,
+      workingHours: form.workingHours,
+      rules: form.rules.trim(),
+      cancellationPolicy: form.cancellationPolicy
     }
 
     // Agregar isActive solo en modo edición

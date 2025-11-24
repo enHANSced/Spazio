@@ -30,7 +30,13 @@ class SpacesUseCase {
   }
 
   async create(data) {
-    const { name, description, capacity, ownerId, images } = data;
+    const { 
+      name, description, capacity, ownerId, images,
+      pricePerHour, amenities, rules, virtualTourUrl, cancellationPolicy,
+      address, city, state, country, latitude, longitude, zipCode,
+      workingHours, videos, images360
+    } = data;
+    
     if (!name || !capacity || !ownerId) {
       throw new Error('Nombre, capacidad y propietario son requeridos');
     }
@@ -51,13 +57,37 @@ class SpacesUseCase {
     if (exists) {
       throw new Error('Ya existe un espacio con ese nombre');
     }
+    
     let processedImages = [];
     if (Array.isArray(images) && images.length) {
       const { uploadImages } = require('../services/cloudinary.service');
       processedImages = await uploadImages(images);
     }
 
-    const space = await Space.create({ name, description, capacity, ownerId, images: processedImages });
+    const spaceData = {
+      name, 
+      description, 
+      capacity, 
+      ownerId, 
+      images: processedImages,
+      pricePerHour: pricePerHour || 0,
+      amenities: amenities || [],
+      rules: rules || '',
+      virtualTourUrl: virtualTourUrl || null,
+      cancellationPolicy: cancellationPolicy || 'flexible',
+      address: address || null,
+      city: city || null,
+      state: state || null,
+      country: country || 'Honduras',
+      latitude: latitude || null,
+      longitude: longitude || null,
+      zipCode: zipCode || null,
+      workingHours: workingHours || { start: '08:00', end: '22:00' },
+      videos: videos || [],
+      images360: images360 || []
+    };
+
+    const space = await Space.create(spaceData);
     return space.toJSON();
   }
 
@@ -66,7 +96,14 @@ class SpacesUseCase {
     if (!space) {
       throw new Error('Espacio no encontrado');
     }
-    const fields = ['name', 'description', 'capacity', 'isActive'];
+    
+    const fields = [
+      'name', 'description', 'capacity', 'isActive',
+      'pricePerHour', 'amenities', 'rules', 'virtualTourUrl', 'cancellationPolicy',
+      'address', 'city', 'state', 'country', 'latitude', 'longitude', 'zipCode',
+      'workingHours', 'videos', 'images360'
+    ];
+    
     fields.forEach((f) => {
       if (data[f] !== undefined) space[f] = data[f];
     });

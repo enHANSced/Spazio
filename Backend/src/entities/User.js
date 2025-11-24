@@ -46,6 +46,16 @@ const User = sequelize.define('User', {
     type: DataTypes.TEXT,
     allowNull: true,
     comment: 'Descripción del negocio para usuarios owner'
+  },
+  phone: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    comment: 'Número de teléfono'
+  },
+  whatsappNumber: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    comment: 'Número de WhatsApp (formato internacional recomendado: +504XXXXXXXX)'
   }
 }, {
   tableName: 'users',
