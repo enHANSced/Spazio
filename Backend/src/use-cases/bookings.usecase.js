@@ -291,6 +291,141 @@ class BookingsUseCase {
     const bookings = await Booking.find(query).sort({ startTime: -1 });
     return Promise.all(bookings.map(b => this.enrichBooking(b)));
   }
+
+  /**
+   * Obtener todas las reservas del sistema con paginación (admin)
+   */
+  async getAllBookingsPaginated(filters = {}, pagination = {}) {
+    const query = {};
+
+    // Filtrar por status si se proporciona
+    if (filters.status) {
+      query.status = filters.status;
+    }
+
+    // Filtrar por espacio si se proporciona
+    if (filters.spaceId) {
+      query.spaceId = filters.spaceId;
+    }
+
+    // Filtrar por usuario si se proporciona
+    if (filters.userId) {
+      query.userId = filters.userId;
+    }
+
+    // Filtrar por rango de fechas
+    if (filters.startDate || filters.endDate) {
+      query.startTime = {};
+      if (filters.startDate) {
+        query.startTime.$gte = new Date(filters.startDate);
+      }
+      if (filters.endDate) {
+        query.startTime.$lte = new Date(filters.endDate);
+      }
+    }
+
+    const page = parseInt(pagination.page) || 1;
+    const limit = parseInt(pagination.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const [bookings, total] = await Promise.all([
+      Booking.find(query).sort({ startTime: -1 }).skip(skip).limit(limit),
+      Booking.countDocuments(query)
+    ]);
+
+    const enrichedBookings = await Promise.all(bookings.map(b => this.enrichBooking(b)));
+
+    return {
+      bookings: enrichedBookings,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
+  }
+
+  /**
+   * Cancelar cualquier reserva (admin)
+   */
+  async adminCancel(bookingId) {
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      throw new Error('Reserva no encontrada');
+    }
+
+    if (booking.status === 'cancelled') {
+      throw new Error('La reserva ya está cancelada');
+    }
+
+    booking.status = 'cancelled';
+    await booking.save();
+
+    return this.enrichBooking(booking);
+  }
+
+  /**
+   * Obtener estadísticas generales (admin)
+   */
+  async getStats() {
+    const [
+      totalUsers,
+      totalOwners,
+      pendingOwners,
+      totalSpaces,
+      activeSpaces,
+      totalBookings,
+      confirmedBookings,
+      cancelledBookings
+    ] = await Promise.all([
+      User.count({ where: { role: 'user', isActive: true } }),
+      User.count({ where: { role: 'owner', isActive: true } }),
+      User.count({ where: { role: 'owner', isVerified: false, isActive: true } }),
+      Space.count(),
+      Space.count({ where: { isActive: true } }),
+      Booking.countDocuments(),
+      Booking.countDocuments({ status: 'confirmed' }),
+      Booking.countDocuments({ status: 'cancelled' })
+    ]);
+
+    // Reservas de los últimos 30 días
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const recentBookings = await Booking.countDocuments({
+      createdAt: { $gte: thirtyDaysAgo }
+    });
+
+    // Reservas de hoy
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const todayBookings = await Booking.countDocuments({
+      startTime: { $gte: today, $lt: tomorrow },
+      status: 'confirmed'
+    });
+
+    return {
+      users: {
+        total: totalUsers,
+        owners: totalOwners,
+        pendingOwners
+      },
+      spaces: {
+        total: totalSpaces,
+        active: activeSpaces,
+        inactive: totalSpaces - activeSpaces
+      },
+      bookings: {
+        total: totalBookings,
+        confirmed: confirmedBookings,
+        cancelled: cancelledBookings,
+        recentThirtyDays: recentBookings,
+        today: todayBookings
+      }
+    };
+  }
 }
 
 module.exports = new BookingsUseCase();

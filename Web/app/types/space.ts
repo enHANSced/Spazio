@@ -1,6 +1,7 @@
 export interface SpaceOwner {
   id: string
   name?: string | null
+  email?: string | null
   businessName?: string | null
   businessDescription?: string | null
   phone?: string | null

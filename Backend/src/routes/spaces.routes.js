@@ -6,6 +6,21 @@ const { isOwnerOrAdmin, isVerifiedOwner, isResourceOwner } = require('../middlew
 const { handleValidationErrors } = require('../middleware/validation.middleware');
 const { validateCreateSpace, validateUpdateSpace, validateSpaceId } = require('../validators/spaces.validators');
 
+// Rutas admin - Deben ir antes de rutas con parámetros
+router.get('/admin/all', 
+  authMiddleware, 
+  isAdmin, 
+  spacesController.listAll
+);
+
+router.patch('/admin/:id/toggle', 
+  authMiddleware, 
+  isAdmin, 
+  validateSpaceId, 
+  handleValidationErrors, 
+  spacesController.toggleActive
+);
+
 // Rutas públicas - Cualquiera puede ver espacios
 router.get('/', spacesController.list);
 router.get('/:id', validateSpaceId, handleValidationErrors, spacesController.getById);

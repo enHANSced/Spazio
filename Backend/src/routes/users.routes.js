@@ -26,6 +26,18 @@ const validateUpdateProfile = [
   body('linkedin').optional({ checkFalsy: true }).trim().isURL().withMessage('LinkedIn debe ser una URL válida')
 ];
 
+const validateAdminUpdate = [
+  param('id').isUUID().withMessage('ID de usuario inválido'),
+  body('name').optional().trim().isLength({ min: 2, max: 100 }).withMessage('El nombre debe tener entre 2 y 100 caracteres'),
+  body('role').optional().isIn(['user', 'owner', 'admin']).withMessage('Rol inválido'),
+  body('isActive').optional().isBoolean().withMessage('isActive debe ser un booleano'),
+  body('isVerified').optional().isBoolean().withMessage('isVerified debe ser un booleano'),
+  body('businessName').optional().trim().isLength({ max: 150 }).withMessage('El nombre del negocio no puede exceder 150 caracteres'),
+  body('businessDescription').optional().trim().isLength({ max: 1000 }).withMessage('La descripción no puede exceder 1000 caracteres'),
+  body('phone').optional().trim().isLength({ max: 20 }).withMessage('El teléfono no puede exceder 20 caracteres'),
+  body('whatsappNumber').optional().trim().isLength({ max: 20 }).withMessage('El WhatsApp no puede exceder 20 caracteres')
+];
+
 // Rutas de perfil del usuario autenticado
 router.get('/me', authMiddleware, usersController.getMyProfile);
 router.put('/me', authMiddleware, validateUpdateProfile, handleValidationErrors, usersController.updateMyProfile);
@@ -34,6 +46,8 @@ router.put('/me', authMiddleware, validateUpdateProfile, handleValidationErrors,
 router.get('/', authMiddleware, isAdmin, usersController.list);
 router.get('/pending-owners', authMiddleware, isAdmin, usersController.getPendingOwners);
 router.get('/:id', authMiddleware, isAdmin, validateUserId, handleValidationErrors, usersController.getById);
+router.put('/:id', authMiddleware, isAdmin, validateAdminUpdate, handleValidationErrors, usersController.updateByAdmin);
 router.patch('/:id/verify', authMiddleware, isAdmin, validateVerifyOwner, handleValidationErrors, usersController.verifyOwner);
+router.patch('/:id/toggle', authMiddleware, isAdmin, validateUserId, handleValidationErrors, usersController.toggleActive);
 
 module.exports = router;

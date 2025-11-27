@@ -159,6 +159,76 @@ class BookingsController {
       });
     }
   }
+
+  /**
+   * Obtener todas las reservas con paginación (admin)
+   */
+  async getAllBookings(req, res) {
+    try {
+      const filters = {
+        status: req.query.status,
+        spaceId: req.query.spaceId,
+        userId: req.query.userId,
+        startDate: req.query.startDate,
+        endDate: req.query.endDate
+      };
+
+      const pagination = {
+        page: req.query.page,
+        limit: req.query.limit
+      };
+
+      const data = await bookingsUseCase.getAllBookingsPaginated(filters, pagination);
+      res.status(200).json({
+        success: true,
+        data: data.bookings,
+        pagination: data.pagination
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * Cancelar cualquier reserva (admin)
+   */
+  async adminCancel(req, res) {
+    try {
+      const booking = await bookingsUseCase.adminCancel(req.params.id);
+      res.status(200).json({
+        success: true,
+        message: 'Reserva cancelada por administrador',
+        data: booking
+      });
+    } catch (error) {
+      const status = error.message.includes('no encontrada') ? 404 : 400;
+      res.status(status).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * Obtener estadísticas generales (admin)
+   */
+  async getStats(req, res) {
+    try {
+      const stats = await bookingsUseCase.getStats();
+      res.status(200).json({
+        success: true,
+        data: stats
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
 }
 
 module.exports = new BookingsController();

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const bookingsController = require('../controllers/bookings.controller');
-const { authMiddleware } = require('../middleware/auth.middleware');
+const { authMiddleware, isAdmin } = require('../middleware/auth.middleware');
 const { isOwnerOrAdmin, isVerifiedOwner } = require('../middleware/role.middleware');
 const { handleValidationErrors } = require('../middleware/validation.middleware');
 const {
@@ -13,6 +13,11 @@ const {
 
 // Todas las rutas requieren autenticación
 router.use(authMiddleware);
+
+// Rutas admin - Deben ir antes de rutas con parámetros
+router.get('/admin/all', isAdmin, bookingsController.getAllBookings);
+router.get('/admin/stats', isAdmin, bookingsController.getStats);
+router.delete('/admin/:id', isAdmin, validateBookingId, handleValidationErrors, bookingsController.adminCancel);
 
 // Crear nueva reserva (solo users, no owners)
 router.post('/', validateCreateBooking, handleValidationErrors, bookingsController.create);
