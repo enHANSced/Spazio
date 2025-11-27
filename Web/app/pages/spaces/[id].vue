@@ -66,16 +66,56 @@ const calendarDays = computed(() => {
   return days
 })
 
-// Generar horas disponibles (8:00 AM - 10:00 PM en intervalos de 30 min)
+// Generar horas disponibles según horario del espacio
 const availableTimes = computed(() => {
   const times: string[] = []
-  for (let hour = 8; hour <= 22; hour++) {
-    for (let minute of [0, 30]) {
-      if (hour === 22 && minute === 30) break // No más de 10:00 PM
-      const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
-      times.push(timeString)
+  
+  // Obtener horario del espacio o usar default
+  let startHour = 8
+  let startMinute = 0
+  let endHour = 22
+  let endMinute = 0
+  
+  if (space.value?.workingHours) {
+    try {
+      // workingHours puede venir como objeto { start: 'HH:mm', end: 'HH:mm' }
+      // o como string JSON si no se parseó correctamente
+      const wh = typeof space.value.workingHours === 'string' 
+        ? JSON.parse(space.value.workingHours) 
+        : space.value.workingHours
+        
+      if (wh && wh.start && wh.end) {
+        const [sh, sm] = wh.start.split(':').map(Number)
+        const [eh, em] = wh.end.split(':').map(Number)
+        
+        if (!isNaN(sh) && !isNaN(eh)) {
+          startHour = sh
+          startMinute = sm || 0
+          endHour = eh
+          endMinute = em || 0
+        }
+      }
+    } catch (e) {
+      console.error('Error parsing workingHours', e)
     }
   }
+
+  // Generar intervalos de 30 min
+  let currentHour = startHour
+  let currentMinute = startMinute
+
+  while (currentHour < endHour || (currentHour === endHour && currentMinute < endMinute)) {
+    const timeString = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`
+    times.push(timeString)
+
+    // Incrementar 30 min
+    currentMinute += 30
+    if (currentMinute >= 60) {
+      currentMinute = 0
+      currentHour += 1
+    }
+  }
+  
   return times
 })
 
@@ -182,6 +222,31 @@ const total = computed(() => subtotal.value + serviceFee.value)
 const features = computed(() => {
   if (!space.value) return []
   
+  // Si tenemos amenidades guardadas del formulario, usarlas
+  if (space.value.amenities && Array.isArray(space.value.amenities) && space.value.amenities.length > 0) {
+    const amenityIcons: Record<string, string> = {
+      'Wi-Fi': 'wifi',
+      'Aire acondicionado': 'ac_unit',
+      'Proyector': 'videocam',
+      'Pizarra': 'edit_note',
+      'Sonido': 'speaker',
+      'Estacionamiento': 'local_parking',
+      'Café/Bebidas': 'coffee_maker',
+      'Cocina': 'kitchen',
+      'Baños privados': 'wc',
+      'Acceso 24/7': 'schedule_24hr',
+      'Seguridad': 'security',
+      'Recepción': 'desk'
+    }
+
+    return space.value.amenities.map((amenity: string) => ({
+      icon: amenityIcons[amenity] || 'check_circle',
+      label: amenity,
+      enabled: true
+    }))
+  }
+  
+  // Fallback para espacios antiguos sin amenidades explícitas
   const items = [
     { icon: 'wifi', label: 'Wi-Fi de alta velocidad', enabled: true },
     { icon: 'coffee_maker', label: 'Servicio de café', enabled: space.value.capacity >= 10 },
@@ -274,6 +339,42 @@ const whatsappLink = computed(() => {
   )
   
   return `https://wa.me/${cleanNumber}?text=${message}`
+})
+
+const socialLinks = computed(() => {
+  const owner = space.value?.owner
+  if (!owner) return []
+  
+  const links = []
+  
+  if (owner.instagram) {
+    links.push({
+      name: 'Instagram',
+      icon: 'photo_camera', // Material symbol para Instagram no es exacto, usaremos uno genérico o clase específica si tuviéramos iconos de marcas
+      url: owner.instagram.startsWith('http') ? owner.instagram : `https://instagram.com/${owner.instagram.replace('@', '')}`,
+      color: 'text-pink-600 bg-pink-50 hover:bg-pink-100'
+    })
+  }
+  
+  if (owner.facebook) {
+    links.push({
+      name: 'Facebook',
+      icon: 'public',
+      url: owner.facebook.startsWith('http') ? owner.facebook : `https://facebook.com/${owner.facebook}`,
+      color: 'text-blue-600 bg-blue-50 hover:bg-blue-100'
+    })
+  }
+  
+  if (owner.linkedin) {
+    links.push({
+      name: 'LinkedIn',
+      icon: 'work',
+      url: owner.linkedin.startsWith('http') ? owner.linkedin : `https://linkedin.com/in/${owner.linkedin}`,
+      color: 'text-blue-800 bg-blue-50 hover:bg-blue-100'
+    })
+  }
+  
+  return links
 })
 
 // Navegación
@@ -434,8 +535,13 @@ const formatNumber = (value: number) => {
             </div>
             <div class="inline-flex items-center gap-1.5 text-gray-600">
               <span class="material-symbols-outlined !text-[18px]">location_on</span>
-              <span>Honduras</span>
+              <span>{{ space.city }}{{ space.state ? `, ${space.state}` : '' }}</span>
             </div>
+          </div>
+          
+          <div v-if="space.address" class="mt-2 text-sm text-gray-500 flex items-center gap-1.5">
+            <span class="material-symbols-outlined !text-[16px]">map</span>
+            {{ space.address }}
           </div>
         </div>
 
@@ -622,6 +728,78 @@ const formatNumber = (value: number) => {
             </div>
           </div>
 
+          <!-- Reglas y Políticas -->
+          <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-200">
+            <div class="flex items-center gap-3 mb-6">
+              <div class="h-10 w-1 bg-primary rounded-full"></div>
+              <h2 class="text-2xl font-bold text-gray-900">Reglas y Políticas</h2>
+            </div>
+
+            <div class="space-y-6">
+              <!-- Reglas -->
+              <div v-if="space.rules">
+                <h3 class="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-gray-500">gavel</span>
+                  Reglas del espacio
+                </h3>
+                <p class="text-gray-700 leading-relaxed whitespace-pre-line bg-gray-50 p-4 rounded-lg border border-gray-100">
+                  {{ space.rules }}
+                </p>
+              </div>
+
+              <!-- Política de cancelación -->
+              <div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-gray-500">policy</span>
+                  Política de cancelación
+                </h3>
+                <div class="flex items-start gap-4 p-4 rounded-xl border"
+                  :class="{
+                    'bg-green-50 border-green-200': space.cancellationPolicy === 'flexible',
+                    'bg-yellow-50 border-yellow-200': space.cancellationPolicy === 'moderate',
+                    'bg-red-50 border-red-200': space.cancellationPolicy === 'strict'
+                  }"
+                >
+                  <div class="p-2 rounded-full bg-white/50">
+                    <span class="material-symbols-outlined"
+                      :class="{
+                        'text-green-600': space.cancellationPolicy === 'flexible',
+                        'text-yellow-600': space.cancellationPolicy === 'moderate',
+                        'text-red-600': space.cancellationPolicy === 'strict'
+                      }"
+                    >
+                      {{ space.cancellationPolicy === 'flexible' ? 'event_available' : space.cancellationPolicy === 'moderate' ? 'event_note' : 'event_busy' }}
+                    </span>
+                  </div>
+                  <div>
+                    <p class="font-bold"
+                      :class="{
+                        'text-green-900': space.cancellationPolicy === 'flexible',
+                        'text-yellow-900': space.cancellationPolicy === 'moderate',
+                        'text-red-900': space.cancellationPolicy === 'strict'
+                      }"
+                    >
+                      {{ space.cancellationPolicy === 'flexible' ? 'Flexible' : space.cancellationPolicy === 'moderate' ? 'Moderada' : 'Estricta' }}
+                    </p>
+                    <p class="text-sm mt-1"
+                      :class="{
+                        'text-green-800': space.cancellationPolicy === 'flexible',
+                        'text-yellow-800': space.cancellationPolicy === 'moderate',
+                        'text-red-800': space.cancellationPolicy === 'strict'
+                      }"
+                    >
+                      {{ 
+                        space.cancellationPolicy === 'flexible' ? 'Reembolso completo hasta 24 horas antes de la reserva.' : 
+                        space.cancellationPolicy === 'moderate' ? 'Reembolso completo hasta 5 días antes de la reserva.' : 
+                        'Reembolso completo hasta 7 días antes de la reserva.' 
+                      }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Propietario -->
           <div class="bg-gradient-to-br from-primary/5 via-blue-50 to-white rounded-2xl p-8 shadow-sm border-2 border-primary/20">
             <div class="flex items-center gap-3 mb-6">
@@ -670,27 +848,46 @@ const formatNumber = (value: number) => {
               </div>
             </div>
 
-            <a
-              v-if="ownerWhatsApp"
-              :href="whatsappLink"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] border-2 border-[#25D366] px-6 py-3 text-sm font-bold text-white hover:bg-[#20BA5A] transition-all duration-200"
-            >
-              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-              </svg>
-              Contactar por WhatsApp
-            </a>
-            <button
-              v-else
-              type="button"
-              disabled
-              class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gray-300 border-2 border-gray-300 px-6 py-3 text-sm font-bold text-gray-500 cursor-not-allowed"
-            >
-              <span class="material-symbols-outlined !text-[20px]">contact_mail</span>
-              Contacto no disponible
-            </button>
+            <div class="flex flex-col gap-3">
+              <a
+                v-if="ownerWhatsApp"
+                :href="whatsappLink"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] border-2 border-[#25D366] px-6 py-3 text-sm font-bold text-white hover:bg-[#20BA5A] transition-all duration-200"
+              >
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                </svg>
+                Contactar por WhatsApp
+              </a>
+              
+              <!-- Redes Sociales -->
+              <div v-if="socialLinks.length > 0" class="flex gap-2 justify-center">
+                <a
+                  v-for="link in socialLinks"
+                  :key="link.name"
+                  :href="link.url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="flex items-center justify-center h-10 w-10 rounded-full transition-colors duration-200"
+                  :class="link.color"
+                  :title="link.name"
+                >
+                  <span class="material-symbols-outlined !text-[20px]">{{ link.icon }}</span>
+                </a>
+              </div>
+
+              <button
+                v-if="!ownerWhatsApp && socialLinks.length === 0"
+                type="button"
+                disabled
+                class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gray-300 border-2 border-gray-300 px-6 py-3 text-sm font-bold text-gray-500 cursor-not-allowed"
+              >
+                <span class="material-symbols-outlined !text-[20px]">contact_mail</span>
+                Contacto no disponible
+              </button>
+            </div>
           </div>
         </div>
 

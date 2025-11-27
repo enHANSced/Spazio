@@ -20,7 +20,7 @@ class SpacesUseCase {
       include: [{
         model: User,
         as: 'owner',
-        attributes: ['id', 'businessName', 'name', 'businessDescription']
+        attributes: ['id', 'businessName', 'name', 'businessDescription', 'whatsappNumber', 'instagram', 'facebook', 'linkedin']
       }]
     });
     if (!space || !space.isActive) {
