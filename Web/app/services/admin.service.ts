@@ -58,6 +58,41 @@ export interface UpdateUserPayload {
   whatsappNumber?: string
 }
 
+export interface OwnerSpaceSummary {
+  id: string
+  name: string
+  description?: string
+  capacity: number
+  pricePerHour?: number
+  isActive: boolean
+  city?: string
+  images?: Array<{ url: string; publicId?: string }>
+  createdAt: string
+}
+
+export interface OwnerStats {
+  spaceStats: {
+    total: number
+    active: number
+    inactive: number
+  }
+  bookingStats: {
+    total: number
+    confirmed: number
+    cancelled: number
+    pending: number
+    completed: number
+    totalRevenue: number
+  }
+}
+
+export interface OwnerDetails {
+  user: AdminUser
+  spaces: OwnerSpaceSummary[]
+  spaceStats: OwnerStats['spaceStats']
+  bookingStats: OwnerStats['bookingStats']
+}
+
 // Service para administración
 export const adminService = {
   // ============ ESTADÍSTICAS ============
@@ -197,6 +232,23 @@ export const adminService = {
         }
       )
       return { success: response.success, data: response.data, message: response.message }
+    } catch (error: any) {
+      return { success: false, data: null, message: extractApiErrorMessage(error) }
+    }
+  },
+
+  async getOwnerDetails(id: string) {
+    const token = useCookie('spazio_token').value
+    if (!token) throw new Error('No autenticado')
+
+    try {
+      const response = await $fetch<{ success: boolean; data: OwnerDetails }>(
+        buildApiUrl(`/users/owner/${id}/details`),
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      )
+      return { success: response.success, data: response.data }
     } catch (error: any) {
       return { success: false, data: null, message: extractApiErrorMessage(error) }
     }

@@ -118,6 +118,22 @@ class UsersController {
       res.status(500).json({ success: false, message: error.message });
     }
   }
+
+  /**
+   * Obtener detalles completos de un owner (admin)
+   * Incluye: perfil, espacios y estadísticas
+   */
+  async getOwnerDetails(req, res) {
+    try {
+      const data = await usersUseCase.getOwnerDetails(req.params.id);
+      res.status(200).json({ success: true, data });
+    } catch (error) {
+      const status = error.message.includes('no encontrado') || error.message.includes('no es un propietario') 
+        ? 404 
+        : 500;
+      res.status(status).json({ success: false, message: error.message });
+    }
+  }
 }
 
 module.exports = new UsersController();

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
-import { adminService, type AdminUser, type Pagination } from '../../../services/admin.service'
+import { adminService, type AdminUser, type Pagination, type OwnerDetails } from '../../../services/admin.service'
 import { useToast } from '../../../composables/useToast'
 
 definePageMeta({
@@ -46,6 +46,11 @@ const editForm = ref({
   isVerified: false
 })
 const editLoading = ref(false)
+
+// Owner details modal
+const showOwnerDetailsModal = ref(false)
+const ownerDetails = ref<OwnerDetails | null>(null)
+const ownerDetailsLoading = ref(false)
 
 const loadUsers = async () => {
   loading.value = true
@@ -167,6 +172,30 @@ const openEditModal = (user: AdminUser) => {
     isVerified: user.isVerified
   }
   showEditModal.value = true
+}
+
+// View owner details
+const viewOwnerDetails = async (user: AdminUser) => {
+  if (user.role !== 'owner') return
+  
+  showOwnerDetailsModal.value = true
+  ownerDetailsLoading.value = true
+  ownerDetails.value = null
+
+  try {
+    const response = await adminService.getOwnerDetails(user.id)
+    if (response.success && response.data) {
+      ownerDetails.value = response.data
+    } else {
+      toast.error(response.message || 'Error al cargar detalles')
+      showOwnerDetailsModal.value = false
+    }
+  } catch (err: any) {
+    toast.error(err.message || 'Error inesperado')
+    showOwnerDetailsModal.value = false
+  } finally {
+    ownerDetailsLoading.value = false
+  }
 }
 
 const handleEditSubmit = async () => {
@@ -348,6 +377,15 @@ onMounted(() => {
                 </td>
                 <td class="px-4 py-3">
                   <div class="flex items-center justify-end gap-2">
+                    <!-- Ver detalles (solo owners) -->
+                    <button
+                      v-if="user.role === 'owner'"
+                      class="rounded-lg p-2 text-purple-600 transition hover:bg-purple-50"
+                      title="Ver detalles del propietario"
+                      @click="viewOwnerDetails(user)"
+                    >
+                      <span class="material-symbols-outlined text-xl">visibility</span>
+                    </button>
                     <button
                       class="rounded-lg p-2 text-slate-600 transition hover:bg-slate-100"
                       title="Editar usuario"
@@ -476,5 +514,13 @@ onMounted(() => {
         </div>
       </Transition>
     </Teleport>
+
+    <!-- Owner Details Modal -->
+    <AdminOwnerDetailsModal
+      :show="showOwnerDetailsModal"
+      :owner-details="ownerDetails"
+      :loading="ownerDetailsLoading"
+      @close="showOwnerDetailsModal = false"
+    />
   </div>
 </template>

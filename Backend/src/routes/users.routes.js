@@ -45,6 +45,7 @@ router.put('/me', authMiddleware, validateUpdateProfile, handleValidationErrors,
 // Rutas admin - Gestión de usuarios
 router.get('/', authMiddleware, isAdmin, usersController.list);
 router.get('/pending-owners', authMiddleware, isAdmin, usersController.getPendingOwners);
+router.get('/owner/:id/details', authMiddleware, isAdmin, validateUserId, handleValidationErrors, usersController.getOwnerDetails);
 router.get('/:id', authMiddleware, isAdmin, validateUserId, handleValidationErrors, usersController.getById);
 router.put('/:id', authMiddleware, isAdmin, validateAdminUpdate, handleValidationErrors, usersController.updateByAdmin);
 router.patch('/:id/verify', authMiddleware, isAdmin, validateVerifyOwner, handleValidationErrors, usersController.verifyOwner);

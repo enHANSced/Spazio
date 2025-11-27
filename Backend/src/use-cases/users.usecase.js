@@ -1,4 +1,6 @@
 const User = require('../entities/User');
+const Space = require('../entities/Space');
+const Booking = require('../entities/Booking');
 
 class UsersUseCase {
   /**
@@ -194,6 +196,89 @@ class UsersUseCase {
         limit,
         totalPages: Math.ceil(count / limit)
       }
+    };
+  }
+
+  /**
+   * Obtener detalles completos de un owner (para admin)
+   * Incluye: perfil, espacios y estadísticas de reservas
+   */
+  async getOwnerDetails(ownerId) {
+    const user = await User.findByPk(ownerId);
+    
+    if (!user) {
+      throw new Error('Usuario no encontrado');
+    }
+    
+    if (user.role !== 'owner') {
+      throw new Error('El usuario no es un propietario');
+    }
+
+    // Obtener espacios del owner
+    const spaces = await Space.findAll({
+      where: { ownerId: user.id },
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Obtener IDs de espacios para buscar reservas
+    const spaceIds = spaces.map(s => s.id);
+
+    // Estadísticas de reservas
+    let bookingStats = {
+      total: 0,
+      confirmed: 0,
+      cancelled: 0,
+      pending: 0,
+      completed: 0,
+      totalRevenue: 0
+    };
+
+    if (spaceIds.length > 0) {
+      // Buscar todas las reservas de los espacios del owner
+      const bookings = await Booking.find({
+        spaceId: { $in: spaceIds }
+      });
+
+      bookingStats.total = bookings.length;
+      bookingStats.confirmed = bookings.filter(b => b.status === 'confirmed').length;
+      bookingStats.cancelled = bookings.filter(b => b.status === 'cancelled').length;
+      bookingStats.pending = bookings.filter(b => b.status === 'pending').length;
+      bookingStats.completed = bookings.filter(b => b.status === 'completed').length;
+
+      // Calcular ingresos de reservas confirmadas/completadas
+      const confirmedBookings = bookings.filter(b => 
+        b.status === 'confirmed' || b.status === 'completed'
+      );
+      
+      for (const booking of confirmedBookings) {
+        if (booking.totalPrice) {
+          bookingStats.totalRevenue += parseFloat(booking.totalPrice);
+        }
+      }
+    }
+
+    // Estadísticas de espacios
+    const spaceStats = {
+      total: spaces.length,
+      active: spaces.filter(s => s.isActive).length,
+      inactive: spaces.filter(s => !s.isActive).length
+    };
+
+    return {
+      user: user.toJSON(),
+      spaces: spaces.map(s => ({
+        id: s.id,
+        name: s.name,
+        description: s.description,
+        capacity: s.capacity,
+        pricePerHour: s.pricePerHour,
+        isActive: s.isActive,
+        city: s.city,
+        images: s.images,
+        createdAt: s.createdAt
+      })),
+      spaceStats,
+      bookingStats
     };
   }
 }

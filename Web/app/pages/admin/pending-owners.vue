@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { adminService, type AdminUser } from '../../services/admin.service'
+import { adminService, type AdminUser, type OwnerDetails } from '../../services/admin.service'
 import { useToast } from '../../composables/useToast'
 
 definePageMeta({
@@ -27,6 +27,11 @@ const confirmModalData = ref({
   action: null as (() => Promise<void>) | null
 })
 const modalLoading = ref(false)
+
+// Owner details modal
+const showOwnerDetailsModal = ref(false)
+const ownerDetails = ref<OwnerDetails | null>(null)
+const ownerDetailsLoading = ref(false)
 
 const loadPendingOwners = async () => {
   loading.value = true
@@ -85,6 +90,28 @@ const handleConfirm = async () => {
       modalLoading.value = false
       showConfirmModal.value = false
     }
+  }
+}
+
+// View owner details
+const viewOwnerDetails = async (owner: AdminUser) => {
+  showOwnerDetailsModal.value = true
+  ownerDetailsLoading.value = true
+  ownerDetails.value = null
+
+  try {
+    const response = await adminService.getOwnerDetails(owner.id)
+    if (response.success && response.data) {
+      ownerDetails.value = response.data
+    } else {
+      toast.error(response.message || 'Error al cargar detalles')
+      showOwnerDetailsModal.value = false
+    }
+  } catch (err: any) {
+    toast.error(err.message || 'Error inesperado')
+    showOwnerDetailsModal.value = false
+  } finally {
+    ownerDetailsLoading.value = false
   }
 }
 
@@ -183,6 +210,13 @@ onMounted(() => {
         <!-- Actions -->
         <div class="mt-5 flex gap-3">
           <button
+            class="rounded-lg border border-slate-200 bg-white p-2 text-slate-600 transition hover:bg-slate-50"
+            title="Ver detalles"
+            @click="viewOwnerDetails(owner)"
+          >
+            <span class="material-symbols-outlined text-xl">visibility</span>
+          </button>
+          <button
             class="flex flex-1 items-center justify-center gap-2 rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
             @click="confirmVerify(owner, false)"
           >
@@ -224,6 +258,14 @@ onMounted(() => {
       :confirm-text="confirmModalData.variant === 'success' ? 'Aprobar' : 'Rechazar'"
       @confirm="handleConfirm"
       @cancel="showConfirmModal = false"
+    />
+
+    <!-- Owner Details Modal -->
+    <AdminOwnerDetailsModal
+      :show="showOwnerDetailsModal"
+      :owner-details="ownerDetails"
+      :loading="ownerDetailsLoading"
+      @close="showOwnerDetailsModal = false"
     />
   </div>
 </template>
