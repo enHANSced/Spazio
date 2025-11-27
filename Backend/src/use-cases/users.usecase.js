@@ -85,7 +85,10 @@ class UsersUseCase {
     }
     
     // Campos que el usuario puede actualizar
-    const allowedFields = ['name', 'businessName', 'businessDescription'];
+    const allowedFields = [
+      'name', 'businessName', 'businessDescription', 
+      'phone', 'whatsappNumber', 'instagram', 'facebook', 'linkedin'
+    ];
     
     allowedFields.forEach(field => {
       if (data[field] !== undefined) {

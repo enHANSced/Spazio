@@ -56,6 +56,21 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING(20),
     allowNull: true,
     comment: 'Número de WhatsApp (formato internacional recomendado: +504XXXXXXXX)'
+  },
+  instagram: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'URL de perfil de Instagram'
+  },
+  facebook: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'URL de perfil de Facebook'
+  },
+  linkedin: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'URL de perfil de LinkedIn'
   }
 }, {
   tableName: 'users',

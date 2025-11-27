@@ -171,6 +171,8 @@
                 class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
               />
             </div>
+
+
           </div>
         </div>
       </div>
@@ -386,6 +388,7 @@
 <script setup lang="ts">
 import type { Space } from '~/types/space'
 import ImageUploader from './ImageUploader.vue'
+import LocationMap from '~/components/LocationMap.vue'
 
 interface Props {
   space?: Space
@@ -440,6 +443,8 @@ const form = reactive({
   city: '',
   state: '',
   country: 'Honduras',
+  latitude: 0,
+  longitude: 0,
   amenities: [] as string[],
   workingHours: {
     start: '08:00',
@@ -486,6 +491,8 @@ if (props.mode === 'edit' && props.space) {
   form.city = props.space.city || ''
   form.state = props.space.state || ''
   form.country = props.space.country || 'Honduras'
+  form.latitude = props.space.latitude || 0
+  form.longitude = props.space.longitude || 0
   form.amenities = props.space.amenities || []
   form.rules = props.space.rules || ''
   form.cancellationPolicy = props.space.cancellationPolicy || 'flexible'
@@ -591,6 +598,8 @@ const handleSubmit = async () => {
       city: form.city.trim(),
       state: form.state.trim(),
       country: form.country,
+      latitude: form.latitude,
+      longitude: form.longitude,
       amenities: form.amenities,
       workingHours: form.workingHours,
       rules: form.rules.trim(),
