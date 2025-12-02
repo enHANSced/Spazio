@@ -206,21 +206,83 @@
           <label class="block text-sm font-medium text-gray-700 mb-3">
             Amenidades disponibles
           </label>
-          <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+          
+          <!-- Tabs de categorías -->
+          <div class="flex flex-wrap gap-2 mb-4 pb-3 border-b border-gray-200">
+            <button
+              v-for="category in amenityCategories"
+              :key="category.name"
+              type="button"
+              @click="selectedAmenityCategory = category.name"
+              :class="[
+                'px-3 py-1.5 rounded-full text-sm font-medium transition-all',
+                selectedAmenityCategory === category.name
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              ]"
+            >
+              {{ category.icon }} {{ category.name }}
+              <span v-if="getSelectedCountForCategory(category.items) > 0" class="ml-1 text-xs">
+                ({{ getSelectedCountForCategory(category.items) }})
+              </span>
+            </button>
+          </div>
+          
+          <!-- Amenidades de la categoría seleccionada -->
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
             <label
-              v-for="amenity in availableAmenities"
-              :key="amenity"
-              class="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-all duration-200"
-              :class="form.amenities.includes(amenity) ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500' : 'border-gray-300'"
+              v-for="amenity in currentCategoryAmenities"
+              :key="amenity.value"
+              class="flex items-center gap-2 p-2.5 border rounded-lg cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-all duration-200 text-sm"
+              :class="form.amenities.includes(amenity.value) ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500' : 'border-gray-200'"
             >
               <input
                 v-model="form.amenities"
                 type="checkbox"
-                :value="amenity"
+                :value="amenity.value"
                 class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
               />
-              <span class="text-sm text-gray-700">{{ amenity }}</span>
+              <span class="text-gray-700">{{ amenity.label }}</span>
             </label>
+          </div>
+
+          <!-- Amenidades seleccionadas (chips) -->
+          <div v-if="form.amenities.length > 0" class="p-3 bg-gray-50 rounded-lg border border-gray-200 mb-4">
+            <p class="text-xs text-gray-500 mb-2">Seleccionadas ({{ form.amenities.length }}):</p>
+            <div class="flex flex-wrap gap-1.5">
+              <span
+                v-for="amenityValue in form.amenities"
+                :key="amenityValue"
+                class="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs"
+              >
+                {{ getAmenityLabel(amenityValue) }}
+                <button type="button" @click="removeAmenity(amenityValue)" class="hover:text-blue-600">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </span>
+            </div>
+          </div>
+
+          <!-- Agregar personalizada -->
+          <div class="flex gap-2">
+            <input
+              v-model="customAmenityInput"
+              type="text"
+              maxlength="40"
+              class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              placeholder="¿Algo más? Escríbelo aquí..."
+              @keyup.enter="addCustomAmenity"
+            />
+            <button
+              type="button"
+              @click="addCustomAmenity"
+              :disabled="!customAmenityInput.trim()"
+              class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm"
+            >
+              + Agregar
+            </button>
           </div>
         </div>
 
@@ -428,6 +490,10 @@ const generalError = ref('')
 const images = ref<any[]>([])
 const existingImages = ref<Array<{ url: string; publicId: string }>>([])
 
+// Amenidades
+const customAmenityInput = ref('')
+const selectedAmenityCategory = ref('Básico')
+
 // Wizard Steps
 const currentStep = ref(0)
 const steps = [
@@ -437,21 +503,113 @@ const steps = [
   { title: 'Imágenes' }
 ]
 
-// Lista de amenidades disponibles
-const availableAmenities = [
-  'Wi-Fi',
-  'Aire acondicionado',
-  'Proyector',
-  'Pizarra',
-  'Sonido',
-  'Estacionamiento',
-  'Café/Bebidas',
-  'Cocina',
-  'Baños privados',
-  'Acceso 24/7',
-  'Seguridad',
-  'Recepción'
+// Amenidades simplificadas por categorías
+const amenityCategories = [
+  {
+    name: 'Básico',
+    icon: '⭐',
+    items: [
+      { value: 'wifi', label: 'Wi-Fi' },
+      { value: 'aire_acondicionado', label: 'Aire Acondicionado' },
+      { value: 'estacionamiento', label: 'Estacionamiento' },
+      { value: 'cafe_gratis', label: 'Café Gratis' },
+      { value: 'banos_privados', label: 'Baños Privados' },
+      { value: 'seguridad', label: 'Seguridad' },
+    ]
+  },
+  {
+    name: 'Tecnología',
+    icon: '💻',
+    items: [
+      { value: 'wifi_premium', label: 'Wi-Fi Premium' },
+      { value: 'proyector', label: 'Proyector' },
+      { value: 'pizarra_interactiva', label: 'Pizarra Interactiva' },
+      { value: 'videoconferencia', label: 'Videoconferencia' },
+      { value: 'sistema_sonido', label: 'Sistema de Sonido' },
+      { value: 'pantalla_led_85', label: 'Pantalla LED Grande' },
+    ]
+  },
+  {
+    name: 'Servicios',
+    icon: '🛎️',
+    items: [
+      { value: 'recepcion', label: 'Recepción' },
+      { value: 'catering_disponible', label: 'Catering Disponible' },
+      { value: 'coffee_break_incluido', label: 'Coffee Break Incluido' },
+      { value: 'servicio_personalizado', label: 'Servicio Personalizado' },
+      { value: 'acceso_24_7', label: 'Acceso 24/7' },
+      { value: 'cocina', label: 'Cocina' },
+    ]
+  },
+  {
+    name: 'Espacios',
+    icon: '🏢',
+    items: [
+      { value: 'terraza', label: 'Terraza' },
+      { value: 'vista_al_mar', label: 'Vista al Mar' },
+      { value: 'escenario', label: 'Escenario' },
+      { value: 'vestidores', label: 'Vestidores' },
+      { value: 'privacidad_total', label: 'Privacidad Total' },
+      { value: 'acceso_discapacitados', label: 'Acceso Discapacitados' },
+    ]
+  },
+  {
+    name: 'Creativo',
+    icon: '🎨',
+    items: [
+      { value: 'ciclorama_blanco', label: 'Ciclorama' },
+      { value: 'iluminacion_profesional', label: 'Iluminación Pro' },
+      { value: 'green_screen', label: 'Green Screen' },
+      { value: 'equipos_edicion', label: 'Equipos de Edición' },
+      { value: 'grabacion_disponible', label: 'Grabación' },
+      { value: 'area_maquillaje', label: 'Área de Maquillaje' },
+    ]
+  },
 ]
+
+// Computed: amenidades de la categoría actual
+const currentCategoryAmenities = computed(() => {
+  const category = amenityCategories.find(c => c.name === selectedAmenityCategory.value)
+  return category?.items || []
+})
+
+// Funciones para manejo de amenidades
+const getSelectedCountForCategory = (items: { value: string; label: string }[]) => {
+  return items.filter(item => form.amenities.includes(item.value)).length
+}
+
+const getAmenityLabel = (value: string): string => {
+  for (const category of amenityCategories) {
+    const found = category.items.find(item => item.value === value)
+    if (found) return found.label
+  }
+  // Si no está en las predefinidas, formatear el valor
+  return value.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+const removeAmenity = (value: string) => {
+  const index = form.amenities.indexOf(value)
+  if (index > -1) {
+    form.amenities.splice(index, 1)
+  }
+}
+
+const addCustomAmenity = () => {
+  const amenity = customAmenityInput.value.trim()
+  if (amenity) {
+    const amenityValue = amenity
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, '_')
+    
+    if (!form.amenities.includes(amenityValue)) {
+      form.amenities.push(amenityValue)
+    }
+    customAmenityInput.value = ''
+  }
+}
 
 // Lista de categorías disponibles
 const availableCategories = [

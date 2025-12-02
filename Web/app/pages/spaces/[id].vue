@@ -223,30 +223,188 @@ const subtotal = computed(() => pricePerHour.value * bookingHours.value)
 const serviceFee = computed(() => Math.round(subtotal.value * 0.08)) // 8% tarifa
 const total = computed(() => subtotal.value + serviceFee.value)
 
+// Mapeo completo de amenidades: clave → { label, icon }
+const amenityMap: Record<string, { label: string; icon: string }> = {
+  // WiFi
+  'wifi': { label: 'Wi-Fi', icon: 'wifi' },
+  'wifi_premium': { label: 'Wi-Fi Premium', icon: 'wifi' },
+  'wifi_empresarial': { label: 'Wi-Fi Empresarial', icon: 'wifi' },
+  'Wi-Fi': { label: 'Wi-Fi', icon: 'wifi' },
+  
+  // Clima
+  'aire_acondicionado': { label: 'Aire Acondicionado', icon: 'ac_unit' },
+  'Aire acondicionado': { label: 'Aire Acondicionado', icon: 'ac_unit' },
+  'climatizado': { label: 'Climatizado', icon: 'ac_unit' },
+  
+  // Proyección y audio
+  'proyector': { label: 'Proyector', icon: 'videocam' },
+  'proyector_4k': { label: 'Proyector 4K', icon: 'videocam' },
+  'proyector_laser': { label: 'Proyector Láser', icon: 'videocam' },
+  'proyector_interactivo': { label: 'Proyector Interactivo', icon: 'videocam' },
+  'Proyector': { label: 'Proyector', icon: 'videocam' },
+  'pantalla_led_85': { label: 'Pantalla LED 85"', icon: 'tv' },
+  'sistema_sonido': { label: 'Sistema de Sonido', icon: 'speaker' },
+  'sistema_sonido_profesional': { label: 'Sonido Profesional', icon: 'speaker' },
+  'sistema_audio_premium': { label: 'Audio Premium', icon: 'speaker' },
+  'audio_envolvente': { label: 'Audio Envolvente', icon: 'surround_sound' },
+  'audio_ambiental': { label: 'Audio Ambiental', icon: 'music_note' },
+  'Sonido': { label: 'Sistema de Sonido', icon: 'speaker' },
+  
+  // Pizarras
+  'pizarra': { label: 'Pizarra', icon: 'edit_note' },
+  'pizarra_interactiva': { label: 'Pizarra Interactiva', icon: 'edit_note' },
+  'pizarra_digital': { label: 'Pizarra Digital', icon: 'edit_note' },
+  'Pizarra': { label: 'Pizarra', icon: 'edit_note' },
+  
+  // Videoconferencia
+  'videoconferencia': { label: 'Videoconferencia', icon: 'video_call' },
+  'videoconferencia_4k': { label: 'Videoconferencia 4K', icon: 'video_call' },
+  
+  // Estacionamiento
+  'estacionamiento': { label: 'Estacionamiento', icon: 'local_parking' },
+  'estacionamiento_amplio': { label: 'Estacionamiento Amplio', icon: 'local_parking' },
+  'estacionamiento_vip': { label: 'Estacionamiento VIP', icon: 'local_parking' },
+  'Estacionamiento': { label: 'Estacionamiento', icon: 'local_parking' },
+  
+  // Café y bebidas
+  'cafe': { label: 'Café', icon: 'coffee_maker' },
+  'cafe_gratis': { label: 'Café Gratis', icon: 'coffee_maker' },
+  'cafe_gourmet': { label: 'Café Gourmet', icon: 'coffee_maker' },
+  'Café/Bebidas': { label: 'Café/Bebidas', icon: 'coffee_maker' },
+  'coffee_break': { label: 'Coffee Break', icon: 'coffee' },
+  'coffee_break_incluido': { label: 'Coffee Break Incluido', icon: 'coffee' },
+  'minibar': { label: 'Minibar', icon: 'liquor' },
+  'bar': { label: 'Bar', icon: 'local_bar' },
+  
+  // Cocina
+  'cocina': { label: 'Cocina', icon: 'kitchen' },
+  'cocina_compartida': { label: 'Cocina Compartida', icon: 'kitchen' },
+  'cocina_industrial': { label: 'Cocina Industrial', icon: 'kitchen' },
+  'Cocina': { label: 'Cocina', icon: 'kitchen' },
+  
+  // Catering
+  'catering': { label: 'Catering', icon: 'restaurant' },
+  'catering_disponible': { label: 'Catering Disponible', icon: 'restaurant' },
+  'catering_incluido': { label: 'Catering Incluido', icon: 'restaurant' },
+  
+  // Baños y vestuarios
+  'banos_privados': { label: 'Baños Privados', icon: 'wc' },
+  'Baños privados': { label: 'Baños Privados', icon: 'wc' },
+  'vestidores': { label: 'Vestidores', icon: 'checkroom' },
+  'vestuarios': { label: 'Vestuarios', icon: 'checkroom' },
+  
+  // Acceso y seguridad
+  'acceso_24_7': { label: 'Acceso 24/7', icon: 'schedule' },
+  'Acceso 24/7': { label: 'Acceso 24/7', icon: 'schedule' },
+  'acceso_discapacitados': { label: 'Acceso para Discapacitados', icon: 'accessible' },
+  'seguridad': { label: 'Seguridad', icon: 'security' },
+  'Seguridad': { label: 'Seguridad', icon: 'security' },
+  'guardarropa': { label: 'Guardarropa', icon: 'checkroom' },
+  
+  // Recepción y servicios
+  'recepcion': { label: 'Recepción', icon: 'desk' },
+  'Recepción': { label: 'Recepción', icon: 'desk' },
+  'recepcion_correspondencia': { label: 'Recepción de Correspondencia', icon: 'mail' },
+  'atencion_telefonica': { label: 'Atención Telefónica', icon: 'phone' },
+  'direccion_comercial': { label: 'Dirección Comercial', icon: 'business' },
+  'servicio_personalizado': { label: 'Servicio Personalizado', icon: 'room_service' },
+  
+  // Oficina
+  'impresora': { label: 'Impresora', icon: 'print' },
+  'impresion': { label: 'Impresión', icon: 'print' },
+  'locker': { label: 'Locker', icon: 'lock' },
+  'mobiliario_modular': { label: 'Mobiliario Modular', icon: 'chair' },
+  'butacas_ergonomicas': { label: 'Butacas Ergonómicas', icon: 'event_seat' },
+  'material_didactico': { label: 'Material Didáctico', icon: 'menu_book' },
+  
+  // Eventos
+  'escenario': { label: 'Escenario', icon: 'theater_comedy' },
+  'iluminacion_led': { label: 'Iluminación LED', icon: 'lightbulb' },
+  'iluminacion_ambiental': { label: 'Iluminación Ambiental', icon: 'lightbulb' },
+  'iluminacion_regulable': { label: 'Iluminación Regulable', icon: 'brightness_medium' },
+  'iluminacion_galeria': { label: 'Iluminación de Galería', icon: 'highlight' },
+  'generador_emergencia': { label: 'Generador de Emergencia', icon: 'bolt' },
+  'cabina_traduccion': { label: 'Cabina de Traducción', icon: 'translate' },
+  'grabacion_disponible': { label: 'Grabación Disponible', icon: 'videocam' },
+  
+  // Espacios especiales
+  'terraza': { label: 'Terraza', icon: 'deck' },
+  'vista_al_mar': { label: 'Vista al Mar', icon: 'waves' },
+  'patio_interior': { label: 'Patio Interior', icon: 'yard' },
+  'privacidad_total': { label: 'Privacidad Total', icon: 'visibility_off' },
+  'muelle_privado': { label: 'Muelle Privado', icon: 'directions_boat' },
+  'snorkel_disponible': { label: 'Snorkel Disponible', icon: 'scuba_diving' },
+  'paredes_blancas': { label: 'Paredes Blancas', icon: 'format_paint' },
+  'sistema_colgado': { label: 'Sistema de Colgado', icon: 'image' },
+  
+  // Fotografía y video
+  'ciclorama_blanco': { label: 'Ciclorama Blanco', icon: 'photo_camera' },
+  'ciclorama_negro': { label: 'Ciclorama Negro', icon: 'photo_camera' },
+  'iluminacion_profoto': { label: 'Iluminación Profoto', icon: 'flash_on' },
+  'area_maquillaje': { label: 'Área de Maquillaje', icon: 'face_retouching_natural' },
+  'softboxes': { label: 'Softboxes', icon: 'light_mode' },
+  'reflectores': { label: 'Reflectores', icon: 'highlight' },
+  
+  // Tecnología/Edición
+  'mac_pro': { label: 'Mac Pro', icon: 'computer' },
+  'pcs_20': { label: '20 PCs', icon: 'computer' },
+  'laboratorio_computo': { label: 'Laboratorio de Cómputo', icon: 'computer' },
+  'monitores_4k_calibrados': { label: 'Monitores 4K Calibrados', icon: 'monitor' },
+  'adobe_cc': { label: 'Adobe Creative Cloud', icon: 'palette' },
+  'davinci_resolve': { label: 'DaVinci Resolve', icon: 'movie' },
+  'almacenamiento_ssd': { label: 'Almacenamiento SSD', icon: 'storage' },
+  'auriculares_profesionales': { label: 'Auriculares Profesionales', icon: 'headphones' },
+  
+  // Streaming/Podcast
+  'microfonos_rode': { label: 'Micrófonos Rode', icon: 'mic' },
+  'mezcladora_profesional': { label: 'Mezcladora Profesional', icon: 'tune' },
+  'tratamiento_acustico': { label: 'Tratamiento Acústico', icon: 'graphic_eq' },
+  'camaras_hd': { label: 'Cámaras HD', icon: 'videocam' },
+  'fibra_optica': { label: 'Fibra Óptica', icon: 'cable' },
+  'software_streaming': { label: 'Software de Streaming', icon: 'live_tv' },
+  'green_screen': { label: 'Green Screen', icon: 'filter_frames' },
+  
+  // Bienestar
+  'piso_bambu': { label: 'Piso de Bambú', icon: 'spa' },
+  'mats_yoga': { label: 'Mats de Yoga', icon: 'self_improvement' },
+  'bloques_yoga': { label: 'Bloques de Yoga', icon: 'fitness_center' },
+  'mantas': { label: 'Mantas', icon: 'bedroom_baby' },
+  'aromaterapia': { label: 'Aromaterapia', icon: 'local_florist' },
+  
+  // Sala de juntas
+  'sala_juntas_incluida': { label: 'Sala de Juntas Incluida', icon: 'meeting_room' },
+}
+
+// Función para convertir snake_case a formato legible
+const formatAmenityLabel = (amenity: string): string => {
+  // Si existe en el mapeo, usar la etiqueta del mapeo
+  if (amenityMap[amenity]) {
+    return amenityMap[amenity].label
+  }
+  
+  // Fallback: convertir snake_case a texto legible
+  return amenity
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, char => char.toUpperCase())
+}
+
+// Función para obtener el icono de una amenidad
+const getAmenityIcon = (amenity: string): string => {
+  if (amenityMap[amenity]) {
+    return amenityMap[amenity].icon
+  }
+  return 'check_circle'
+}
+
 // Características del espacio
 const features = computed(() => {
   if (!space.value) return []
   
   // Si tenemos amenidades guardadas del formulario, usarlas
   if (space.value.amenities && Array.isArray(space.value.amenities) && space.value.amenities.length > 0) {
-    const amenityIcons: Record<string, string> = {
-      'Wi-Fi': 'wifi',
-      'Aire acondicionado': 'ac_unit',
-      'Proyector': 'videocam',
-      'Pizarra': 'edit_note',
-      'Sonido': 'speaker',
-      'Estacionamiento': 'local_parking',
-      'Café/Bebidas': 'coffee_maker',
-      'Cocina': 'kitchen',
-      'Baños privados': 'wc',
-      'Acceso 24/7': 'schedule_24hr',
-      'Seguridad': 'security',
-      'Recepción': 'desk'
-    }
-
     return space.value.amenities.map((amenity: string) => ({
-      icon: amenityIcons[amenity] || 'check_circle',
-      label: amenity,
+      icon: getAmenityIcon(amenity),
+      label: formatAmenityLabel(amenity),
       enabled: true
     }))
   }
