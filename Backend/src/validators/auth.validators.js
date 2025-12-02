@@ -48,7 +48,17 @@ const validateRegister = [
     .optional()
     .trim()
     .isLength({ max: 1000 })
-    .withMessage('La descripción del negocio no puede exceder 1000 caracteres')
+    .withMessage('La descripción del negocio no puede exceder 1000 caracteres'),
+
+  body('phone')
+    .if(body('role').equals('owner'))
+    .trim()
+    .notEmpty()
+    .withMessage('El teléfono de contacto es requerido para propietarios')
+    .isLength({ min: 8, max: 20 })
+    .withMessage('El teléfono debe tener entre 8 y 20 caracteres')
+    .matches(/^[+]?[0-9\s-]+$/)
+    .withMessage('El teléfono solo puede contener números, espacios, guiones y opcionalmente + al inicio')
 ];
 
 /**

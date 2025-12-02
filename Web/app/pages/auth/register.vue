@@ -23,6 +23,7 @@ const form = reactive({
   role: 'user' as RegisterPayload['role'],
   businessName: '',
   businessDescription: '',
+  phone: '',
   acceptTerms: false,
   subscribe: true
 })
@@ -32,6 +33,7 @@ const fieldErrors = reactive({
   email: '',
   password: '',
   businessName: '',
+  phone: '',
   acceptTerms: ''
 })
 
@@ -70,10 +72,12 @@ const validate = () => {
   fieldErrors.email = ''
   fieldErrors.password = ''
   fieldErrors.acceptTerms = ''
+  fieldErrors.businessName = ''
+  fieldErrors.phone = ''
   let isValid = true
 
   if (!form.name.trim()) {
-    fieldErrors.name = 'El nombre es obligatorio'
+    fieldErrors.name = form.role === 'owner' ? 'El nombre del encargado es obligatorio' : 'El nombre es obligatorio'
     isValid = false
   }
 
@@ -98,9 +102,18 @@ const validate = () => {
     isValid = false
   }
 
-  if (form.role === 'owner' && !form.businessName.trim()) {
-    fieldErrors.businessName = 'El nombre del negocio es obligatorio para propietarios'
-    isValid = false
+  if (form.role === 'owner') {
+    if (!form.businessName.trim()) {
+      fieldErrors.businessName = 'El nombre del negocio es obligatorio para propietarios'
+      isValid = false
+    }
+    if (!form.phone.trim()) {
+      fieldErrors.phone = 'El teléfono de contacto es obligatorio para propietarios'
+      isValid = false
+    } else if (!/^[+]?[0-9\s-]{8,20}$/.test(form.phone.trim())) {
+      fieldErrors.phone = 'Ingresa un número de teléfono válido'
+      isValid = false
+    }
   }
 
   return isValid
@@ -121,6 +134,7 @@ const handleSubmit = async () => {
 
     if (form.role === 'owner') {
       payload.businessName = form.businessName.trim()
+      payload.phone = form.phone.trim()
       if (form.businessDescription.trim()) {
         payload.businessDescription = form.businessDescription.trim()
       }
@@ -215,20 +229,20 @@ const handleSubmit = async () => {
         <p class="mt-1 text-sm text-gray-500">Completa el formulario para comenzar</p>
       </header>
 
-      <form class="mt-6 space-y-4" novalidate @submit.prevent="handleSubmit">
+      <form class="mt-4 space-y-3" novalidate @submit.prevent="handleSubmit">
         <!-- Tipo de cuenta -->
         <div class="space-y-2">
           <label class="text-sm font-medium text-gray-700">Tipo de cuenta</label>
-          <div class="grid grid-cols-2 gap-3">
+          <div class="grid grid-cols-2 gap-2">
             <label 
-              class="group relative flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 transition-all"
+              class="group relative flex cursor-pointer items-center gap-2 rounded-xl border-2 p-3 transition-all"
               :class="form.role === 'user' 
                 ? 'border-primary bg-primary/5 shadow-sm' 
                 : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'"
             >
               <input v-model="form.role" type="radio" value="user" class="sr-only" />
               <div 
-                class="flex h-10 w-10 items-center justify-center rounded-xl transition-all"
+                class="flex h-9 w-9 items-center justify-center rounded-lg transition-all"
                 :class="form.role === 'user' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500'"
               >
                 <span class="material-symbols-outlined text-xl">person</span>
@@ -246,14 +260,14 @@ const handleSubmit = async () => {
             </label>
             
             <label 
-              class="group relative flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 transition-all"
+              class="group relative flex cursor-pointer items-center gap-2 rounded-xl border-2 p-3 transition-all"
               :class="form.role === 'owner' 
                 ? 'border-primary bg-primary/5 shadow-sm' 
                 : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'"
             >
               <input v-model="form.role" type="radio" value="owner" class="sr-only" />
               <div 
-                class="flex h-10 w-10 items-center justify-center rounded-xl transition-all"
+                class="flex h-9 w-9 items-center justify-center rounded-lg transition-all"
                 :class="form.role === 'owner' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500'"
               >
                 <span class="material-symbols-outlined text-xl">store</span>
@@ -273,8 +287,11 @@ const handleSubmit = async () => {
         </div>
 
         <!-- Nombre -->
-        <div class="space-y-1.5">
-          <label for="name" class="text-sm font-medium text-gray-700">Nombre completo</label>
+        <div class="space-y-1">
+          <label for="name" class="text-sm font-medium text-gray-700">
+            {{ form.role === 'owner' ? 'Nombre del encargado' : 'Nombre completo' }}
+            <span class="text-rose-500">*</span>
+          </label>
           <div class="group relative">
             <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 transition-colors group-focus-within:text-primary">
               <span class="material-symbols-outlined text-xl">badge</span>
@@ -284,7 +301,7 @@ const handleSubmit = async () => {
               v-model.trim="form.name"
               type="text"
               class="h-11 w-full rounded-xl border border-gray-200 bg-gray-50/50 pl-12 pr-4 text-sm text-gray-900 transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
-              placeholder="Ingresa tu nombre completo"
+              :placeholder="form.role === 'owner' ? 'Persona de contacto' : 'Ingresa tu nombre completo'"
               autocomplete="name"
             />
           </div>
@@ -295,7 +312,7 @@ const handleSubmit = async () => {
         </div>
 
         <!-- Email -->
-        <div class="space-y-1.5">
+        <div class="space-y-1">
           <label for="email" class="text-sm font-medium text-gray-700">Correo electrónico</label>
           <div class="group relative">
             <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 transition-colors group-focus-within:text-primary">
@@ -318,30 +335,55 @@ const handleSubmit = async () => {
 
         <!-- Campos de propietario -->
         <template v-if="form.role === 'owner'">
-          <div class="space-y-1.5">
-            <label for="businessName" class="text-sm font-medium text-gray-700">
-              Nombre del negocio <span class="text-rose-500">*</span>
-            </label>
-            <div class="group relative">
-              <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 transition-colors group-focus-within:text-primary">
-                <span class="material-symbols-outlined text-xl">storefront</span>
-              </span>
-              <input
-                id="businessName"
-                v-model.trim="form.businessName"
-                type="text"
-                class="h-11 w-full rounded-xl border border-gray-200 bg-gray-50/50 pl-12 pr-4 text-sm text-gray-900 transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
-                placeholder="Ej: Cowork Central, Salas Premium"
-                autocomplete="organization"
-              />
+          <div class="grid gap-3 sm:grid-cols-2">
+            <div class="space-y-1">
+              <label for="businessName" class="text-sm font-medium text-gray-700">
+                Nombre del negocio <span class="text-rose-500">*</span>
+              </label>
+              <div class="group relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 transition-colors group-focus-within:text-primary">
+                  <span class="material-symbols-outlined text-xl">storefront</span>
+                </span>
+                <input
+                  id="businessName"
+                  v-model.trim="form.businessName"
+                  type="text"
+                  class="h-11 w-full rounded-xl border border-gray-200 bg-gray-50/50 pl-12 pr-4 text-sm text-gray-900 transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  placeholder="Ej: CoWork Central"
+                  autocomplete="organization"
+                />
+              </div>
+              <p v-if="fieldErrors.businessName" class="flex items-center gap-1.5 text-xs text-rose-600">
+                <span class="material-symbols-outlined text-sm">error</span>
+                {{ fieldErrors.businessName }}
+              </p>
             </div>
-            <p v-if="fieldErrors.businessName" class="flex items-center gap-1.5 text-xs text-rose-600">
-              <span class="material-symbols-outlined text-sm">error</span>
-              {{ fieldErrors.businessName }}
-            </p>
+
+            <div class="space-y-1">
+              <label for="phone" class="text-sm font-medium text-gray-700">
+                Teléfono de contacto <span class="text-rose-500">*</span>
+              </label>
+              <div class="group relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 transition-colors group-focus-within:text-primary">
+                  <span class="material-symbols-outlined text-xl">phone</span>
+                </span>
+                <input
+                  id="phone"
+                  v-model.trim="form.phone"
+                  type="tel"
+                  class="h-11 w-full rounded-xl border border-gray-200 bg-gray-50/50 pl-12 pr-4 text-sm text-gray-900 transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  placeholder="+504 9999-9999"
+                  autocomplete="tel"
+                />
+              </div>
+              <p v-if="fieldErrors.phone" class="flex items-center gap-1.5 text-xs text-rose-600">
+                <span class="material-symbols-outlined text-sm">error</span>
+                {{ fieldErrors.phone }}
+              </p>
+            </div>
           </div>
 
-          <div class="space-y-1.5">
+          <div class="space-y-1">
             <label for="businessDescription" class="text-sm font-medium text-gray-700">
               Descripción <span class="text-xs text-gray-400">(opcional)</span>
             </label>
@@ -349,14 +391,14 @@ const handleSubmit = async () => {
               id="businessDescription"
               v-model.trim="form.businessDescription"
               rows="2"
-              class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 text-sm text-gray-900 transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+              class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-sm text-gray-900 transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
               placeholder="Describe brevemente tu negocio..."
             />
           </div>
         </template>
 
         <!-- Contraseña -->
-        <div class="space-y-1.5">
+        <div class="space-y-1">
           <label for="password" class="text-sm font-medium text-gray-700">Contraseña</label>
           <div class="group relative">
             <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 transition-colors group-focus-within:text-primary">
@@ -380,7 +422,7 @@ const handleSubmit = async () => {
           </div>
           
           <!-- Indicador de fortaleza -->
-          <div v-if="form.password" class="space-y-1.5">
+          <div v-if="form.password" class="space-y-1">
             <div class="flex gap-1">
               <div 
                 v-for="i in 5" 
@@ -401,7 +443,7 @@ const handleSubmit = async () => {
         </div>
 
         <!-- Términos y condiciones -->
-        <div class="space-y-3 pt-2">
+        <div class="space-y-2 pt-1">
           <label class="flex cursor-pointer items-start gap-3">
             <div class="relative mt-0.5">
               <input
@@ -449,7 +491,7 @@ const handleSubmit = async () => {
         <!-- Botón submit -->
         <button
           type="submit"
-          class="group relative flex h-12 w-full items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r from-primary to-primary-dark font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-70"
+          class="group relative flex h-11 w-full items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r from-primary to-primary-dark font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-70"
           :disabled="loading"
         >
           <span v-if="!loading" class="flex items-center gap-2">
@@ -464,7 +506,7 @@ const handleSubmit = async () => {
       </form>
 
       <!-- Footer -->
-      <p class="mt-6 text-center text-sm text-gray-500">
+      <p class="mt-4 text-center text-sm text-gray-500">
         ¿Ya tienes una cuenta?
         <NuxtLink to="/auth/login" class="font-semibold text-primary hover:underline">Inicia sesión</NuxtLink>
       </p>

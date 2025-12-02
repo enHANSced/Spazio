@@ -22,6 +22,7 @@ export interface RegisterPayload extends LoginPayload {
   role?: UserRole
   businessName?: string | null
   businessDescription?: string | null
+  phone?: string | null
 }
 
 export interface ApiSuccessResponse<T> {
