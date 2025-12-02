@@ -134,7 +134,8 @@ const formatDateTime = (dateString: string) => {
 }
 
 const formatPrice = (amount?: number) => {
-  if (!amount) return '-'
+  if (amount === undefined || amount === null) return 'Sin cargo'
+  if (amount === 0) return 'Gratis'
   return new Intl.NumberFormat('es-HN', {
     style: 'currency',
     currency: 'HNL'

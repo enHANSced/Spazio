@@ -102,7 +102,7 @@
               />
             </div>
             <p class="mt-1 text-sm text-gray-500">
-              Precio sugerido: <strong>L {{ suggestedPrice }}</strong> por hora (basado en capacidad)
+              Precio sugerido: <strong>L {{ formattedSuggestedPrice }}</strong> por hora (basado en capacidad)
             </p>
           </div>
         </div>
@@ -472,6 +472,14 @@ const suggestedPrice = computed(() => {
   if (capacity <= 40) return 800
   if (capacity <= 80) return 1500
   return 2500
+})
+
+// Formatear precio sugerido con decimales
+const formattedSuggestedPrice = computed(() => {
+  return new Intl.NumberFormat('es-HN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(suggestedPrice.value)
 })
 
 // Auto-sugerir precio si no está establecido

@@ -24,6 +24,11 @@ const { data: spaceData, pending, error } = await useAsyncData<Space>(
 
 const space = computed(() => spaceData.value)
 
+// SEO dinámico basado en el espacio
+useHead({
+  title: computed(() => space.value ? `${space.value.name} - Spazio` : 'Cargando... - Spazio')
+})
+
 // Datos de la reserva
 const bookingDate = ref('')
 const bookingTime = ref('')
@@ -1216,9 +1221,9 @@ const formatNumber = (value: number) => {
                   <span class="material-symbols-outlined text-primary">event</span>
                   <div>
                     <p class="font-semibold text-gray-900">
-                      {{ new Date(bookingDate).toLocaleDateString('es-HN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) }}
+                      {{ selectedDate ? selectedDate.toLocaleDateString('es-HN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '' }}
                     </p>
-                    <p class="text-sm text-gray-600">{{ bookingTime }} por {{ bookingHours }} {{ bookingHours === 1 ? 'hora' : 'horas' }}</p>
+                    <p class="text-sm text-gray-600">{{ formatTimeDisplay(bookingTime) }} por {{ bookingHours }} {{ bookingHours === 1 ? 'hora' : 'horas' }}</p>
                   </div>
                 </div>
 

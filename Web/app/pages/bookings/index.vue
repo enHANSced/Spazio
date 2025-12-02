@@ -7,6 +7,11 @@ definePageMeta({
   middleware: 'auth'
 })
 
+useSeoMeta({
+  title: 'Mis Reservas - Spazio',
+  description: 'Gestiona tus reservas de espacios'
+})
+
 const router = useRouter()
 const { user } = useAuth()
 
@@ -105,7 +110,8 @@ const formatTime = (dateString: string) => {
 }
 
 const formatCurrency = (value?: number) => {
-  if (!value) return 'N/A'
+  if (value === undefined || value === null) return 'Sin cargo'
+  if (value === 0) return 'Gratis'
   return new Intl.NumberFormat('es-HN', {
     style: 'currency',
     currency: 'HNL',

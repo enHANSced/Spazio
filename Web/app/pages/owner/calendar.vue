@@ -262,9 +262,10 @@ const getBookingColor = (status: string): string => {
 }
 
 const formatTime = (dateString: string): string => {
-  return new Date(dateString).toLocaleTimeString('es-ES', {
-    hour: '2-digit',
-    minute: '2-digit'
+  return new Date(dateString).toLocaleTimeString('es-HN', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
   })
 }
 

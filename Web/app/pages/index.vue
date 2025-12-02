@@ -7,6 +7,11 @@ definePageMeta({
   middleware: 'auth'
 })
 
+useSeoMeta({
+  title: 'Explorar Espacios - Spazio',
+  description: 'Descubre y reserva espacios increíbles para tu próximo evento, reunión o proyecto'
+})
+
 const { user, logout } = useAuth()
 
 const searchQuery = ref('')

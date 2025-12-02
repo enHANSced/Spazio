@@ -26,6 +26,16 @@ const description = computed(() => {
   return 'Espacio listo para recibir equipos y eventos.'
 })
 
+// Formatear precio en Lempiras
+const formattedPrice = computed(() => {
+  if (!props.space.pricePerHour) return null
+  return new Intl.NumberFormat('es-HN', {
+    style: 'currency',
+    currency: 'HNL',
+    minimumFractionDigits: 2
+  }).format(props.space.pricePerHour)
+})
+
 const placeholderImage = computed(() => {
   const colors = [
     'from-blue-400 to-blue-600',
@@ -147,9 +157,15 @@ const hasRealImage = computed(() => !!imageUrl.value)
 
       <!-- Footer -->
       <div class="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
-        <div class="flex items-center gap-2 text-slate-600">
-          <span class="material-symbols-outlined !text-[18px]">groups</span>
-          <span class="text-sm font-medium">{{ space.capacity }} personas</span>
+        <div class="flex flex-col gap-1">
+          <div class="flex items-center gap-2 text-slate-600">
+            <span class="material-symbols-outlined !text-[18px]">groups</span>
+            <span class="text-sm font-medium">{{ space.capacity }} personas</span>
+          </div>
+          <div v-if="formattedPrice" class="flex items-center gap-2 text-primary">
+            <span class="material-symbols-outlined !text-[16px]">payments</span>
+            <span class="text-sm font-semibold">{{ formattedPrice }}/hora</span>
+          </div>
         </div>
         
         <div class="flex items-center gap-2">
