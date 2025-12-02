@@ -148,6 +148,11 @@ const validateUpdateSpace = [
     .withMessage('El precio por hora debe ser un número positivo')
     .toFloat(),
 
+  body('category')
+    .optional()
+    .isIn(['private', 'meetings', 'teams', 'events', 'coworking', 'studio', 'training'])
+    .withMessage('La categoría debe ser: private, meetings, teams, events, coworking, studio o training'),
+
   body('amenities')
     .optional()
     .isArray()

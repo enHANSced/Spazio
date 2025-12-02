@@ -10,7 +10,23 @@ const emit = defineEmits<{
   toggleStatus: []
 }>()
 
+// Mapeo de categorías a etiquetas e iconos
+const categoryMap: Record<string, { label: string; icon: string }> = {
+  private: { label: 'Sesiones privadas', icon: 'person' },
+  meetings: { label: 'Reuniones', icon: 'group' },
+  teams: { label: 'Equipos grandes', icon: 'groups' },
+  events: { label: 'Eventos masivos', icon: 'celebration' },
+  coworking: { label: 'Coworking', icon: 'laptop_mac' },
+  studio: { label: 'Estudio', icon: 'videocam' },
+  training: { label: 'Capacitación', icon: 'school' }
+}
+
 const usageBadge = computed(() => {
+  // Si tiene categoría definida, usarla
+  if (props.space.category && categoryMap[props.space.category]) {
+    return categoryMap[props.space.category]
+  }
+  // Fallback basado en capacidad para espacios sin categoría
   if (props.space.capacity >= 80) return { label: 'Eventos masivos', icon: 'celebration' }
   if (props.space.capacity >= 40) return { label: 'Equipos grandes', icon: 'groups' }
   if (props.space.capacity >= 15) return { label: 'Reuniones', icon: 'group' }

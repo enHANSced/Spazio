@@ -16,6 +16,8 @@ export interface WorkingHours {
   end: string
 }
 
+export type SpaceCategory = 'private' | 'meetings' | 'teams' | 'events' | 'coworking' | 'studio' | 'training'
+
 export interface Space {
   id: string
   name: string
@@ -23,6 +25,7 @@ export interface Space {
   capacity: number
   ownerId: string
   isActive: boolean
+  category?: SpaceCategory | null
   pricePerHour?: number | null
   amenities?: string[] | null
   rules?: string | null
@@ -62,6 +65,7 @@ export interface CreateSpacePayload {
   name: string
   description?: string
   capacity: number
+  category?: SpaceCategory
   pricePerHour?: number
   amenities?: string[]
   rules?: string
@@ -86,6 +90,7 @@ export interface UpdateSpacePayload {
   description?: string
   capacity?: number
   isActive?: boolean
+  category?: SpaceCategory
   pricePerHour?: number
   amenities?: string[]
   rules?: string

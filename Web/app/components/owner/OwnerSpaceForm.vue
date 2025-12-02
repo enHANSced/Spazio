@@ -83,6 +83,26 @@
             <p class="mt-1 text-sm text-gray-500">Número de personas que puede acomodar</p>
           </div>
 
+          <!-- Categoría -->
+          <div>
+            <label for="category" class="block text-sm font-medium text-gray-700 mb-2">
+              Categoría del espacio <span class="text-red-500">*</span>
+            </label>
+            <select
+              id="category"
+              v-model="form.category"
+              required
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            >
+              <option v-for="cat in availableCategories" :key="cat.value" :value="cat.value">
+                {{ cat.label }}
+              </option>
+            </select>
+            <p class="mt-1 text-sm text-gray-500">Define el uso principal de tu espacio</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <!-- Precio por hora -->
           <div>
             <label for="pricePerHour" class="block text-sm font-medium text-gray-700 mb-2">
@@ -433,11 +453,23 @@ const availableAmenities = [
   'Recepción'
 ]
 
+// Lista de categorías disponibles
+const availableCategories = [
+  { value: 'private', label: 'Sesiones privadas - Espacios íntimos para 1-10 personas' },
+  { value: 'meetings', label: 'Reuniones - Salas para juntas y presentaciones' },
+  { value: 'teams', label: 'Equipos grandes - Espacios amplios para grupos' },
+  { value: 'events', label: 'Eventos - Salones para eventos masivos' },
+  { value: 'coworking', label: 'Coworking - Espacios de trabajo compartido' },
+  { value: 'studio', label: 'Estudio - Fotografía, grabación, producción' },
+  { value: 'training', label: 'Capacitación - Aulas y salas de formación' }
+]
+
 // Formulario
 const form = reactive({
   name: '',
   description: '',
   capacity: 1,
+  category: 'meetings' as string,
   pricePerHour: 0,
   address: '',
   city: '',
@@ -494,6 +526,7 @@ if (props.mode === 'edit' && props.space) {
   form.name = props.space.name || ''
   form.description = props.space.description || ''
   form.capacity = props.space.capacity || 1
+  form.category = props.space.category || 'meetings'
   form.pricePerHour = props.space.pricePerHour || 0
   form.address = props.space.address || ''
   form.city = props.space.city || ''
@@ -601,6 +634,7 @@ const handleSubmit = async () => {
       name: form.name.trim(),
       description: form.description.trim(),
       capacity: form.capacity,
+      category: form.category,
       pricePerHour: form.pricePerHour,
       address: form.address.trim(),
       city: form.city.trim(),
