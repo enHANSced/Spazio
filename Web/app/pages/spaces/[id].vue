@@ -581,12 +581,22 @@ const confirmBooking = async () => {
     const startDateTime = new Date(`${bookingDate.value}T${bookingTime.value}`)
     const endDateTime = new Date(startDateTime.getTime() + bookingHours.value * 60 * 60 * 1000)
 
+    // Determinar estado de pago:
+    // - "transfer" siempre inicia como "pending" hasta que se suba y verifique comprobante
+    // - "card" simulado se marca como "paid" inmediatamente
+    // - "cash" o "pagar después" se marca como "pending"
+    const getPaymentStatus = () => {
+      if (paymentChoice.value === 'later') return 'pending'
+      if (selectedPaymentMethod.value === 'transfer') return 'pending'
+      return 'paid' // Solo tarjeta simulada se marca como pagada
+    }
+
     const bookingData = {
       spaceId: spaceId.value,
       startTime: startDateTime.toISOString(),
       endTime: endDateTime.toISOString(),
       paymentMethod: selectedPaymentMethod.value,
-      paymentStatus: paymentChoice.value === 'now' ? 'paid' : 'pending',
+      paymentStatus: getPaymentStatus(),
       totalAmount: total.value,
       subtotal: subtotal.value,
       serviceFee: serviceFee.value,
@@ -1355,9 +1365,23 @@ const formatNumber = (value: number) => {
                 <span class="material-symbols-outlined text-4xl text-green-600">check_circle</span>
               </div>
               <h4 class="text-2xl font-bold text-gray-900 mb-2">¡Reserva creada!</h4>
-              <p class="text-gray-600 mb-4">
+              
+              <!-- Mensaje específico para transferencia -->
+              <div v-if="selectedPaymentMethod === 'transfer'" class="mb-4">
+                <p class="text-gray-600 mb-3">
+                  Tu reserva ha sido creada. Para completar el proceso, sube tu comprobante de transferencia desde el detalle de tu reserva.
+                </p>
+                <div class="inline-flex items-center gap-2 text-sm text-blue-600 bg-blue-50 px-4 py-2 rounded-lg">
+                  <span class="material-symbols-outlined !text-[18px]">upload_file</span>
+                  <span>Recuerda subir tu comprobante</span>
+                </div>
+              </div>
+              
+              <!-- Mensaje genérico -->
+              <p v-else class="text-gray-600 mb-4">
                 Tu solicitud de reserva ha sido enviada al propietario. Te notificaremos cuando sea confirmada.
               </p>
+              
               <p class="text-sm text-gray-500">Redirigiendo a tus reservas...</p>
             </div>
 
@@ -1497,13 +1521,40 @@ const formatNumber = (value: number) => {
                       </span>
                     </button>
                   </div>
-                  <div class="mt-4 bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
+                  
+                  <!-- Mensaje para Tarjeta (simulado) -->
+                  <div v-if="selectedPaymentMethod === 'card'" class="mt-4 bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
                     <span class="material-symbols-outlined text-green-600">check_circle</span>
                     <div class="flex-1">
                       <p class="text-sm font-semibold text-green-900 mb-1">Pago simulado</p>
                       <p class="text-xs text-green-700">
                         Esta es una simulación. Tu reserva será marcada como "Pagada" instantáneamente para propósitos de demostración.
                       </p>
+                    </div>
+                  </div>
+                  
+                  <!-- Mensaje para Transferencia -->
+                  <div v-if="selectedPaymentMethod === 'transfer'" class="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+                    <span class="material-symbols-outlined text-blue-600">account_balance</span>
+                    <div class="flex-1">
+                      <p class="text-sm font-semibold text-blue-900 mb-1">Pago por transferencia</p>
+                      <p class="text-xs text-blue-700 mb-2">
+                        Después de confirmar tu reserva, deberás subir el comprobante de transferencia desde el detalle de tu reserva.
+                      </p>
+                      <ul class="text-xs text-blue-700 space-y-1">
+                        <li class="flex items-start gap-1">
+                          <span class="material-symbols-outlined !text-[14px]">upload_file</span>
+                          <span>Sube una foto clara del comprobante</span>
+                        </li>
+                        <li class="flex items-start gap-1">
+                          <span class="material-symbols-outlined !text-[14px]">schedule</span>
+                          <span>El propietario verificará tu pago</span>
+                        </li>
+                        <li class="flex items-start gap-1">
+                          <span class="material-symbols-outlined !text-[14px]">verified</span>
+                          <span>Recibirás confirmación cuando sea aprobado</span>
+                        </li>
+                      </ul>
                     </div>
                   </div>
                 </div>

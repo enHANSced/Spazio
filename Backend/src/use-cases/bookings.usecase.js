@@ -200,7 +200,9 @@ class BookingsUseCase {
       'subtotal',
       'serviceFee',
       'pricePerHour',
-      'durationHours'
+      'durationHours',
+      'transferProofUrl',
+      'transferProofUploadedAt'
     ];
 
     // Actualizar solo campos permitidos
@@ -218,6 +220,118 @@ class BookingsUseCase {
     await booking.save();
 
     return this.enrichBooking(booking);
+  }
+
+  /**
+   * Subir comprobante de transferencia (usuario)
+   */
+  async uploadTransferProof(bookingId, userId, proofUrl) {
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      throw new Error('Reserva no encontrada');
+    }
+
+    // Verificar que el usuario es el dueño de la reserva
+    if (booking.userId !== userId) {
+      throw new Error('No tienes permiso para actualizar esta reserva');
+    }
+
+    // Verificar que el método de pago es transferencia
+    if (booking.paymentMethod !== 'transfer') {
+      throw new Error('Esta reserva no está configurada para pago por transferencia');
+    }
+
+    // Verificar que el pago está pendiente
+    if (booking.paymentStatus === 'paid') {
+      throw new Error('Esta reserva ya ha sido pagada');
+    }
+
+    // Actualizar con el comprobante
+    booking.transferProofUrl = proofUrl;
+    booking.transferProofUploadedAt = new Date();
+    booking.transferRejectedAt = null;
+    booking.transferRejectionReason = null;
+
+    await booking.save();
+
+    return this.enrichBooking(booking);
+  }
+
+  /**
+   * Verificar comprobante de transferencia (owner)
+   */
+  async verifyTransferPayment(bookingId, ownerId, approved, rejectionReason = null) {
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      throw new Error('Reserva no encontrada');
+    }
+
+    // Verificar que el owner tiene un espacio asociado a esta reserva
+    const space = await Space.findByPk(booking.spaceId);
+    if (!space || space.ownerId !== ownerId) {
+      throw new Error('No tienes permiso para verificar esta reserva');
+    }
+
+    // Verificar que hay un comprobante subido
+    if (!booking.transferProofUrl) {
+      throw new Error('No hay comprobante de transferencia para verificar');
+    }
+
+    // Verificar que el pago está pendiente
+    if (booking.paymentStatus === 'paid') {
+      throw new Error('Esta reserva ya ha sido pagada');
+    }
+
+    if (approved) {
+      booking.paymentStatus = 'paid';
+      booking.paidAt = new Date();
+      booking.transferVerifiedAt = new Date();
+      booking.transferVerifiedBy = ownerId;
+      booking.transferRejectedAt = null;
+      booking.transferRejectionReason = null;
+    } else {
+      if (!rejectionReason) {
+        throw new Error('Debe proporcionar una razón para rechazar el comprobante');
+      }
+      booking.transferRejectedAt = new Date();
+      booking.transferRejectionReason = rejectionReason;
+      // Limpiar el comprobante para que el usuario pueda subir uno nuevo
+      booking.transferProofUrl = null;
+      booking.transferProofUploadedAt = null;
+    }
+
+    await booking.save();
+
+    return this.enrichBooking(booking);
+  }
+
+  /**
+   * Obtener reservas pendientes de verificación de transferencia (owner)
+   */
+  async getPendingTransferVerifications(ownerId) {
+    // Obtener todos los espacios del owner
+    const spaces = await Space.findAll({
+      where: { ownerId, isActive: true },
+      attributes: ['id']
+    });
+
+    const spaceIds = spaces.map(s => s.id);
+
+    if (spaceIds.length === 0) {
+      return [];
+    }
+
+    // Buscar reservas con comprobante subido pero no verificadas
+    const bookings = await Booking.find({
+      spaceId: { $in: spaceIds },
+      paymentMethod: 'transfer',
+      paymentStatus: 'pending',
+      transferProofUrl: { $ne: null },
+      transferVerifiedAt: null,
+      status: { $ne: 'cancelled' }
+    }).sort({ transferProofUploadedAt: 1 });
+
+    return Promise.all(bookings.map(b => this.enrichBooking(b)));
   }
 
   /**

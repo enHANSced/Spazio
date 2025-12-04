@@ -36,6 +36,41 @@ async function uploadImage(input) {
   return null;
 }
 
+/**
+ * Subir un buffer (desde multer) a Cloudinary
+ */
+async function uploadBuffer(buffer, folder = 'spazio/general', options = {}) {
+  if (!buffer) {
+    throw new Error('No se proporcionó un buffer para subir');
+  }
+
+  if (!cloudinaryEnabled) {
+    // En desarrollo sin Cloudinary, retornar una URL placeholder
+    console.warn('Cloudinary deshabilitado: usando placeholder para upload de buffer');
+    return {
+      secure_url: `https://via.placeholder.com/800x600?text=Transfer+Proof`,
+      public_id: `placeholder_${Date.now()}`
+    };
+  }
+
+  return new Promise((resolve, reject) => {
+    const uploadOptions = {
+      folder: `spazio/${folder}`,
+      resource_type: 'image',
+      ...options
+    };
+
+    cloudinary.uploader.upload_stream(uploadOptions, (error, result) => {
+      if (error) {
+        console.error('Error subiendo buffer a Cloudinary:', error.message);
+        reject(new Error('No se pudo subir la imagen'));
+      } else {
+        resolve(result);
+      }
+    }).end(buffer);
+  });
+}
+
 async function uploadImages(inputs) {
   if (!Array.isArray(inputs)) return [];
   const results = [];
@@ -60,6 +95,7 @@ async function deleteImage(publicId) {
 module.exports = {
   uploadImage,
   uploadImages,
+  uploadBuffer,
   deleteImage,
   cloudinaryEnabled
 };

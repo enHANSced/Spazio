@@ -25,8 +25,10 @@ const booking = computed(() => bookingData.value)
 const showCancelModal = ref(false)
 const showRescheduleModal = ref(false)
 const showPaymentModal = ref(false)
+const showTransferModal = ref(false)
 const isProcessing = ref(false)
 const actionError = ref('')
+const uploadSuccess = ref('')
 
 // Datos de reprogramación
 const newDate = ref('')
@@ -35,6 +37,10 @@ const newHours = ref(1)
 
 // Datos de pago
 const selectedPaymentMethod = ref<PaymentMethod>('cash')
+
+// Datos de transferencia
+const transferProofFile = ref<File | null>(null)
+const transferProofPreview = ref<string | null>(null)
 
 // Utilidades
 const formatDate = (dateString: string) => {
@@ -127,6 +133,25 @@ const getPaymentMethodLabel = (method?: string) => {
   }
 }
 
+// Estado de transferencia
+const transferStatus = computed(() => {
+  if (!booking.value) return null
+  if (booking.value.paymentMethod !== 'transfer') return null
+  
+  if (booking.value.paymentStatus === 'paid') return 'verified'
+  if (booking.value.transferRejectedAt) return 'rejected'
+  if (booking.value.transferProofUrl) return 'pending_verification'
+  return 'awaiting_proof'
+})
+
+const canUploadProof = computed(() => {
+  if (!booking.value) return false
+  return booking.value.paymentMethod === 'transfer' && 
+         booking.value.paymentStatus === 'pending' &&
+         booking.value.status !== 'cancelled' &&
+         (!booking.value.transferProofUrl || booking.value.transferRejectedAt)
+})
+
 const canCancel = computed(() => {
   if (!booking.value) return false
   return booking.value.status !== 'cancelled' && new Date(booking.value.startTime) > new Date()
@@ -212,25 +237,107 @@ const handleReschedule = async () => {
 const handlePayment = async () => {
   if (!booking.value) return
 
+  // Si es transferencia, abrir el modal de transferencia
+  if (selectedPaymentMethod.value === 'transfer') {
+    showPaymentModal.value = false
+    showTransferModal.value = true
+    return
+  }
+
+  // Para efectivo o tarjeta (simulado), actualizar directamente
   isProcessing.value = true
   actionError.value = ''
 
   try {
     const updatedBooking = await BookingsService.updatePayment(booking.value._id, {
       paymentMethod: selectedPaymentMethod.value,
-      paymentStatus: 'paid'
+      paymentStatus: selectedPaymentMethod.value === 'cash' ? 'pending' : 'paid'
     })
     
     await refresh()
     showPaymentModal.value = false
     
-    alert('¡Pago procesado exitosamente! (Simulado)')
+    if (selectedPaymentMethod.value === 'cash') {
+      alert('Has seleccionado pago en efectivo. Deberás pagar al propietario el día de tu reserva.')
+    } else {
+      alert('¡Pago procesado exitosamente! (Simulado)')
+    }
   } catch (error: any) {
     console.error('Error al procesar pago:', error)
     actionError.value = error?.data?.message || 'Error al procesar el pago'
   } finally {
     isProcessing.value = false
   }
+}
+
+// Manejar selección de archivo de comprobante
+const handleFileSelect = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  
+  if (file) {
+    // Validar tipo de archivo
+    if (!file.type.startsWith('image/')) {
+      actionError.value = 'Por favor selecciona una imagen válida'
+      return
+    }
+    
+    // Validar tamaño (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      actionError.value = 'La imagen no debe superar los 5MB'
+      return
+    }
+    
+    transferProofFile.value = file
+    actionError.value = ''
+    
+    // Crear preview
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      transferProofPreview.value = e.target?.result as string
+    }
+    reader.readAsDataURL(file)
+  }
+}
+
+// Subir comprobante de transferencia
+const handleUploadProof = async () => {
+  if (!booking.value || !transferProofFile.value) {
+    actionError.value = 'Por favor selecciona una imagen del comprobante'
+    return
+  }
+
+  isProcessing.value = true
+  actionError.value = ''
+  uploadSuccess.value = ''
+
+  try {
+    await BookingsService.uploadTransferProof(booking.value._id, transferProofFile.value)
+    
+    await refresh()
+    showTransferModal.value = false
+    transferProofFile.value = null
+    transferProofPreview.value = null
+    uploadSuccess.value = '¡Comprobante subido exitosamente! El propietario lo revisará pronto.'
+    
+    // Limpiar mensaje de éxito después de 5 segundos
+    setTimeout(() => {
+      uploadSuccess.value = ''
+    }, 5000)
+  } catch (error: any) {
+    console.error('Error al subir comprobante:', error)
+    actionError.value = error?.data?.message || 'Error al subir el comprobante'
+  } finally {
+    isProcessing.value = false
+  }
+}
+
+// Cerrar modal de transferencia
+const closeTransferModal = () => {
+  showTransferModal.value = false
+  transferProofFile.value = null
+  transferProofPreview.value = null
+  actionError.value = ''
 }
 
 const goBack = () => {
@@ -442,15 +549,113 @@ const viewSpace = () => {
               </div>
             </div>
 
+            <!-- Transfer Status Section -->
+            <div v-if="booking.paymentMethod === 'transfer'" class="space-y-3">
+              <!-- Awaiting proof -->
+              <div v-if="transferStatus === 'awaiting_proof'" class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div class="flex items-start gap-3">
+                  <span class="material-symbols-outlined text-blue-600 !text-[24px]">upload_file</span>
+                  <div class="flex-1">
+                    <p class="font-semibold text-blue-900">Subir comprobante de transferencia</p>
+                    <p class="text-sm text-blue-800 mt-1">
+                      Por favor realiza la transferencia al propietario y sube una foto o captura del comprobante.
+                    </p>
+                    <button
+                      type="button"
+                      class="mt-3 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition flex items-center gap-2"
+                      @click="showTransferModal = true"
+                    >
+                      <span class="material-symbols-outlined !text-[18px]">upload</span>
+                      Subir comprobante
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Pending verification -->
+              <div v-if="transferStatus === 'pending_verification'" class="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <div class="flex items-start gap-3">
+                  <span class="material-symbols-outlined text-amber-600 !text-[24px]">hourglass_top</span>
+                  <div class="flex-1">
+                    <p class="font-semibold text-amber-900">Comprobante pendiente de verificación</p>
+                    <p class="text-sm text-amber-800 mt-1">
+                      Tu comprobante ha sido enviado. El propietario lo revisará y confirmará el pago pronto.
+                    </p>
+                    <p class="text-xs text-amber-700 mt-2">
+                      Subido el {{ new Date(booking.transferProofUploadedAt!).toLocaleString('es-HN', { 
+                        year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+                      }) }}
+                    </p>
+                    <!-- Preview del comprobante -->
+                    <div v-if="booking.transferProofUrl" class="mt-3">
+                      <a 
+                        :href="booking.transferProofUrl" 
+                        target="_blank"
+                        class="inline-flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900"
+                      >
+                        <span class="material-symbols-outlined !text-[16px]">visibility</span>
+                        Ver comprobante subido
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Rejected -->
+              <div v-if="transferStatus === 'rejected'" class="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div class="flex items-start gap-3">
+                  <span class="material-symbols-outlined text-red-600 !text-[24px]">error</span>
+                  <div class="flex-1">
+                    <p class="font-semibold text-red-900">Comprobante rechazado</p>
+                    <p class="text-sm text-red-800 mt-1">
+                      {{ booking.transferRejectionReason || 'El propietario rechazó el comprobante. Por favor sube uno nuevo.' }}
+                    </p>
+                    <button
+                      type="button"
+                      class="mt-3 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition flex items-center gap-2"
+                      @click="showTransferModal = true"
+                    >
+                      <span class="material-symbols-outlined !text-[18px]">upload</span>
+                      Subir nuevo comprobante
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Verified -->
+              <div v-if="transferStatus === 'verified'" class="p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div class="flex items-start gap-3">
+                  <span class="material-symbols-outlined text-green-600 !text-[24px]">verified</span>
+                  <div class="flex-1">
+                    <p class="font-semibold text-green-900">Transferencia verificada</p>
+                    <p class="text-sm text-green-800 mt-1">
+                      El propietario ha verificado tu comprobante de transferencia.
+                    </p>
+                    <p v-if="booking.transferVerifiedAt" class="text-xs text-green-700 mt-2">
+                      Verificado el {{ new Date(booking.transferVerifiedAt).toLocaleString('es-HN', { 
+                        year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+                      }) }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Success message -->
+            <div v-if="uploadSuccess" class="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <span class="material-symbols-outlined text-green-600 !text-[20px]">check_circle</span>
+              <p class="text-sm text-green-800">{{ uploadSuccess }}</p>
+            </div>
+
             <!-- Payment note -->
-            <div v-if="booking.paymentStatus === 'pending'" class="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div v-if="booking.paymentStatus === 'pending' && booking.paymentMethod !== 'transfer'" class="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
               <span class="material-symbols-outlined text-yellow-600 !text-[20px]">info</span>
               <p class="text-sm text-yellow-800">
                 <strong>Recuerda:</strong> Debes completar el pago antes del día de tu reserva para garantizar tu espacio.
               </p>
             </div>
 
-            <div v-if="booking.paymentStatus === 'paid' && booking.paidAt" class="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div v-if="booking.paymentStatus === 'paid' && booking.paidAt && booking.paymentMethod !== 'transfer'" class="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
               <span class="material-symbols-outlined text-green-600 !text-[20px]">check_circle</span>
               <p class="text-sm text-green-800">
                 <strong>Pago completado</strong> el {{ new Date(booking.paidAt).toLocaleDateString('es-HN', { year: 'numeric', month: 'long', day: 'numeric' }) }}
@@ -768,6 +973,16 @@ const viewSpace = () => {
                 {{ actionError }}
               </div>
 
+              <!-- Nota para transferencia -->
+              <div v-if="selectedPaymentMethod === 'transfer'" class="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+                <strong>Pago por transferencia:</strong> Después de seleccionar, deberás subir una foto del comprobante de transferencia para que el propietario lo verifique.
+              </div>
+
+              <!-- Nota para tarjeta -->
+              <div v-if="selectedPaymentMethod === 'card'" class="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+                <strong>Nota:</strong> El pago con tarjeta aún no está disponible. Por favor selecciona otro método de pago.
+              </div>
+
               <div class="flex gap-3">
                 <button
                   type="button"
@@ -780,10 +995,127 @@ const viewSpace = () => {
                 <button
                   type="button"
                   class="flex-1 px-6 py-3 rounded-lg bg-green-600 font-semibold text-white hover:bg-green-700 transition disabled:opacity-50"
-                  :disabled="isProcessing"
+                  :disabled="isProcessing || selectedPaymentMethod === 'card'"
                   @click="handlePayment"
                 >
-                  {{ isProcessing ? 'Procesando...' : 'Pagar ahora' }}
+                  {{ isProcessing ? 'Procesando...' : selectedPaymentMethod === 'transfer' ? 'Continuar' : 'Confirmar' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Modal: Subir comprobante de transferencia -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div
+          v-if="showTransferModal"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          @click.self="closeTransferModal"
+        >
+          <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <h3 class="text-xl font-bold text-gray-900">Subir Comprobante de Transferencia</h3>
+              <button
+                type="button"
+                class="text-gray-400 hover:text-gray-600 transition"
+                :disabled="isProcessing"
+                @click="closeTransferModal"
+              >
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div class="p-6 space-y-6">
+              <!-- Instrucciones -->
+              <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 class="font-semibold text-blue-900 mb-2">Instrucciones para el pago</h4>
+                <ol class="text-sm text-blue-800 list-decimal list-inside space-y-1">
+                  <li>Realiza una transferencia al propietario del espacio</li>
+                  <li>Toma una captura de pantalla o foto del comprobante</li>
+                  <li>Sube la imagen aquí para que el propietario la verifique</li>
+                </ol>
+              </div>
+
+              <!-- Total a pagar -->
+              <div class="text-center p-4 bg-gradient-to-br from-primary/5 to-blue-50 rounded-xl border-2 border-primary/20">
+                <p class="text-sm text-gray-600 mb-1">Monto a transferir</p>
+                <p class="text-3xl font-black text-primary">{{ formatCurrency(booking?.totalAmount) }}</p>
+              </div>
+
+              <!-- Input de archivo -->
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Comprobante de transferencia</label>
+                <div 
+                  class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-primary/50 transition cursor-pointer"
+                  :class="{ 'border-primary bg-primary/5': transferProofFile }"
+                  @click="($refs.fileInput as HTMLInputElement)?.click()"
+                >
+                  <input
+                    ref="fileInput"
+                    type="file"
+                    accept="image/*"
+                    class="hidden"
+                    @change="handleFileSelect"
+                  />
+                  
+                  <div v-if="!transferProofPreview">
+                    <span class="material-symbols-outlined text-4xl text-gray-400">cloud_upload</span>
+                    <p class="mt-2 text-sm font-medium text-gray-700">
+                      Haz clic para seleccionar una imagen
+                    </p>
+                    <p class="text-xs text-gray-500 mt-1">
+                      PNG, JPG o JPEG (máx. 5MB)
+                    </p>
+                  </div>
+                  
+                  <div v-else>
+                    <img 
+                      :src="transferProofPreview" 
+                      alt="Preview del comprobante" 
+                      class="max-h-48 mx-auto rounded-lg shadow-sm"
+                    />
+                    <p class="mt-2 text-sm text-primary font-medium">
+                      {{ transferProofFile?.name }}
+                    </p>
+                    <p class="text-xs text-gray-500">
+                      Haz clic para cambiar la imagen
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Error -->
+              <div v-if="actionError" class="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
+                {{ actionError }}
+              </div>
+
+              <!-- Botones -->
+              <div class="flex gap-3">
+                <button
+                  type="button"
+                  class="flex-1 px-6 py-3 rounded-lg border-2 border-gray-300 font-semibold text-gray-700 hover:bg-gray-50 transition"
+                  :disabled="isProcessing"
+                  @click="closeTransferModal"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  class="flex-1 px-6 py-3 rounded-lg bg-primary font-semibold text-white hover:bg-primary/90 transition disabled:opacity-50"
+                  :disabled="isProcessing || !transferProofFile"
+                  @click="handleUploadProof"
+                >
+                  <span v-if="isProcessing" class="flex items-center justify-center gap-2">
+                    <span class="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    Subiendo...
+                  </span>
+                  <span v-else class="flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined !text-[18px]">upload</span>
+                    Subir comprobante
+                  </span>
                 </button>
               </div>
             </div>

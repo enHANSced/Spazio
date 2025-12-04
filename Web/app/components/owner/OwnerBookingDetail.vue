@@ -148,6 +148,116 @@
               </div>
             </div>
 
+            <!-- Comprobante de Transferencia -->
+            <div v-if="booking.paymentMethod === 'transfer'" class="border-t border-gray-200 pt-6">
+              <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">receipt_long</span>
+                Comprobante de Transferencia
+              </h3>
+
+              <!-- Sin comprobante -->
+              <div v-if="!booking.transferProofUrl && !booking.transferRejectedAt" class="bg-gray-50 rounded-lg p-4 text-center">
+                <span class="material-symbols-outlined text-3xl text-gray-400">hourglass_empty</span>
+                <p class="text-gray-600 mt-2">El cliente aún no ha subido el comprobante de transferencia</p>
+              </div>
+
+              <!-- Con comprobante pendiente de verificación -->
+              <div v-else-if="booking.transferProofUrl && !booking.transferVerifiedAt && booking.paymentStatus === 'pending'" class="space-y-4">
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <div class="flex items-start gap-3">
+                    <span class="material-symbols-outlined text-amber-600">pending</span>
+                    <div>
+                      <p class="font-semibold text-amber-900">Comprobante pendiente de verificación</p>
+                      <p class="text-sm text-amber-800 mt-1">
+                        El cliente subió un comprobante el {{ formatDateTime(booking.transferProofUploadedAt!) }}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Vista previa del comprobante -->
+                <div class="border border-gray-200 rounded-lg overflow-hidden">
+                  <div class="bg-gray-100 px-4 py-2 border-b border-gray-200 flex items-center justify-between">
+                    <span class="text-sm font-medium text-gray-700">Comprobante adjunto</span>
+                    <a 
+                      :href="booking.transferProofUrl"
+                      target="_blank"
+                      class="text-sm text-primary hover:underline flex items-center gap-1"
+                    >
+                      <span class="material-symbols-outlined !text-[16px]">open_in_new</span>
+                      Ver en tamaño completo
+                    </a>
+                  </div>
+                  <div class="p-4 bg-white">
+                    <img 
+                      :src="booking.transferProofUrl"
+                      alt="Comprobante de transferencia"
+                      class="max-h-64 mx-auto rounded shadow-sm cursor-pointer hover:opacity-90 transition"
+                      @click="openImageInNewTab(booking.transferProofUrl!)"
+                    />
+                  </div>
+                </div>
+
+                <!-- Acciones de verificación -->
+                <div class="flex gap-3">
+                  <button
+                    @click="handleVerifyTransfer(true)"
+                    :disabled="isProcessing"
+                    class="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    <span class="material-symbols-outlined !text-[20px]">check_circle</span>
+                    Aprobar Pago
+                  </button>
+                  <button
+                    @click="showRejectModal = true"
+                    :disabled="isProcessing"
+                    class="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    <span class="material-symbols-outlined !text-[20px]">cancel</span>
+                    Rechazar
+                  </button>
+                </div>
+              </div>
+
+              <!-- Comprobante verificado -->
+              <div v-else-if="booking.paymentStatus === 'paid' && booking.transferVerifiedAt" class="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div class="flex items-start gap-3">
+                  <span class="material-symbols-outlined text-green-600">verified</span>
+                  <div>
+                    <p class="font-semibold text-green-900">Transferencia verificada</p>
+                    <p class="text-sm text-green-800 mt-1">
+                      Verificado el {{ formatDateTime(booking.transferVerifiedAt) }}
+                    </p>
+                    <a 
+                      v-if="booking.transferProofUrl"
+                      :href="booking.transferProofUrl"
+                      target="_blank"
+                      class="text-sm text-green-700 hover:underline flex items-center gap-1 mt-2"
+                    >
+                      <span class="material-symbols-outlined !text-[16px]">visibility</span>
+                      Ver comprobante
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Comprobante rechazado (esperando nuevo) -->
+              <div v-else-if="booking.transferRejectedAt && !booking.transferProofUrl" class="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div class="flex items-start gap-3">
+                  <span class="material-symbols-outlined text-red-600">error</span>
+                  <div>
+                    <p class="font-semibold text-red-900">Comprobante rechazado</p>
+                    <p class="text-sm text-red-800 mt-1">
+                      Motivo: {{ booking.transferRejectionReason || 'No especificado' }}
+                    </p>
+                    <p class="text-xs text-red-700 mt-2">
+                      El cliente puede subir un nuevo comprobante
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Notas -->
             <div v-if="booking.notes">
               <label class="block text-sm font-medium text-gray-700 mb-2">Notas</label>
@@ -165,9 +275,9 @@
 
           <!-- Actions -->
           <div class="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 rounded-b-xl flex gap-3">
-            <!-- Cambiar estado de pago -->
+            <!-- Cambiar estado de pago (solo si no es transferencia pendiente) -->
             <button
-              v-if="booking.status !== 'cancelled' && booking.paymentStatus === 'pending'"
+              v-if="booking.status !== 'cancelled' && booking.paymentStatus === 'pending' && booking.paymentMethod !== 'transfer'"
               @click="handleMarkAsPaid"
               :disabled="isProcessing"
               class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -195,6 +305,57 @@
         </div>
       </div>
     </Transition>
+
+    <!-- Modal de rechazo -->
+    <Transition name="modal">
+      <div
+        v-if="showRejectModal"
+        @click="showRejectModal = false"
+        class="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4"
+      >
+        <div
+          @click.stop
+          class="bg-white rounded-xl shadow-2xl max-w-md w-full"
+        >
+          <div class="p-6">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+                <span class="material-symbols-outlined text-red-600 text-2xl">error</span>
+              </div>
+              <h3 class="text-xl font-bold text-gray-900">Rechazar Comprobante</h3>
+            </div>
+
+            <p class="text-gray-600 mb-4">
+              Por favor indica el motivo del rechazo para que el cliente pueda corregirlo:
+            </p>
+
+            <textarea
+              v-model="rejectionReason"
+              placeholder="Ej: La imagen está borrosa, el monto no coincide, etc."
+              class="w-full rounded-lg border-2 border-gray-300 px-4 py-3 focus:border-red-500 focus:ring-4 focus:ring-red-100 resize-none"
+              rows="3"
+            ></textarea>
+
+            <div class="flex gap-3 mt-4">
+              <button
+                @click="showRejectModal = false"
+                :disabled="isProcessing"
+                class="flex-1 px-4 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                @click="handleVerifyTransfer(false)"
+                :disabled="isProcessing || !rejectionReason.trim()"
+                class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {{ isProcessing ? 'Procesando...' : 'Rechazar' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </Teleport>
 </template>
 
@@ -217,28 +378,30 @@ const emit = defineEmits<Emits>()
 
 const toast = useToast()
 const isProcessing = ref(false)
+const showRejectModal = ref(false)
+const rejectionReason = ref('')
 
-const statusStyles = {
+const statusStyles: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
   confirmed: 'bg-blue-100 text-blue-800',
   cancelled: 'bg-red-100 text-red-800',
   completed: 'bg-green-100 text-green-800'
 }
 
-const statusLabels = {
+const statusLabels: Record<string, string> = {
   pending: 'Pendiente',
   confirmed: 'Confirmada',
   cancelled: 'Cancelada',
   completed: 'Completada'
 }
 
-const paymentMethodLabels = {
+const paymentMethodLabels: Record<string, string> = {
   cash: 'Efectivo',
   card: 'Tarjeta',
   transfer: 'Transferencia'
 }
 
-const paymentStatusLabels = {
+const paymentStatusLabels: Record<string, string> = {
   pending: 'Pendiente',
   paid: 'Pagada',
   refunded: 'Reembolsada'
@@ -276,8 +439,14 @@ const formatCurrency = (amount: number) => {
   }).format(amount)
 }
 
+const openImageInNewTab = (url: string) => {
+  window.open(url, '_blank')
+}
+
 const close = () => {
   emit('update:modelValue', false)
+  showRejectModal.value = false
+  rejectionReason.value = ''
 }
 
 const handleBackdropClick = () => {
@@ -304,6 +473,30 @@ const handleMarkAsPaid = async () => {
   } catch (error: any) {
     console.error('Error updating payment:', error)
     toast.error(error.data?.message || error.message || 'Error al actualizar el pago')
+  } finally {
+    isProcessing.value = false
+  }
+}
+
+const handleVerifyTransfer = async (approved: boolean) => {
+  isProcessing.value = true
+  try {
+    const response = await ownerBookingsService.verifyTransfer(
+      props.booking._id, 
+      approved,
+      approved ? undefined : rejectionReason.value
+    )
+
+    if (response.success) {
+      toast.success(approved ? 'Pago verificado exitosamente' : 'Comprobante rechazado')
+      emit('updated')
+      close()
+    } else {
+      toast.error(response.message || 'Error al procesar la solicitud')
+    }
+  } catch (error: any) {
+    console.error('Error verifying transfer:', error)
+    toast.error(error.data?.message || error.message || 'Error al procesar la solicitud')
   } finally {
     isProcessing.value = false
   }

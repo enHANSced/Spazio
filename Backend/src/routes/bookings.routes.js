@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
 const bookingsController = require('../controllers/bookings.controller');
 const { authMiddleware, isAdmin } = require('../middleware/auth.middleware');
 const { isOwnerOrAdmin, isVerifiedOwner } = require('../middleware/role.middleware');
@@ -10,6 +11,21 @@ const {
   validateGetMyBookings,
   validateBookingId
 } = require('../validators/bookings.validators');
+
+// Configurar multer para recibir imágenes en memoria
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB máximo
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Solo se permiten imágenes'), false);
+    }
+  }
+});
 
 // Todas las rutas requieren autenticación
 router.use(authMiddleware);
@@ -28,11 +44,20 @@ router.get('/my-bookings', validateGetMyBookings, handleValidationErrors, bookin
 // Obtener reservas de mis espacios (solo para owners verificados)
 router.get('/owner/bookings', isOwnerOrAdmin, isVerifiedOwner, bookingsController.getOwnerBookings);
 
+// Obtener reservas pendientes de verificación de transferencia (solo para owners verificados)
+router.get('/owner/pending-transfers', isOwnerOrAdmin, isVerifiedOwner, bookingsController.getPendingTransferVerifications);
+
 // Obtener reservas por espacio (para calendario)
 router.get('/space/:spaceId', validateGetBySpace, handleValidationErrors, bookingsController.getBySpace);
 
 // Obtener reserva por ID
 router.get('/:id', validateBookingId, handleValidationErrors, bookingsController.getById);
+
+// Subir comprobante de transferencia (usuario)
+router.post('/:id/transfer-proof', validateBookingId, handleValidationErrors, upload.single('proof'), bookingsController.uploadTransferProof);
+
+// Verificar/rechazar comprobante de transferencia (owner)
+router.patch('/:id/verify-transfer', validateBookingId, handleValidationErrors, isOwnerOrAdmin, isVerifiedOwner, bookingsController.verifyTransferPayment);
 
 // Actualizar reserva (para pagos, reprogramación, etc.)
 router.patch('/:id', validateBookingId, handleValidationErrors, bookingsController.update);

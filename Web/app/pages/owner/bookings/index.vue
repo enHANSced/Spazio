@@ -16,6 +16,7 @@ useSeoMeta({
 })
 
 const bookings = ref<Booking[]>([])
+const pendingTransfers = ref<Booking[]>([])
 const spaces = ref<Space[]>([])
 const loading = ref(true)
 const error = ref('')
@@ -65,9 +66,10 @@ const loadBookings = async () => {
   error.value = ''
   
   try {
-    const [bookingsResponse, spacesResponse] = await Promise.all([
+    const [bookingsResponse, spacesResponse, pendingTransfersResponse] = await Promise.all([
       ownerBookingsService.getOwnerBookings(),
-      ownerSpacesService.getMySpaces()
+      ownerSpacesService.getMySpaces(),
+      ownerBookingsService.getPendingTransferVerifications()
     ])
     
     if (bookingsResponse.success && bookingsResponse.data) {
@@ -76,6 +78,10 @@ const loadBookings = async () => {
     
     if (spacesResponse.success && spacesResponse.data) {
       spaces.value = spacesResponse.data
+    }
+
+    if (pendingTransfersResponse.success && pendingTransfersResponse.data) {
+      pendingTransfers.value = pendingTransfersResponse.data
     }
   } catch (err: any) {
     error.value = err.data?.message || err.message || 'Error al cargar reservas'
@@ -202,6 +208,50 @@ onMounted(() => {
           </div>
           <div class="flex h-12 w-12 items-center justify-center rounded-full bg-rose-100">
             <span class="material-symbols-outlined text-2xl text-rose-600">cancel</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pending Transfer Verifications Alert -->
+    <div v-if="pendingTransfers.length > 0" class="rounded-xl border-2 border-amber-300 bg-amber-50 p-5">
+      <div class="flex items-start gap-4">
+        <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-amber-200">
+          <span class="material-symbols-outlined text-2xl text-amber-700">receipt_long</span>
+        </div>
+        <div class="flex-1">
+          <h3 class="text-lg font-bold text-amber-900">
+            {{ pendingTransfers.length }} {{ pendingTransfers.length === 1 ? 'comprobante pendiente' : 'comprobantes pendientes' }} de verificación
+          </h3>
+          <p class="mt-1 text-sm text-amber-800">
+            Los siguientes clientes han subido comprobantes de transferencia que requieren tu verificación.
+          </p>
+          
+          <div class="mt-4 space-y-3">
+            <div 
+              v-for="transfer in pendingTransfers" 
+              :key="transfer._id"
+              class="flex items-center justify-between rounded-lg bg-white p-3 shadow-sm border border-amber-200"
+            >
+              <div class="flex items-center gap-3">
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100">
+                  <span class="material-symbols-outlined text-amber-600">person</span>
+                </div>
+                <div>
+                  <p class="font-semibold text-slate-900">{{ transfer.user?.name || 'Usuario' }}</p>
+                  <p class="text-xs text-slate-600">
+                    {{ transfer.space?.name }} · {{ formatDate(transfer.startTime) }}
+                  </p>
+                </div>
+              </div>
+              <button
+                @click="handleViewDetail(transfer)"
+                class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 transition-colors flex items-center gap-1"
+              >
+                <span class="material-symbols-outlined !text-[18px]">visibility</span>
+                Revisar
+              </button>
+            </div>
           </div>
         </div>
       </div>

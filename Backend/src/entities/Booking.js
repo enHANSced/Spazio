@@ -65,6 +65,31 @@ const bookingSchema = new mongoose.Schema({
   },
   paidAt: {
     type: Date
+  },
+  // Campos específicos para transferencia
+  transferProofUrl: {
+    type: String,
+    default: null
+  },
+  transferProofUploadedAt: {
+    type: Date,
+    default: null
+  },
+  transferVerifiedAt: {
+    type: Date,
+    default: null
+  },
+  transferVerifiedBy: {
+    type: String,
+    default: null
+  },
+  transferRejectedAt: {
+    type: Date,
+    default: null
+  },
+  transferRejectionReason: {
+    type: String,
+    default: null
   }
 }, {
   timestamps: true

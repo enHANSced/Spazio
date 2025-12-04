@@ -1,4 +1,5 @@
 const bookingsUseCase = require('../use-cases/bookings.usecase');
+const cloudinaryService = require('../services/cloudinary.service');
 
 class BookingsController {
   /**
@@ -221,6 +222,115 @@ class BookingsController {
       res.status(200).json({
         success: true,
         data: stats
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * Subir comprobante de transferencia (usuario)
+   */
+  async uploadTransferProof(req, res) {
+    try {
+      const { id } = req.params;
+
+      // Verificar que hay una imagen
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: 'Debe adjuntar una imagen del comprobante de transferencia'
+        });
+      }
+
+      // Subir imagen a Cloudinary
+      const uploadResult = await cloudinaryService.uploadBuffer(
+        req.file.buffer,
+        'transfer-proofs',
+        {
+          public_id: `transfer_${id}_${Date.now()}`,
+          transformation: [
+            { quality: 'auto:good' },
+            { fetch_format: 'auto' }
+          ]
+        }
+      );
+
+      // Actualizar la reserva con la URL del comprobante
+      const booking = await bookingsUseCase.uploadTransferProof(
+        id,
+        req.user.id,
+        uploadResult.secure_url
+      );
+
+      res.status(200).json({
+        success: true,
+        message: 'Comprobante de transferencia subido exitosamente. El propietario lo revisará pronto.',
+        data: booking
+      });
+    } catch (error) {
+      console.error('Error uploading transfer proof:', error);
+      const status = error.message.includes('permiso') ? 403 : 
+                     error.message.includes('no encontrada') ? 404 : 400;
+      res.status(status).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * Verificar/rechazar comprobante de transferencia (owner)
+   */
+  async verifyTransferPayment(req, res) {
+    try {
+      const { id } = req.params;
+      const { approved, rejectionReason } = req.body;
+
+      if (typeof approved !== 'boolean') {
+        return res.status(400).json({
+          success: false,
+          message: 'Debe especificar si aprueba o rechaza el comprobante'
+        });
+      }
+
+      const booking = await bookingsUseCase.verifyTransferPayment(
+        id,
+        req.user.id,
+        approved,
+        rejectionReason
+      );
+
+      res.status(200).json({
+        success: true,
+        message: approved 
+          ? 'Pago verificado exitosamente' 
+          : 'Comprobante rechazado. El usuario podrá subir uno nuevo.',
+        data: booking
+      });
+    } catch (error) {
+      console.error('Error verifying transfer payment:', error);
+      const status = error.message.includes('permiso') ? 403 : 
+                     error.message.includes('no encontrada') ? 404 : 400;
+      res.status(status).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * Obtener reservas pendientes de verificación de transferencia (owner)
+   */
+  async getPendingTransferVerifications(req, res) {
+    try {
+      const bookings = await bookingsUseCase.getPendingTransferVerifications(req.user.id);
+      res.status(200).json({
+        success: true,
+        data: bookings
       });
     } catch (error) {
       res.status(500).json({

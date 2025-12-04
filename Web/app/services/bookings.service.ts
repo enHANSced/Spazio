@@ -19,6 +19,18 @@ class BookingsService {
     }
   }
 
+  private getAuthHeaders() {
+    if (process.client) {
+      const tokenCookie = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('spazio_token='))
+      const token = tokenCookie ? tokenCookie.split('=')[1] : null
+
+      return token ? { Authorization: `Bearer ${token}` } : {}
+    }
+    return {}
+  }
+
   private getApiUrl(path: string = '') {
     const config = useRuntimeConfig()
     const baseUrl = config.public.apiBaseUrl
@@ -105,6 +117,24 @@ class BookingsService {
       headers: this.getHeaders(),
       body: data
     })
+    return response.data
+  }
+
+  /**
+   * Subir comprobante de transferencia
+   */
+  async uploadTransferProof(id: string, file: File): Promise<Booking> {
+    const formData = new FormData()
+    formData.append('proof', file)
+
+    const response = await $fetch<{ success: boolean; data: Booking; message: string }>(
+      this.getApiUrl(`/${id}/transfer-proof`),
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: formData
+      }
+    )
     return response.data
   }
 }

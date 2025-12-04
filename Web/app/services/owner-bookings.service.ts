@@ -79,6 +79,22 @@ export const ownerBookingsService = {
     }
   },
 
+  async getPendingTransferVerifications() {
+    const token = useCookie('spazio_token').value
+    if (!token) throw new Error('No autenticado')
+    
+    try {
+      const url = buildApiUrl('/bookings/owner/pending-transfers')
+      const response = await $fetch<BookingsApiResponse>(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      return { success: response.success, data: response.data, message: response.message }
+    } catch (error: any) {
+      return { success: false, data: [], message: extractApiErrorMessage(error) }
+    }
+  },
+
   async update(bookingId: string, updates: Partial<Booking>) {
     const token = useCookie('spazio_token').value
     if (!token) throw new Error('No autenticado')
@@ -86,9 +102,27 @@ export const ownerBookingsService = {
     try {
       const url = buildApiUrl(`/bookings/${bookingId}`)
       const response = await $fetch<{ success: boolean; data?: Booking; message?: string }>(url, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` },
         body: updates
+      })
+
+      return { success: response.success, data: response.data, message: response.message }
+    } catch (error: any) {
+      return { success: false, message: extractApiErrorMessage(error) }
+    }
+  },
+
+  async verifyTransfer(bookingId: string, approved: boolean, rejectionReason?: string) {
+    const token = useCookie('spazio_token').value
+    if (!token) throw new Error('No autenticado')
+    
+    try {
+      const url = buildApiUrl(`/bookings/${bookingId}/verify-transfer`)
+      const response = await $fetch<{ success: boolean; data?: Booking; message?: string }>(url, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+        body: { approved, rejectionReason }
       })
 
       return { success: response.success, data: response.data, message: response.message }
@@ -102,10 +136,11 @@ export const ownerBookingsService = {
     if (!token) throw new Error('No autenticado')
     
     try {
-      const url = buildApiUrl(`/bookings/${bookingId}/cancel`)
+      const url = buildApiUrl(`/bookings/${bookingId}`)
       const response = await $fetch<{ success: boolean; data?: Booking; message?: string }>(url, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}` }
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+        body: { status: 'cancelled' }
       })
 
       return { success: response.success, data: response.data, message: response.message }

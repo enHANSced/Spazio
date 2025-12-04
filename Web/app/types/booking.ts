@@ -24,6 +24,13 @@ export interface Booking {
   durationHours?: number
   paidAt?: string
   notes?: string
+  // Campos de transferencia
+  transferProofUrl?: string
+  transferProofUploadedAt?: string
+  transferVerifiedAt?: string
+  transferVerifiedBy?: string
+  transferRejectedAt?: string
+  transferRejectionReason?: string
   // Enriquecido con datos relacionados
   space?: Space
   user?: AuthUser
