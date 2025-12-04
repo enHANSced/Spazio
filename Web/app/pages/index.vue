@@ -17,9 +17,21 @@ const { user, logout } = useAuth()
 const searchQuery = ref('')
 const minCapacity = ref<number | null>(null)
 const maxCapacity = ref<number | null>(null)
-const sortOption = ref<'recent' | 'capacity' | 'name'>('recent')
+const sortOption = ref<'recent' | 'capacity' | 'name' | 'price'>('recent')
 const viewMode = ref<'grid' | 'list'>('grid')
-const selectedCategory = ref<'all' | 'small' | 'medium' | 'large'>('all')
+const selectedSizeFilter = ref<'all' | 'small' | 'medium' | 'large'>('all')
+const selectedCategory = ref<string | null>(null)
+
+// Categorías de espacios con iconos y descripciones amigables
+const spaceCategories = [
+  { value: 'coworking', label: 'Coworking', icon: 'laptop_mac', color: 'blue', description: 'Espacios de trabajo compartido' },
+  { value: 'meetings', label: 'Reuniones', icon: 'groups', color: 'indigo', description: 'Salas para juntas y presentaciones' },
+  { value: 'private', label: 'Privado', icon: 'meeting_room', color: 'emerald', description: 'Espacios íntimos 1-10 personas' },
+  { value: 'events', label: 'Eventos', icon: 'celebration', color: 'pink', description: 'Salones para eventos y celebraciones' },
+  { value: 'training', label: 'Capacitación', icon: 'school', color: 'amber', description: 'Aulas y salas de formación' },
+  { value: 'studio', label: 'Estudio', icon: 'videocam', color: 'purple', description: 'Fotografía, grabación y producción' },
+  { value: 'teams', label: 'Equipos', icon: 'diversity_3', color: 'orange', description: 'Espacios amplios para grupos grandes' },
+]
 
 const { data: spacesData, pending, error: spacesError, refresh } = await useAsyncData<Space[]>(
   'spaces:list',
@@ -42,14 +54,24 @@ const statsSummary = computed(() => {
   }
 })
 
-// Categorías por capacidad
-const categories = computed(() => {
+// Conteo por tamaño (capacidad)
+const sizeFilters = computed(() => {
   const active = spaces.value.filter(s => s.isActive)
   return {
     small: active.filter(s => s.capacity < 20).length,
     medium: active.filter(s => s.capacity >= 20 && s.capacity < 50).length,
     large: active.filter(s => s.capacity >= 50).length
   }
+})
+
+// Conteo por categoría real
+const categoryCountMap = computed(() => {
+  const active = spaces.value.filter(s => s.isActive)
+  const counts: Record<string, number> = {}
+  for (const cat of spaceCategories) {
+    counts[cat.value] = active.filter(s => s.category === cat.value).length
+  }
+  return counts
 })
 
 const normalizeText = (value?: string | null) => value?.toLowerCase().trim() ?? ''
@@ -77,15 +99,20 @@ const filteredSpaces = computed(() => {
       return true
     })
     .filter((space) => {
-      if (selectedCategory.value === 'all') return true
-      if (selectedCategory.value === 'small') return space.capacity < 20
-      if (selectedCategory.value === 'medium') return space.capacity >= 20 && space.capacity < 50
-      if (selectedCategory.value === 'large') return space.capacity >= 50
+      // Filtro por tamaño
+      if (selectedSizeFilter.value !== 'all') {
+        if (selectedSizeFilter.value === 'small' && space.capacity >= 20) return false
+        if (selectedSizeFilter.value === 'medium' && (space.capacity < 20 || space.capacity >= 50)) return false
+        if (selectedSizeFilter.value === 'large' && space.capacity < 50) return false
+      }
+      // Filtro por categoría
+      if (selectedCategory.value && space.category !== selectedCategory.value) return false
       return true
     })
     .sort((a, b) => {
       if (sortOption.value === 'capacity') return b.capacity - a.capacity
       if (sortOption.value === 'name') return a.name.localeCompare(b.name)
+      if (sortOption.value === 'price') return (a.pricePerHour || 0) - (b.pricePerHour || 0)
       return getTimestamp(b) - getTimestamp(a)
     })
 })
@@ -149,7 +176,28 @@ const resetFilters = () => {
   minCapacity.value = null
   maxCapacity.value = null
   sortOption.value = 'recent'
-  selectedCategory.value = 'all'
+  selectedSizeFilter.value = 'all'
+  selectedCategory.value = null
+}
+
+const selectCategory = (category: string | null) => {
+  selectedCategory.value = selectedCategory.value === category ? null : category
+}
+
+const getCategoryColor = (color: string, isSelected: boolean) => {
+  const colors: Record<string, { bg: string; border: string; text: string; selectedBg: string }> = {
+    blue: { bg: 'bg-blue-50', border: 'border-blue-200 hover:border-blue-400', text: 'text-blue-700', selectedBg: 'bg-blue-500' },
+    indigo: { bg: 'bg-indigo-50', border: 'border-indigo-200 hover:border-indigo-400', text: 'text-indigo-700', selectedBg: 'bg-indigo-500' },
+    emerald: { bg: 'bg-emerald-50', border: 'border-emerald-200 hover:border-emerald-400', text: 'text-emerald-700', selectedBg: 'bg-emerald-500' },
+    pink: { bg: 'bg-pink-50', border: 'border-pink-200 hover:border-pink-400', text: 'text-pink-700', selectedBg: 'bg-pink-500' },
+    amber: { bg: 'bg-amber-50', border: 'border-amber-200 hover:border-amber-400', text: 'text-amber-700', selectedBg: 'bg-amber-500' },
+    purple: { bg: 'bg-purple-50', border: 'border-purple-200 hover:border-purple-400', text: 'text-purple-700', selectedBg: 'bg-purple-500' },
+    orange: { bg: 'bg-orange-50', border: 'border-orange-200 hover:border-orange-400', text: 'text-orange-700', selectedBg: 'bg-orange-500' },
+  }
+  const c = colors[color] || colors.blue
+  return isSelected 
+    ? `${c.selectedBg} text-white shadow-lg` 
+    : `${c.bg} ${c.border} ${c.text} border`
 }
 
 const formatNumber = (value: number) => new Intl.NumberFormat('es-HN').format(value)
@@ -311,80 +359,159 @@ const formatNumber = (value: number) => new Intl.NumberFormat('es-HN').format(va
 
     <!-- Sección de contenido principal -->
     <section ref="resultsRef" class="px-4 sm:px-6 lg:px-8 py-12 max-w-7xl mx-auto space-y-8">
-      <!-- Categorías rápidas -->
+      
+      <!-- Categorías por tipo de espacio (nuevo) -->
+      <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <div class="flex items-center justify-between mb-5">
+          <div>
+            <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary">category</span>
+              ¿Qué tipo de espacio buscas?
+            </h3>
+            <p class="text-sm text-gray-500 mt-1">Selecciona una categoría para filtrar</p>
+          </div>
+          <button 
+            v-if="selectedCategory"
+            type="button"
+            class="text-sm font-medium text-gray-500 hover:text-primary transition flex items-center gap-1"
+            @click="selectedCategory = null"
+          >
+            <span class="material-symbols-outlined !text-[16px]">close</span>
+            Limpiar
+          </button>
+        </div>
+        
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+          <button
+            v-for="cat in spaceCategories"
+            :key="cat.value"
+            type="button"
+            class="group relative flex flex-col items-center p-4 rounded-xl transition-all duration-200 transform hover:scale-105"
+            :class="getCategoryColor(cat.color, selectedCategory === cat.value)"
+            @click="selectCategory(cat.value)"
+          >
+            <div class="relative mb-2">
+              <span 
+                class="material-symbols-outlined text-3xl transition-transform group-hover:scale-110"
+                :class="selectedCategory === cat.value ? 'text-white' : ''"
+              >{{ cat.icon }}</span>
+              <span 
+                v-if="categoryCountMap[cat.value] > 0"
+                class="absolute -top-2 -right-3 text-xs font-bold px-1.5 py-0.5 rounded-full"
+                :class="selectedCategory === cat.value ? 'bg-white/30 text-white' : 'bg-gray-200 text-gray-700'"
+              >
+                {{ categoryCountMap[cat.value] }}
+              </span>
+            </div>
+            <span class="text-sm font-semibold text-center">{{ cat.label }}</span>
+            <span 
+              class="text-[10px] text-center leading-tight mt-1 hidden sm:block"
+              :class="selectedCategory === cat.value ? 'text-white/80' : 'text-gray-500'"
+            >{{ cat.description }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtros por tamaño y controles -->
       <div class="flex flex-wrap items-center justify-between gap-4">
         <div class="flex flex-wrap items-center gap-3">
+          <span class="text-sm font-medium text-gray-500 mr-2">Por capacidad:</span>
           <button
             type="button"
-            class="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 font-semibold transition"
-            :class="selectedCategory === 'all' 
+            class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition"
+            :class="selectedSizeFilter === 'all' 
               ? 'bg-primary text-white shadow-lg shadow-primary/30' 
               : 'bg-white text-gray-700 border border-gray-200 hover:border-primary hover:text-primary'"
-            @click="selectedCategory = 'all'"
+            @click="selectedSizeFilter = 'all'"
           >
-            <span class="material-symbols-outlined !text-[20px]">home_work</span>
+            <span class="material-symbols-outlined !text-[18px]">home_work</span>
             <span>Todos</span>
-            <span class="text-sm opacity-80">({{ filteredSpaces.length }})</span>
           </button>
 
           <button
             type="button"
-            class="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 font-semibold transition"
-            :class="selectedCategory === 'small' 
+            class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition"
+            :class="selectedSizeFilter === 'small' 
               ? 'bg-green-500 text-white shadow-lg shadow-green-500/30' 
               : 'bg-white text-gray-700 border border-gray-200 hover:border-green-500 hover:text-green-600'"
-            @click="selectedCategory = 'small'"
+            @click="selectedSizeFilter = 'small'"
           >
-            <span class="material-symbols-outlined !text-[20px]">meeting_room</span>
-            <span>Pequeños</span>
-            <span class="text-sm opacity-80">({{ categories.small }})</span>
+            <span class="material-symbols-outlined !text-[18px]">person</span>
+            <span>&lt;20</span>
+            <span class="text-xs opacity-80">({{ sizeFilters.small }})</span>
           </button>
 
           <button
             type="button"
-            class="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 font-semibold transition"
-            :class="selectedCategory === 'medium' 
+            class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition"
+            :class="selectedSizeFilter === 'medium' 
               ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30' 
               : 'bg-white text-gray-700 border border-gray-200 hover:border-orange-500 hover:text-orange-600'"
-            @click="selectedCategory = 'medium'"
+            @click="selectedSizeFilter = 'medium'"
           >
-            <span class="material-symbols-outlined !text-[20px]">groups</span>
-            <span>Medianos</span>
-            <span class="text-sm opacity-80">({{ categories.medium }})</span>
+            <span class="material-symbols-outlined !text-[18px]">group</span>
+            <span>20-50</span>
+            <span class="text-xs opacity-80">({{ sizeFilters.medium }})</span>
           </button>
 
           <button
             type="button"
-            class="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 font-semibold transition"
-            :class="selectedCategory === 'large' 
+            class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition"
+            :class="selectedSizeFilter === 'large' 
               ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30' 
               : 'bg-white text-gray-700 border border-gray-200 hover:border-purple-500 hover:text-purple-600'"
-            @click="selectedCategory = 'large'"
+            @click="selectedSizeFilter = 'large'"
           >
-            <span class="material-symbols-outlined !text-[20px]">celebration</span>
-            <span>Grandes</span>
-            <span class="text-sm opacity-80">({{ categories.large }})</span>
+            <span class="material-symbols-outlined !text-[18px]">groups</span>
+            <span>50+</span>
+            <span class="text-xs opacity-80">({{ sizeFilters.large }})</span>
           </button>
         </div>
 
-        <!-- Controles de vista -->
-        <div class="flex items-center gap-2 bg-white rounded-xl border border-gray-200 p-1">
-          <button
-            type="button"
-            class="rounded-lg px-3 py-2 transition"
-            :class="viewMode === 'grid' ? 'bg-primary text-white' : 'text-gray-600 hover:text-primary'"
-            @click="viewMode = 'grid'"
-          >
-            <span class="material-symbols-outlined !text-[20px]">grid_view</span>
-          </button>
-          <button
-            type="button"
-            class="rounded-lg px-3 py-2 transition"
-            :class="viewMode === 'list' ? 'bg-primary text-white' : 'text-gray-600 hover:text-primary'"
-            @click="viewMode = 'list'"
-          >
-            <span class="material-symbols-outlined !text-[20px]">view_list</span>
-          </button>
+        <!-- Filtros activos y controles de vista -->
+        <div class="flex items-center gap-3">
+          <!-- Indicador de filtros activos -->
+          <div v-if="selectedCategory || selectedSizeFilter !== 'all'" class="hidden sm:flex items-center gap-2">
+            <span class="text-xs text-gray-500">Filtros:</span>
+            <span 
+              v-if="selectedCategory" 
+              class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-primary/10 text-primary rounded-full"
+            >
+              {{ spaceCategories.find(c => c.value === selectedCategory)?.label }}
+              <button type="button" class="hover:text-primary/80" @click="selectedCategory = null">
+                <span class="material-symbols-outlined !text-[14px]">close</span>
+              </button>
+            </span>
+            <span 
+              v-if="selectedSizeFilter !== 'all'" 
+              class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-full"
+            >
+              {{ selectedSizeFilter === 'small' ? '<20 personas' : selectedSizeFilter === 'medium' ? '20-50 personas' : '50+ personas' }}
+              <button type="button" class="hover:text-gray-600" @click="selectedSizeFilter = 'all'">
+                <span class="material-symbols-outlined !text-[14px]">close</span>
+              </button>
+            </span>
+          </div>
+
+          <!-- Controles de vista -->
+          <div class="flex items-center gap-2 bg-white rounded-xl border border-gray-200 p-1">
+            <button
+              type="button"
+              class="rounded-lg px-3 py-2 transition"
+              :class="viewMode === 'grid' ? 'bg-primary text-white' : 'text-gray-600 hover:text-primary'"
+              @click="viewMode = 'grid'"
+            >
+              <span class="material-symbols-outlined !text-[20px]">grid_view</span>
+            </button>
+            <button
+              type="button"
+              class="rounded-lg px-3 py-2 transition"
+              :class="viewMode === 'list' ? 'bg-primary text-white' : 'text-gray-600 hover:text-primary'"
+              @click="viewMode = 'list'"
+            >
+              <span class="material-symbols-outlined !text-[20px]">view_list</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -454,6 +581,7 @@ const formatNumber = (value: number) => new Intl.NumberFormat('es-HN').format(va
               >
                 <option value="recent">Más recientes</option>
                 <option value="capacity">Mayor capacidad</option>
+                <option value="price">Menor precio</option>
                 <option value="name">Nombre (A-Z)</option>
               </select>
             </div>

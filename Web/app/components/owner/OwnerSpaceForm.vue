@@ -82,24 +82,45 @@
             <p v-if="errors.capacity" class="mt-1 text-sm text-red-600">{{ errors.capacity }}</p>
             <p class="mt-1 text-sm text-gray-500">Número de personas que puede acomodar</p>
           </div>
+        </div>
 
-          <!-- Categoría -->
-          <div>
-            <label for="category" class="block text-sm font-medium text-gray-700 mb-2">
-              Categoría del espacio <span class="text-red-500">*</span>
-            </label>
-            <select
-              id="category"
-              v-model="form.category"
-              required
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+        <!-- Categoría visual -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-3">
+            Categoría del espacio <span class="text-red-500">*</span>
+          </label>
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            <button
+              v-for="cat in availableCategories"
+              :key="cat.value"
+              type="button"
+              @click="form.category = cat.value"
+              class="group relative flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-200 hover:scale-[1.02]"
+              :class="form.category === cat.value 
+                ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200' 
+                : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'"
             >
-              <option v-for="cat in availableCategories" :key="cat.value" :value="cat.value">
-                {{ cat.label }}
-              </option>
-            </select>
-            <p class="mt-1 text-sm text-gray-500">Define el uso principal de tu espacio</p>
+              <div class="flex items-center justify-center h-12 w-12 rounded-xl mb-2 transition-colors"
+                :class="form.category === cat.value ? 'bg-blue-500' : 'bg-gray-100 group-hover:bg-blue-100'">
+                <span 
+                  class="material-symbols-outlined text-2xl"
+                  :class="form.category === cat.value ? 'text-white' : 'text-gray-600 group-hover:text-blue-600'"
+                >{{ cat.icon }}</span>
+              </div>
+              <span 
+                class="font-semibold text-sm text-center"
+                :class="form.category === cat.value ? 'text-blue-700' : 'text-gray-700'"
+              >{{ cat.label }}</span>
+              <span class="text-xs text-center text-gray-500 mt-1 leading-tight">{{ cat.description }}</span>
+              <div 
+                v-if="form.category === cat.value"
+                class="absolute top-2 right-2 h-5 w-5 bg-blue-500 rounded-full flex items-center justify-center"
+              >
+                <span class="material-symbols-outlined text-white !text-[14px]">check</span>
+              </div>
+            </button>
           </div>
+          <p class="mt-2 text-sm text-gray-500">Selecciona la categoría que mejor describe tu espacio</p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -611,15 +632,15 @@ const addCustomAmenity = () => {
   }
 }
 
-// Lista de categorías disponibles
+// Lista de categorías disponibles con iconos
 const availableCategories = [
-  { value: 'private', label: 'Sesiones privadas - Espacios íntimos para 1-10 personas' },
-  { value: 'meetings', label: 'Reuniones - Salas para juntas y presentaciones' },
-  { value: 'teams', label: 'Equipos grandes - Espacios amplios para grupos' },
-  { value: 'events', label: 'Eventos - Salones para eventos masivos' },
-  { value: 'coworking', label: 'Coworking - Espacios de trabajo compartido' },
-  { value: 'studio', label: 'Estudio - Fotografía, grabación, producción' },
-  { value: 'training', label: 'Capacitación - Aulas y salas de formación' }
+  { value: 'coworking', label: 'Coworking', icon: 'laptop_mac', description: 'Trabajo compartido' },
+  { value: 'meetings', label: 'Reuniones', icon: 'groups', description: 'Juntas y presentaciones' },
+  { value: 'private', label: 'Privado', icon: 'meeting_room', description: 'Espacios íntimos' },
+  { value: 'events', label: 'Eventos', icon: 'celebration', description: 'Fiestas y celebraciones' },
+  { value: 'training', label: 'Capacitación', icon: 'school', description: 'Aulas y formación' },
+  { value: 'studio', label: 'Estudio', icon: 'videocam', description: 'Foto, video y audio' },
+  { value: 'teams', label: 'Equipos', icon: 'diversity_3', description: 'Grupos grandes' },
 ]
 
 // Formulario
