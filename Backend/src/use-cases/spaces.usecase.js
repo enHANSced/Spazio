@@ -31,7 +31,7 @@ class SpacesUseCase {
 
   async create(data) {
     const { 
-      name, description, capacity, ownerId, images,
+      name, description, capacity, ownerId, images, category,
       pricePerHour, amenities, rules, virtualTourUrl, cancellationPolicy,
       address, city, state, country, latitude, longitude, zipCode,
       workingHours, videos, images360
@@ -69,6 +69,7 @@ class SpacesUseCase {
       description, 
       capacity, 
       ownerId, 
+      category: category || 'meetings',
       images: processedImages,
       pricePerHour: pricePerHour || 0,
       amenities: amenities || [],
@@ -98,7 +99,7 @@ class SpacesUseCase {
     }
     
     const fields = [
-      'name', 'description', 'capacity', 'isActive',
+      'name', 'description', 'capacity', 'isActive', 'category',
       'pricePerHour', 'amenities', 'rules', 'virtualTourUrl', 'cancellationPolicy',
       'address', 'city', 'state', 'country', 'latitude', 'longitude', 'zipCode',
       'workingHours', 'videos', 'images360'
