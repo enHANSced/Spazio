@@ -274,14 +274,14 @@ const formatNumber = (value: number) => new Intl.NumberFormat('es-HN').format(va
         <!-- Barra de búsqueda mejorada -->
         <div class="max-w-5xl mx-auto mb-10">
           <div class="relative">
-            <div class="flex flex-col lg:flex-row gap-3 p-3 rounded-2xl bg-white shadow-2xl">
-              <div class="flex-1 flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50">
+            <div class="flex flex-col lg:flex-row gap-3 p-3 rounded-2xl bg-white shadow-2xl border-0">
+              <div class="flex-1 flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 border-0">
                 <span class="material-symbols-outlined text-2xl text-primary">search</span>
                 <input
                   v-model.trim="searchQuery"
                   type="text"
                   placeholder="¿Qué tipo de espacio necesitas?"
-                  class="flex-1 bg-transparent text-gray-900 placeholder:text-gray-500 focus:outline-none font-medium"
+                  class="flex-1 bg-transparent text-gray-900 placeholder:text-gray-500 focus:outline-none font-medium border-0"
                   @keypress="handleSearchKeypress"
                 />
                 <button
