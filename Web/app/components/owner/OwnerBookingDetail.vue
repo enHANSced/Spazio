@@ -65,84 +65,116 @@
             </div>
 
             <!-- Fecha y Hora -->
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Inicio</label>
-                <div class="bg-gray-50 rounded-lg p-4">
-                  <p class="font-semibold text-gray-900">
+            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border-2 border-blue-100">
+              <div class="flex items-center gap-2 mb-4">
+                <span class="material-symbols-outlined text-blue-600">event</span>
+                <h3 class="text-base font-bold text-gray-900">Programación</h3>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-white rounded-lg p-4 shadow-sm">
+                  <div class="flex items-center gap-2 mb-2">
+                    <span class="material-symbols-outlined text-green-600 !text-[18px]">play_circle</span>
+                    <label class="text-xs font-semibold text-gray-600 uppercase">Inicio</label>
+                  </div>
+                  <p class="font-bold text-gray-900 text-base">
                     {{ formatDate(booking.startTime) }}
                   </p>
-                  <p class="text-sm text-gray-600">
+                  <p class="text-sm text-green-600 font-semibold mt-1">
                     {{ formatTime(booking.startTime) }}
                   </p>
                 </div>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Fin</label>
-                <div class="bg-gray-50 rounded-lg p-4">
-                  <p class="font-semibold text-gray-900">
+                <div class="bg-white rounded-lg p-4 shadow-sm">
+                  <div class="flex items-center gap-2 mb-2">
+                    <span class="material-symbols-outlined text-red-600 !text-[18px]">stop_circle</span>
+                    <label class="text-xs font-semibold text-gray-600 uppercase">Fin</label>
+                  </div>
+                  <p class="font-bold text-gray-900 text-base">
                     {{ formatDate(booking.endTime) }}
                   </p>
-                  <p class="text-sm text-gray-600">
+                  <p class="text-sm text-red-600 font-semibold mt-1">
                     {{ formatTime(booking.endTime) }}
                   </p>
                 </div>
               </div>
-            </div>
-
-            <!-- Duración -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Duración</label>
-              <p class="text-lg font-semibold text-gray-900">
-                {{ booking.durationHours }} {{ booking.durationHours === 1 ? 'hora' : 'horas' }}
-              </p>
+              <div class="mt-4 bg-white rounded-lg p-4 shadow-sm">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-blue-600">schedule</span>
+                    <span class="text-sm font-medium text-gray-700">Duración total</span>
+                  </div>
+                  <span class="text-xl font-bold text-blue-600">
+                    {{ booking.durationHours }} {{ booking.durationHours === 1 ? 'hora' : 'horas' }}
+                  </span>
+                </div>
+              </div>
             </div>
 
             <!-- Pago -->
-            <div class="border-t border-gray-200 pt-6">
-              <h3 class="text-lg font-semibold text-gray-900 mb-4">Información de Pago</h3>
+            <div class="border-t-2 border-gray-200 pt-6">
+              <div class="flex items-center gap-2 mb-4">
+                <span class="material-symbols-outlined text-green-600">payments</span>
+                <h3 class="text-lg font-bold text-gray-900">Información de Pago</h3>
+              </div>
               
-              <div class="space-y-3">
-                <div class="flex justify-between">
-                  <span class="text-gray-600">Método de pago:</span>
-                  <span class="font-medium text-gray-900">
-                    {{ paymentMethodLabels[booking.paymentMethod || 'cash'] }}
-                  </span>
-                </div>
-                
-                <div class="flex justify-between">
-                  <span class="text-gray-600">Estado del pago:</span>
-                  <span
-                    :class="[
-                      'font-medium',
-                      booking.paymentStatus === 'paid'
-                        ? 'text-green-600'
-                        : booking.paymentStatus === 'refunded'
-                        ? 'text-purple-600'
-                        : 'text-yellow-600'
-                    ]"
-                  >
-                    {{ paymentStatusLabels[booking.paymentStatus || 'pending'] }}
-                  </span>
+              <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-5 border-2 border-green-100 space-y-4">
+                <div class="bg-white rounded-lg p-4 shadow-sm">
+                  <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                      <span class="material-symbols-outlined text-blue-600 !text-[20px]">credit_card</span>
+                      <span class="text-sm font-semibold text-gray-700">Método de pago</span>
+                    </div>
+                    <span class="font-bold text-gray-900 text-base">
+                      {{ paymentMethodLabels[booking.paymentMethod || 'cash'] }}
+                    </span>
+                  </div>
+                  
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <span class="material-symbols-outlined !text-[20px]"
+                        :class="[
+                          booking.paymentStatus === 'paid'
+                            ? 'text-green-600'
+                            : booking.paymentStatus === 'refunded'
+                            ? 'text-purple-600'
+                            : 'text-yellow-600'
+                        ]"
+                      >{{ booking.paymentStatus === 'paid' ? 'check_circle' : 'pending' }}</span>
+                      <span class="text-sm font-semibold text-gray-700">Estado del pago</span>
+                    </div>
+                    <span
+                      :class="[
+                        'font-bold text-base px-3 py-1 rounded-full',
+                        booking.paymentStatus === 'paid'
+                          ? 'bg-green-100 text-green-700'
+                          : booking.paymentStatus === 'refunded'
+                          ? 'bg-purple-100 text-purple-700'
+                          : 'bg-yellow-100 text-yellow-700'
+                      ]"
+                    >
+                      {{ paymentStatusLabels[booking.paymentStatus || 'pending'] }}
+                    </span>
+                  </div>
+
+                  <div v-if="booking.paidAt" class="flex items-center gap-2 mt-3 pt-3 border-t border-gray-200">
+                    <span class="material-symbols-outlined text-gray-500 !text-[18px]">schedule</span>
+                    <span class="text-xs text-gray-600">Pagado el {{ formatDateTime(booking.paidAt) }}</span>
+                  </div>
                 </div>
 
-                <div v-if="booking.paidAt" class="flex justify-between text-sm">
-                  <span class="text-gray-600">Fecha de pago:</span>
-                  <span class="text-gray-900">{{ formatDateTime(booking.paidAt) }}</span>
-                </div>
-
-                <div class="border-t border-gray-200 pt-3 mt-3">
-                  <div class="flex justify-between text-sm">
-                    <span class="text-gray-600">Subtotal:</span>
-                    <span class="text-gray-900">{{ formatCurrency(booking.subtotal || 0) }}</span>
-                  </div>
-                  <div class="flex justify-between text-sm mt-2">
-                    <span class="text-gray-600">Comisión de servicio:</span>
-                    <span class="text-gray-900">{{ formatCurrency(booking.serviceFee || 0) }}</span>
-                  </div>
-                  <div class="flex justify-between text-lg font-bold mt-3">
-                    <span class="text-gray-900">Total:</span>
-                    <span class="text-gray-900">{{ formatCurrency(booking.totalAmount || 0) }}</span>
+                <div class="bg-white rounded-lg p-4 shadow-sm">
+                  <div class="space-y-2.5">
+                    <div class="flex justify-between items-center">
+                      <span class="text-sm text-gray-600">Subtotal</span>
+                      <span class="font-semibold text-gray-900 text-base">{{ formatCurrency(booking.subtotal || 0) }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                      <span class="text-sm text-gray-600">Comisión de servicio</span>
+                      <span class="font-semibold text-gray-900 text-base">{{ formatCurrency(booking.serviceFee || 0) }}</span>
+                    </div>
+                    <div class="border-t-2 border-green-200 pt-3 mt-3 flex justify-between items-center">
+                      <span class="text-base font-bold text-gray-900">Total a Pagar</span>
+                      <span class="text-2xl font-black text-green-600">{{ formatCurrency(booking.totalAmount || 0) }}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -408,7 +440,8 @@ const paymentStatusLabels: Record<string, string> = {
 }
 
 const formatDate = (date: string | Date) => {
-  return new Date(date).toLocaleDateString('es-ES', {
+  return new Date(date).toLocaleDateString('es-HN', {
+    weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric'
@@ -416,27 +449,31 @@ const formatDate = (date: string | Date) => {
 }
 
 const formatTime = (date: string | Date) => {
-  return new Date(date).toLocaleTimeString('es-ES', {
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+  return new Date(date).toLocaleTimeString('es-HN', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  }).toUpperCase()
 }
 
 const formatDateTime = (date: string | Date) => {
-  return new Date(date).toLocaleString('es-ES', {
+  return new Date(date).toLocaleString('es-HN', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  }).toUpperCase()
 }
 
 const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('es-ES', {
+  return new Intl.NumberFormat('es-HN', {
     style: 'currency',
-    currency: 'USD'
-  }).format(amount)
+    currency: 'HNL',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount).replace('HNL', 'L')
 }
 
 const openImageInNewTab = (url: string) => {

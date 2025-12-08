@@ -117,10 +117,18 @@ const getStatusLabel = (status: string) => {
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString)
-  return date.toLocaleDateString('es-ES', { 
+  return date.toLocaleDateString('es-HN', { 
+    day: '2-digit', 
+    month: 'long',
+    year: 'numeric'
+  })
+}
+
+const formatDateShort = (dateString: string) => {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('es-HN', { 
     day: '2-digit', 
     month: 'short',
-    year: 'numeric',
     weekday: 'short'
   })
 }
@@ -131,11 +139,20 @@ const formatTime = (dateString: string) => {
     hour: 'numeric', 
     minute: '2-digit',
     hour12: true
-  })
+  }).toUpperCase()
 }
 
 const formatTimeRange = (start: string, end: string) => {
   return `${formatTime(start)} - ${formatTime(end)}`
+}
+
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('es-HN', {
+    style: 'currency',
+    currency: 'HNL',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount).replace('HNL', 'L')
 }
 
 const handleViewDetail = (booking: Booking) => {
@@ -164,50 +181,54 @@ onMounted(() => {
 
     <!-- Stats Cards -->
     <div class="grid gap-4 sm:grid-cols-4">
-      <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div class="rounded-xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-white p-5 shadow-sm hover:shadow-md transition-shadow">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm text-slate-600">Pendientes</p>
+            <p class="text-sm font-medium text-amber-700">Pendientes</p>
             <p class="mt-1 text-3xl font-bold text-amber-600">{{ statusCounts.pending }}</p>
+            <p class="text-xs text-amber-600 mt-1">Requieren atención</p>
           </div>
-          <div class="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
-            <span class="material-symbols-outlined text-2xl text-amber-600">pending</span>
+          <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 shadow-inner">
+            <span class="material-symbols-outlined text-3xl text-amber-600">pending</span>
           </div>
         </div>
       </div>
 
-      <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div class="rounded-xl border-2 border-green-200 bg-gradient-to-br from-green-50 to-white p-5 shadow-sm hover:shadow-md transition-shadow">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm text-slate-600">Confirmadas</p>
+            <p class="text-sm font-medium text-green-700">Confirmadas</p>
             <p class="mt-1 text-3xl font-bold text-green-600">{{ statusCounts.confirmed }}</p>
+            <p class="text-xs text-green-600 mt-1">Pagos verificados</p>
           </div>
-          <div class="flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-            <span class="material-symbols-outlined text-2xl text-green-600">check_circle</span>
+          <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-green-100 shadow-inner">
+            <span class="material-symbols-outlined text-3xl text-green-600">check_circle</span>
           </div>
         </div>
       </div>
 
-      <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div class="rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-white p-5 shadow-sm hover:shadow-md transition-shadow">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm text-slate-600">Completadas</p>
+            <p class="text-sm font-medium text-blue-700">Completadas</p>
             <p class="mt-1 text-3xl font-bold text-blue-600">{{ statusCounts.completed }}</p>
+            <p class="text-xs text-blue-600 mt-1">Finalizadas</p>
           </div>
-          <div class="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
-            <span class="material-symbols-outlined text-2xl text-blue-600">task_alt</span>
+          <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100 shadow-inner">
+            <span class="material-symbols-outlined text-3xl text-blue-600">task_alt</span>
           </div>
         </div>
       </div>
 
-      <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div class="rounded-xl border-2 border-rose-200 bg-gradient-to-br from-rose-50 to-white p-5 shadow-sm hover:shadow-md transition-shadow">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm text-slate-600">Canceladas</p>
+            <p class="text-sm font-medium text-rose-700">Canceladas</p>
             <p class="mt-1 text-3xl font-bold text-rose-600">{{ statusCounts.cancelled }}</p>
+            <p class="text-xs text-rose-600 mt-1">Sin actividad</p>
           </div>
-          <div class="flex h-12 w-12 items-center justify-center rounded-full bg-rose-100">
-            <span class="material-symbols-outlined text-2xl text-rose-600">cancel</span>
+          <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-100 shadow-inner">
+            <span class="material-symbols-outlined text-3xl text-rose-600">cancel</span>
           </div>
         </div>
       </div>
@@ -373,22 +394,22 @@ onMounted(() => {
         <table class="w-full">
           <thead class="border-b border-slate-200 bg-slate-50">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                Usuario
+              <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-slate-700 bg-slate-50">
+                Cliente
               </th>
-              <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-slate-700 bg-slate-50">
                 Espacio
               </th>
-              <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                Fecha
+              <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-slate-700 bg-slate-50">
+                Fecha y Duración
               </th>
-              <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-slate-700 bg-slate-50">
                 Horario
               </th>
-              <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                Estado
+              <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-slate-700 bg-slate-50">
+                Estado y Monto
               </th>
-              <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <th class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wide text-slate-700 bg-slate-50">
                 Acciones
               </th>
             </tr>
@@ -401,41 +422,55 @@ onMounted(() => {
             >
               <td class="px-6 py-4">
                 <div class="flex items-center gap-3">
-                  <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
+                  <div class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 shadow-sm">
                     <span class="material-symbols-outlined text-xl text-primary">person</span>
                   </div>
-                  <div>
-                    <p class="text-sm font-semibold text-[#111418]">
+                  <div class="min-w-0">
+                    <p class="text-sm font-bold text-[#111418] truncate">
                       {{ booking.user?.name || 'Usuario' }}
                     </p>
-                    <p class="text-xs text-slate-600">
+                    <p class="text-xs text-slate-600 truncate">
                       {{ booking.user?.email || '' }}
                     </p>
                   </div>
                 </div>
               </td>
               <td class="px-6 py-4">
-                <p class="text-sm font-medium text-[#111418]">
+                <p class="text-sm font-bold text-[#111418]">
                   {{ booking.space?.name || 'Espacio' }}
                 </p>
               </td>
               <td class="px-6 py-4">
-                <p class="text-sm text-slate-900">
-                  {{ formatDate(booking.startTime) }}
-                </p>
+                <div class="flex flex-col">
+                  <p class="text-sm font-semibold text-slate-900">
+                    {{ formatDateShort(booking.startTime) }}
+                  </p>
+                  <p class="text-xs text-slate-500 mt-0.5">
+                    {{ booking.durationHours }}h de uso
+                  </p>
+                </div>
               </td>
               <td class="px-6 py-4">
-                <p class="text-sm text-slate-900">
-                  {{ formatTimeRange(booking.startTime, booking.endTime) }}
-                </p>
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-slate-400 !text-[18px]">schedule</span>
+                  <span class="text-sm font-medium text-slate-900">
+                    {{ formatTimeRange(booking.startTime, booking.endTime) }}
+                  </span>
+                </div>
               </td>
               <td class="px-6 py-4">
-                <span 
-                  class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold"
-                  :class="getStatusBadgeClass(booking.status)"
-                >
-                  {{ getStatusLabel(booking.status) }}
-                </span>
+                <div class="flex flex-col gap-1.5">
+                  <span 
+                    class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold w-fit"
+                    :class="getStatusBadgeClass(booking.status)"
+                  >
+                    <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
+                    {{ getStatusLabel(booking.status) }}
+                  </span>
+                  <span class="text-xs font-bold text-slate-900">
+                    {{ formatCurrency(booking.totalAmount || 0) }}
+                  </span>
+                </div>
               </td>
               <td class="px-6 py-4">
                 <div class="flex items-center justify-end gap-2">
