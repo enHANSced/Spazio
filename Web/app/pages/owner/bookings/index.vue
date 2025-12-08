@@ -17,6 +17,7 @@ useSeoMeta({
 
 const bookings = ref<Booking[]>([])
 const pendingTransfers = ref<Booking[]>([])
+const pendingBookings = ref<Booking[]>([])
 const spaces = ref<Space[]>([])
 const loading = ref(true)
 const error = ref('')
@@ -66,10 +67,11 @@ const loadBookings = async () => {
   error.value = ''
   
   try {
-    const [bookingsResponse, spacesResponse, pendingTransfersResponse] = await Promise.all([
+    const [bookingsResponse, spacesResponse, pendingTransfersResponse, pendingBookingsResponse] = await Promise.all([
       ownerBookingsService.getOwnerBookings(),
       ownerSpacesService.getMySpaces(),
-      ownerBookingsService.getPendingTransferVerifications()
+      ownerBookingsService.getPendingTransferVerifications(),
+      ownerBookingsService.getPendingBookings()
     ])
     
     if (bookingsResponse.success && bookingsResponse.data) {
@@ -82,6 +84,10 @@ const loadBookings = async () => {
 
     if (pendingTransfersResponse.success && pendingTransfersResponse.data) {
       pendingTransfers.value = pendingTransfersResponse.data
+    }
+
+    if (pendingBookingsResponse.success && pendingBookingsResponse.data) {
+      pendingBookings.value = pendingBookingsResponse.data
     }
   } catch (err: any) {
     error.value = err.data?.message || err.message || 'Error al cargar reservas'
@@ -268,6 +274,53 @@ onMounted(() => {
               <button
                 @click="handleViewDetail(transfer)"
                 class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 transition-colors flex items-center gap-1"
+              >
+                <span class="material-symbols-outlined !text-[18px]">visibility</span>
+                Revisar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pending Bookings Alert (reservas que requieren confirmación del owner) -->
+    <div v-if="pendingBookings.length > 0" class="rounded-xl border-2 border-blue-300 bg-blue-50 p-5">
+      <div class="flex items-start gap-4">
+        <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-blue-200">
+          <span class="material-symbols-outlined text-2xl text-blue-700">hourglass_empty</span>
+        </div>
+        <div class="flex-1">
+          <h3 class="text-lg font-bold text-blue-900">
+            {{ pendingBookings.length }} {{ pendingBookings.length === 1 ? 'reserva pendiente' : 'reservas pendientes' }} de confirmación
+          </h3>
+          <p class="mt-1 text-sm text-blue-800">
+            Los siguientes clientes han solicitado reservar tus espacios y están esperando tu confirmación.
+          </p>
+          
+          <div class="mt-4 space-y-3">
+            <div 
+              v-for="booking in pendingBookings" 
+              :key="booking._id"
+              class="flex items-center justify-between rounded-lg bg-white p-3 shadow-sm border border-blue-200"
+            >
+              <div class="flex items-center gap-3">
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
+                  <span class="material-symbols-outlined text-blue-600">person</span>
+                </div>
+                <div>
+                  <p class="font-semibold text-slate-900">{{ booking.user?.name || 'Usuario' }}</p>
+                  <p class="text-xs text-slate-600">
+                    {{ booking.space?.name }} · {{ formatDate(booking.startTime) }}
+                  </p>
+                  <p class="text-xs text-blue-600 font-medium">
+                    Método: {{ booking.paymentMethod === 'cash' ? 'Efectivo' : booking.paymentMethod === 'transfer' ? 'Transferencia' : 'Tarjeta' }}
+                  </p>
+                </div>
+              </div>
+              <button
+                @click="handleViewDetail(booking)"
+                class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors flex items-center gap-1"
               >
                 <span class="material-symbols-outlined !text-[18px]">visibility</span>
                 Revisar

@@ -44,6 +44,27 @@
               </span>
             </div>
 
+            <!-- Alerta de reserva pendiente de confirmación -->
+            <div v-if="booking.status === 'pending'" class="bg-amber-50 border-2 border-amber-300 rounded-xl p-4">
+              <div class="flex items-start gap-3">
+                <div class="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                  <span class="material-symbols-outlined text-amber-600">hourglass_empty</span>
+                </div>
+                <div class="flex-1">
+                  <p class="font-bold text-amber-900">Esta reserva requiere tu confirmación</p>
+                  <p class="text-sm text-amber-800 mt-1">
+                    El cliente ha solicitado reservar este espacio. Revisa los detalles y decide si aceptar o rechazar la reserva.
+                  </p>
+                  <p v-if="booking.paymentMethod === 'cash'" class="text-xs text-amber-700 mt-2">
+                    <span class="font-semibold">💰 Pago en efectivo:</span> El cliente pagará al momento de usar el espacio.
+                  </p>
+                  <p v-else-if="booking.paymentMethod === 'transfer' && booking.paymentStatus === 'pending'" class="text-xs text-amber-700 mt-2">
+                    <span class="font-semibold">🏦 Transferencia pendiente:</span> Esperando que el cliente suba el comprobante.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <!-- Usuario -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Cliente</label>
@@ -306,33 +327,55 @@
           </div>
 
           <!-- Actions -->
-          <div class="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 rounded-b-xl flex gap-3">
-            <!-- Cambiar estado de pago (solo si no es transferencia pendiente) -->
-            <button
-              v-if="booking.status !== 'cancelled' && booking.paymentStatus === 'pending' && booking.paymentMethod !== 'transfer'"
-              @click="handleMarkAsPaid"
-              :disabled="isProcessing"
-              class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Marcar como Pagada
-            </button>
+          <div class="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 rounded-b-xl">
+            <!-- Acciones para reservas pendientes de confirmación -->
+            <div v-if="booking.status === 'pending'" class="flex gap-3 mb-3">
+              <button
+                @click="handleConfirmBooking"
+                :disabled="isProcessing"
+                class="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                <span class="material-symbols-outlined !text-[20px]">check_circle</span>
+                {{ isProcessing ? 'Procesando...' : 'Confirmar Reserva' }}
+              </button>
+              <button
+                @click="showRejectBookingModal = true"
+                :disabled="isProcessing"
+                class="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                <span class="material-symbols-outlined !text-[20px]">cancel</span>
+                Rechazar Reserva
+              </button>
+            </div>
 
-            <!-- Cancelar reserva -->
-            <button
-              v-if="booking.status !== 'cancelled' && booking.status !== 'completed'"
-              @click="handleCancel"
-              :disabled="isProcessing"
-              class="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Cancelar Reserva
-            </button>
+            <div class="flex gap-3">
+              <!-- Cambiar estado de pago (solo si está confirmada y no es transferencia pendiente) -->
+              <button
+                v-if="booking.status === 'confirmed' && booking.paymentStatus === 'pending' && booking.paymentMethod !== 'transfer'"
+                @click="handleMarkAsPaid"
+                :disabled="isProcessing"
+                class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Marcar como Pagada
+              </button>
 
-            <button
-              @click="close"
-              class="px-4 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              Cerrar
-            </button>
+              <!-- Cancelar reserva -->
+              <button
+                v-if="booking.status !== 'cancelled' && booking.status !== 'completed' && booking.status !== 'pending'"
+                @click="handleCancel"
+                :disabled="isProcessing"
+                class="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancelar Reserva
+              </button>
+
+              <button
+                @click="close"
+                class="px-4 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -388,6 +431,57 @@
         </div>
       </div>
     </Transition>
+
+    <!-- Modal de rechazo de reserva -->
+    <Transition name="modal">
+      <div
+        v-if="showRejectBookingModal"
+        @click="showRejectBookingModal = false"
+        class="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4"
+      >
+        <div
+          @click.stop
+          class="bg-white rounded-xl shadow-2xl max-w-md w-full"
+        >
+          <div class="p-6">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+                <span class="material-symbols-outlined text-red-600 text-2xl">event_busy</span>
+              </div>
+              <h3 class="text-xl font-bold text-gray-900">Rechazar Reserva</h3>
+            </div>
+
+            <p class="text-gray-600 mb-4">
+              Por favor indica el motivo del rechazo. El cliente recibirá esta información:
+            </p>
+
+            <textarea
+              v-model="bookingRejectionReason"
+              placeholder="Ej: El espacio no está disponible en esa fecha, el horario solicitado no es posible, etc."
+              class="w-full rounded-lg border-2 border-gray-300 px-4 py-3 focus:border-red-500 focus:ring-4 focus:ring-red-100 resize-none"
+              rows="3"
+            ></textarea>
+
+            <div class="flex gap-3 mt-4">
+              <button
+                @click="showRejectBookingModal = false"
+                :disabled="isProcessing"
+                class="flex-1 px-4 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                @click="handleRejectBooking"
+                :disabled="isProcessing || !bookingRejectionReason.trim()"
+                class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {{ isProcessing ? 'Procesando...' : 'Rechazar Reserva' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </Teleport>
 </template>
 
@@ -412,6 +506,8 @@ const toast = useToast()
 const isProcessing = ref(false)
 const showRejectModal = ref(false)
 const rejectionReason = ref('')
+const showRejectBookingModal = ref(false)
+const bookingRejectionReason = ref('')
 
 const statusStyles: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -484,6 +580,8 @@ const close = () => {
   emit('update:modelValue', false)
   showRejectModal.value = false
   rejectionReason.value = ''
+  showRejectBookingModal.value = false
+  bookingRejectionReason.value = ''
 }
 
 const handleBackdropClick = () => {
@@ -558,6 +656,51 @@ const handleCancel = async () => {
     toast.error(error.data?.message || error.message || 'Error al cancelar la reserva')
   } finally {
     isProcessing.value = false
+  }
+}
+
+const handleConfirmBooking = async () => {
+  isProcessing.value = true
+  try {
+    const response = await ownerBookingsService.confirmBooking(props.booking._id)
+
+    if (response.success) {
+      toast.success('¡Reserva confirmada exitosamente!')
+      emit('updated')
+      close()
+    } else {
+      toast.error(response.message || 'Error al confirmar la reserva')
+    }
+  } catch (error: any) {
+    console.error('Error confirming booking:', error)
+    toast.error(error.data?.message || error.message || 'Error al confirmar la reserva')
+  } finally {
+    isProcessing.value = false
+  }
+}
+
+const handleRejectBooking = async () => {
+  isProcessing.value = true
+  try {
+    const response = await ownerBookingsService.rejectBooking(
+      props.booking._id,
+      bookingRejectionReason.value
+    )
+
+    if (response.success) {
+      toast.success('Reserva rechazada')
+      emit('updated')
+      close()
+    } else {
+      toast.error(response.message || 'Error al rechazar la reserva')
+    }
+  } catch (error: any) {
+    console.error('Error rejecting booking:', error)
+    toast.error(error.data?.message || error.message || 'Error al rechazar la reserva')
+  } finally {
+    isProcessing.value = false
+    showRejectBookingModal.value = false
+    bookingRejectionReason.value = ''
   }
 }
 </script>

@@ -66,6 +66,20 @@ class BookingsUseCase {
       throw new Error('El espacio no está disponible en el horario seleccionado');
     }
 
+    // Determinar estado inicial basado en método de pago
+    // - Tarjeta (simulada): confirmed + paid (pago inmediato)
+    // - Efectivo/Transferencia: pending + pending (requiere confirmación del owner)
+    const getInitialStatus = (method, payStatus) => {
+      // Si el pago ya está marcado como 'paid' (ej: tarjeta simulada), confirmar inmediatamente
+      if (payStatus === 'paid') {
+        return 'confirmed';
+      }
+      // Efectivo y transferencia empiezan como pendientes hasta que el owner confirme
+      return 'pending';
+    };
+
+    const initialStatus = getInitialStatus(paymentMethod, paymentStatus);
+
     // Preparar datos de la reserva
     const bookingData = {
       spaceId,
@@ -73,7 +87,7 @@ class BookingsUseCase {
       startTime: start,
       endTime: end,
       notes,
-      status: 'confirmed'
+      status: initialStatus
     };
 
     // Agregar campos de pago si se proporcionan
@@ -284,6 +298,7 @@ class BookingsUseCase {
 
     if (approved) {
       booking.paymentStatus = 'paid';
+      booking.status = 'confirmed'; // También confirmar la reserva
       booking.paidAt = new Date();
       booking.transferVerifiedAt = new Date();
       booking.transferVerifiedBy = ownerId;
@@ -303,6 +318,103 @@ class BookingsUseCase {
     await booking.save();
 
     return this.enrichBooking(booking);
+  }
+
+  /**
+   * Confirmar reserva pendiente (owner)
+   * Para reservas con pago en efectivo o que el owner quiera aprobar manualmente
+   */
+  async confirmBooking(bookingId, ownerId, markAsPaid = false) {
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      throw new Error('Reserva no encontrada');
+    }
+
+    // Verificar que el owner tiene un espacio asociado a esta reserva
+    const space = await Space.findByPk(booking.spaceId);
+    if (!space || space.ownerId !== ownerId) {
+      throw new Error('No tienes permiso para confirmar esta reserva');
+    }
+
+    // Solo se pueden confirmar reservas pendientes
+    if (booking.status !== 'pending') {
+      throw new Error(`No se puede confirmar una reserva con estado "${booking.status}"`);
+    }
+
+    // Confirmar la reserva
+    booking.status = 'confirmed';
+    booking.confirmedAt = new Date();
+    booking.confirmedBy = ownerId;
+
+    // Si el owner indica que ya recibió el pago (efectivo)
+    if (markAsPaid && booking.paymentStatus !== 'paid') {
+      booking.paymentStatus = 'paid';
+      booking.paidAt = new Date();
+    }
+
+    await booking.save();
+
+    return this.enrichBooking(booking);
+  }
+
+  /**
+   * Rechazar reserva pendiente (owner)
+   */
+  async rejectBooking(bookingId, ownerId, reason) {
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      throw new Error('Reserva no encontrada');
+    }
+
+    // Verificar que el owner tiene un espacio asociado a esta reserva
+    const space = await Space.findByPk(booking.spaceId);
+    if (!space || space.ownerId !== ownerId) {
+      throw new Error('No tienes permiso para rechazar esta reserva');
+    }
+
+    // Solo se pueden rechazar reservas pendientes
+    if (booking.status !== 'pending') {
+      throw new Error(`No se puede rechazar una reserva con estado "${booking.status}"`);
+    }
+
+    if (!reason || reason.trim().length === 0) {
+      throw new Error('Debe proporcionar una razón para rechazar la reserva');
+    }
+
+    // Rechazar = cancelar con razón
+    booking.status = 'cancelled';
+    booking.rejectedAt = new Date();
+    booking.rejectedBy = ownerId;
+    booking.rejectionReason = reason;
+
+    await booking.save();
+
+    return this.enrichBooking(booking);
+  }
+
+  /**
+   * Obtener reservas pendientes de confirmación (owner)
+   */
+  async getPendingBookings(ownerId) {
+    // Obtener todos los espacios del owner
+    const spaces = await Space.findAll({
+      where: { ownerId, isActive: true },
+      attributes: ['id']
+    });
+
+    const spaceIds = spaces.map(s => s.id);
+
+    if (spaceIds.length === 0) {
+      return [];
+    }
+
+    // Buscar reservas pendientes
+    const bookings = await Booking.find({
+      spaceId: { $in: spaceIds },
+      status: 'pending'
+    }).sort({ createdAt: 1 });
+
+    return Promise.all(bookings.map(b => this.enrichBooking(b)));
   }
 
   /**

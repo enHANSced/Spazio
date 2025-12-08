@@ -90,6 +90,27 @@ const bookingSchema = new mongoose.Schema({
   transferRejectionReason: {
     type: String,
     default: null
+  },
+  // Campos para confirmación/rechazo de reserva por owner
+  confirmedAt: {
+    type: Date,
+    default: null
+  },
+  confirmedBy: {
+    type: String,
+    default: null
+  },
+  rejectedAt: {
+    type: Date,
+    default: null
+  },
+  rejectedBy: {
+    type: String,
+    default: null
+  },
+  rejectionReason: {
+    type: String,
+    default: null
   }
 }, {
   timestamps: true

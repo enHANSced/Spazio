@@ -147,5 +147,65 @@ export const ownerBookingsService = {
     } catch (error: any) {
       return { success: false, message: extractApiErrorMessage(error) }
     }
+  },
+
+  /**
+   * Obtener reservas pendientes de confirmación (status='pending')
+   */
+  async getPendingBookings() {
+    const token = useCookie('spazio_token').value
+    if (!token) throw new Error('No autenticado')
+    
+    try {
+      const url = buildApiUrl('/bookings/owner/pending')
+      const response = await $fetch<BookingsApiResponse>(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      return { success: response.success, data: response.data, message: response.message }
+    } catch (error: any) {
+      return { success: false, data: [], message: extractApiErrorMessage(error) }
+    }
+  },
+
+  /**
+   * Confirmar una reserva pendiente
+   */
+  async confirmBooking(bookingId: string) {
+    const token = useCookie('spazio_token').value
+    if (!token) throw new Error('No autenticado')
+    
+    try {
+      const url = buildApiUrl(`/bookings/owner/${bookingId}/confirm`)
+      const response = await $fetch<{ success: boolean; data?: Booking; message?: string }>(url, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      return { success: response.success, data: response.data, message: response.message }
+    } catch (error: any) {
+      return { success: false, message: extractApiErrorMessage(error) }
+    }
+  },
+
+  /**
+   * Rechazar una reserva pendiente
+   */
+  async rejectBooking(bookingId: string, reason: string) {
+    const token = useCookie('spazio_token').value
+    if (!token) throw new Error('No autenticado')
+    
+    try {
+      const url = buildApiUrl(`/bookings/owner/${bookingId}/reject`)
+      const response = await $fetch<{ success: boolean; data?: Booking; message?: string }>(url, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+        body: { reason }
+      })
+
+      return { success: response.success, data: response.data, message: response.message }
+    } catch (error: any) {
+      return { success: false, message: extractApiErrorMessage(error) }
+    }
   }
 }

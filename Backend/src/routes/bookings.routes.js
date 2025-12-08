@@ -44,8 +44,17 @@ router.get('/my-bookings', validateGetMyBookings, handleValidationErrors, bookin
 // Obtener reservas de mis espacios (solo para owners verificados)
 router.get('/owner/bookings', isOwnerOrAdmin, isVerifiedOwner, bookingsController.getOwnerBookings);
 
+// Obtener reservas pendientes de confirmación (solo para owners verificados)
+router.get('/owner/pending', isOwnerOrAdmin, isVerifiedOwner, bookingsController.getPendingBookings);
+
 // Obtener reservas pendientes de verificación de transferencia (solo para owners verificados)
 router.get('/owner/pending-transfers', isOwnerOrAdmin, isVerifiedOwner, bookingsController.getPendingTransferVerifications);
+
+// Confirmar reserva pendiente (owner)
+router.patch('/owner/:id/confirm', validateBookingId, handleValidationErrors, isOwnerOrAdmin, isVerifiedOwner, bookingsController.confirmBooking);
+
+// Rechazar reserva pendiente (owner)
+router.patch('/owner/:id/reject', validateBookingId, handleValidationErrors, isOwnerOrAdmin, isVerifiedOwner, bookingsController.rejectBooking);
 
 // Obtener reservas por espacio (para calendario)
 router.get('/space/:spaceId', validateGetBySpace, handleValidationErrors, bookingsController.getBySpace);

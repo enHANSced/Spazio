@@ -137,6 +137,71 @@ class BookingsService {
     )
     return response.data
   }
+
+  /**
+   * Obtener reservas pendientes de confirmación (owner)
+   */
+  async getPendingBookings(): Promise<Booking[]> {
+    const response = await $fetch<BookingsApiResponse>(this.getApiUrl('/owner/pending'), {
+      headers: this.getHeaders()
+    })
+    return response.data
+  }
+
+  /**
+   * Obtener reservas pendientes de verificación de transferencia (owner)
+   */
+  async getPendingTransfers(): Promise<Booking[]> {
+    const response = await $fetch<BookingsApiResponse>(this.getApiUrl('/owner/pending-transfers'), {
+      headers: this.getHeaders()
+    })
+    return response.data
+  }
+
+  /**
+   * Confirmar reserva pendiente (owner)
+   */
+  async confirmBooking(id: string, markAsPaid: boolean = false): Promise<Booking> {
+    const response = await $fetch<{ success: boolean; data: Booking; message: string }>(
+      this.getApiUrl(`/owner/${id}/confirm`),
+      {
+        method: 'PATCH',
+        headers: this.getHeaders(),
+        body: { markAsPaid }
+      }
+    )
+    return response.data
+  }
+
+  /**
+   * Rechazar reserva pendiente (owner)
+   */
+  async rejectBooking(id: string, reason: string): Promise<Booking> {
+    const response = await $fetch<{ success: boolean; data: Booking; message: string }>(
+      this.getApiUrl(`/owner/${id}/reject`),
+      {
+        method: 'PATCH',
+        headers: this.getHeaders(),
+        body: { reason }
+      }
+    )
+    return response.data
+  }
+
+  /**
+   * Verificar comprobante de transferencia (owner)
+   */
+  async verifyTransfer(id: string, approved: boolean, rejectionReason?: string): Promise<Booking> {
+    const response = await $fetch<{ success: boolean; data: Booking; message: string }>(
+      this.getApiUrl(`/${id}/verify-transfer`),
+      {
+        method: 'PATCH',
+        headers: this.getHeaders(),
+        body: { approved, rejectionReason }
+      }
+    )
+    return response.data
+  }
 }
 
 export default new BookingsService()

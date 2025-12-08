@@ -339,6 +339,93 @@ class BookingsController {
       });
     }
   }
+
+  /**
+   * Obtener reservas pendientes de confirmación (owner)
+   */
+  async getPendingBookings(req, res) {
+    try {
+      const bookings = await bookingsUseCase.getPendingBookings(req.user.id);
+      res.status(200).json({
+        success: true,
+        data: bookings
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * Confirmar reserva pendiente (owner)
+   */
+  async confirmBooking(req, res) {
+    try {
+      const { id } = req.params;
+      const { markAsPaid } = req.body;
+
+      const booking = await bookingsUseCase.confirmBooking(
+        id,
+        req.user.id,
+        markAsPaid === true
+      );
+
+      res.status(200).json({
+        success: true,
+        message: markAsPaid 
+          ? 'Reserva confirmada y marcada como pagada' 
+          : 'Reserva confirmada exitosamente',
+        data: booking
+      });
+    } catch (error) {
+      console.error('Error confirming booking:', error);
+      const status = error.message.includes('permiso') ? 403 : 
+                     error.message.includes('no encontrada') ? 404 : 400;
+      res.status(status).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * Rechazar reserva pendiente (owner)
+   */
+  async rejectBooking(req, res) {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+
+      if (!reason || reason.trim().length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Debe proporcionar una razón para rechazar la reserva'
+        });
+      }
+
+      const booking = await bookingsUseCase.rejectBooking(
+        id,
+        req.user.id,
+        reason
+      );
+
+      res.status(200).json({
+        success: true,
+        message: 'Reserva rechazada',
+        data: booking
+      });
+    } catch (error) {
+      console.error('Error rejecting booking:', error);
+      const status = error.message.includes('permiso') ? 403 : 
+                     error.message.includes('no encontrada') ? 404 : 400;
+      res.status(status).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
 }
 
 module.exports = new BookingsController();
