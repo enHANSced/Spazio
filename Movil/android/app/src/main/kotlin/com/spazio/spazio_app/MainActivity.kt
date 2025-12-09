@@ -1,0 +1,5 @@
+package com.spazio.spazio_app
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity : FlutterActivity()
