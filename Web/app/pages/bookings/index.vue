@@ -470,94 +470,150 @@ const canCancel = (booking: Booking) => {
               </span>
             </div>
             
-            <div class="space-y-4">
-              <div
+            <div class="space-y-5">
+              <article
                 v-for="booking in upcomingBookings"
                 :key="booking._id"
-                class="group bg-white rounded-2xl p-6 shadow-sm ring-1 ring-black/5 hover:shadow-lg hover:ring-primary/20 transition-all cursor-pointer"
+                class="group relative overflow-hidden bg-white rounded-2xl shadow-lg ring-1 ring-black/5 hover:shadow-xl hover:shadow-primary/10 transition-all duration-300 cursor-pointer"
                 @click="viewBooking(booking._id)"
               >
-                <div class="flex flex-col lg:flex-row lg:items-center gap-5">
-                  <!-- Space Info -->
-                  <div class="flex-1">
-                    <div class="flex items-start justify-between mb-4">
-                      <div>
-                        <h3 class="text-lg font-bold text-gray-900 mb-1 group-hover:text-primary transition-colors">
+                <!-- Decorative gradient border on hover -->
+                <div class="absolute inset-0 rounded-2xl bg-gradient-to-r from-primary via-primary-dark to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style="padding: 2px;">
+                  <div class="h-full w-full rounded-2xl bg-white"></div>
+                </div>
+
+                <div class="relative p-6 lg:p-8">
+                  <div class="flex flex-col gap-6">
+                    <!-- Header Section -->
+                    <div class="flex items-start justify-between gap-4">
+                      <div class="flex-1 min-w-0">
+                        <h3 class="text-xl font-bold text-gray-900 mb-2 group-hover:text-primary transition-colors truncate">
                           {{ booking.space?.name || 'Espacio no disponible' }}
                         </h3>
-                        <p class="text-sm text-gray-500 flex items-center gap-1.5">
-                          <span class="material-symbols-outlined !text-[16px]">location_on</span>
+                        <p class="text-sm text-gray-600 flex items-center gap-2">
+                          <span class="material-symbols-outlined !text-[18px] text-gray-400">location_on</span>
                           {{ booking.space?.address || 'Dirección no disponible' }}
                         </p>
                       </div>
-                      <span
-                        class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"
-                        :class="getStatusColor(booking.status)"
+                      
+                      <!-- Status Badge con gradiente -->
+                      <div
+                        class="shrink-0 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-md"
+                        :class="booking.status === 'confirmed' 
+                          ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-emerald-500/30'
+                          : 'bg-gradient-to-r from-amber-400 to-amber-500 text-white shadow-amber-500/30'"
                       >
-                        <span class="material-symbols-outlined !text-[14px]">{{ getStatusIcon(booking.status) }}</span>
+                        <span class="material-symbols-outlined !text-[16px]">{{ getStatusIcon(booking.status) }}</span>
                         {{ getStatusLabel(booking.status) }}
-                      </span>
-                    </div>
-
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div class="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
-                        <span class="material-symbols-outlined text-primary">event</span>
-                        <div>
-                          <p class="text-xs text-gray-500">Fecha</p>
-                          <p class="font-semibold text-gray-900 text-sm">{{ formatDate(booking.startTime) }}</p>
-                        </div>
-                      </div>
-
-                      <div class="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
-                        <span class="material-symbols-outlined text-primary">schedule</span>
-                        <div>
-                          <p class="text-xs text-gray-500">Horario</p>
-                          <p class="font-semibold text-gray-900 text-sm">{{ formatTime(booking.startTime) }} - {{ formatTime(booking.endTime) }}</p>
-                        </div>
-                      </div>
-
-                      <div class="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
-                        <span class="material-symbols-outlined text-primary">payments</span>
-                        <div>
-                          <p class="text-xs text-gray-500">Total</p>
-                          <p class="font-semibold text-gray-900 text-sm">{{ formatCurrency(booking.totalAmount) }}</p>
-                        </div>
-                      </div>
-
-                      <div class="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
-                        <span class="material-symbols-outlined" :class="booking.paymentStatus === 'paid' ? 'text-emerald-600' : 'text-amber-500'">
-                          {{ booking.paymentStatus === 'paid' ? 'check_circle' : 'schedule' }}
-                        </span>
-                        <div>
-                          <p class="text-xs text-gray-500">Pago</p>
-                          <p class="font-semibold text-gray-900 text-sm">{{ getPaymentStatusLabel(booking.paymentStatus) }}</p>
-                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <!-- Actions -->
-                  <div class="flex lg:flex-col gap-3">
-                    <button
-                      type="button"
-                      class="flex-1 lg:flex-none px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-primary-dark text-white text-sm font-semibold shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all flex items-center justify-center gap-2"
-                      @click.stop="viewBooking(booking._id)"
-                    >
-                      <span class="material-symbols-outlined !text-[18px]">visibility</span>
-                      Ver detalles
-                    </button>
-                    <button
-                      v-if="canCancel(booking)"
-                      type="button"
-                      class="flex-1 lg:flex-none px-5 py-2.5 rounded-xl bg-rose-50 text-rose-700 text-sm font-semibold ring-1 ring-rose-200 hover:bg-rose-100 transition-all flex items-center justify-center gap-2"
-                      @click.stop="cancelBooking(booking._id)"
-                    >
-                      <span class="material-symbols-outlined !text-[18px]">cancel</span>
-                      Cancelar
-                    </button>
+                    <!-- Info Grid con diseño premium -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <!-- Fecha -->
+                      <div class="group/card relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-50 to-blue-100/50 p-4 ring-1 ring-blue-200/50 hover:shadow-md transition-all">
+                        <div class="absolute -right-2 -top-2 h-16 w-16 rounded-full bg-gradient-to-br from-blue-400/10 to-blue-600/10 blur-2xl"></div>
+                        <div class="relative flex items-center gap-3">
+                          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/25">
+                            <span class="material-symbols-outlined text-white !text-[20px]">event</span>
+                          </div>
+                          <div class="flex-1 min-w-0">
+                            <p class="text-xs font-medium text-blue-600 uppercase tracking-wide mb-0.5">Fecha</p>
+                            <p class="font-bold text-gray-900 text-sm truncate">{{ formatDate(booking.startTime) }}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Horario -->
+                      <div class="group/card relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-50 to-purple-100/50 p-4 ring-1 ring-purple-200/50 hover:shadow-md transition-all">
+                        <div class="absolute -right-2 -top-2 h-16 w-16 rounded-full bg-gradient-to-br from-purple-400/10 to-purple-600/10 blur-2xl"></div>
+                        <div class="relative flex items-center gap-3">
+                          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 shadow-lg shadow-purple-500/25">
+                            <span class="material-symbols-outlined text-white !text-[20px]">schedule</span>
+                          </div>
+                          <div class="flex-1 min-w-0">
+                            <p class="text-xs font-medium text-purple-600 uppercase tracking-wide mb-0.5">Horario</p>
+                            <p class="font-bold text-gray-900 text-sm truncate">{{ formatTime(booking.startTime) }} - {{ formatTime(booking.endTime) }}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Total -->
+                      <div class="group/card relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/50 p-4 ring-1 ring-emerald-200/50 hover:shadow-md transition-all">
+                        <div class="absolute -right-2 -top-2 h-16 w-16 rounded-full bg-gradient-to-br from-emerald-400/10 to-emerald-600/10 blur-2xl"></div>
+                        <div class="relative flex items-center gap-3">
+                          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/25">
+                            <span class="material-symbols-outlined text-white !text-[20px]">payments</span>
+                          </div>
+                          <div class="flex-1 min-w-0">
+                            <p class="text-xs font-medium text-emerald-600 uppercase tracking-wide mb-0.5">Total</p>
+                            <p class="font-bold text-gray-900 text-sm truncate">{{ formatCurrency(booking.totalAmount) }}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Estado de Pago -->
+                      <div 
+                        class="group/card relative overflow-hidden rounded-xl p-4 ring-1 hover:shadow-md transition-all"
+                        :class="booking.paymentStatus === 'paid' 
+                          ? 'bg-gradient-to-br from-teal-50 to-teal-100/50 ring-teal-200/50' 
+                          : 'bg-gradient-to-br from-amber-50 to-amber-100/50 ring-amber-200/50'"
+                      >
+                        <div 
+                          class="absolute -right-2 -top-2 h-16 w-16 rounded-full blur-2xl"
+                          :class="booking.paymentStatus === 'paid' 
+                            ? 'bg-gradient-to-br from-teal-400/10 to-teal-600/10' 
+                            : 'bg-gradient-to-br from-amber-400/10 to-amber-600/10'"
+                        ></div>
+                        <div class="relative flex items-center gap-3">
+                          <div 
+                            class="flex h-10 w-10 items-center justify-center rounded-lg shadow-lg"
+                            :class="booking.paymentStatus === 'paid' 
+                              ? 'bg-gradient-to-br from-teal-500 to-teal-600 shadow-teal-500/25' 
+                              : 'bg-gradient-to-br from-amber-400 to-amber-500 shadow-amber-500/25'"
+                          >
+                            <span class="material-symbols-outlined text-white !text-[20px]">
+                              {{ booking.paymentStatus === 'paid' ? 'check_circle' : 'schedule' }}
+                            </span>
+                          </div>
+                          <div class="flex-1 min-w-0">
+                            <p 
+                              class="text-xs font-medium uppercase tracking-wide mb-0.5"
+                              :class="booking.paymentStatus === 'paid' ? 'text-teal-600' : 'text-amber-600'"
+                            >
+                              Pago
+                            </p>
+                            <p class="font-bold text-gray-900 text-sm truncate">{{ getPaymentStatusLabel(booking.paymentStatus) }}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Actions Section -->
+                    <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-100">
+                      <button
+                        type="button"
+                        class="group/btn flex-1 sm:flex-none relative overflow-hidden px-6 py-3 rounded-xl bg-gradient-to-r from-primary via-primary-dark to-blue-600 text-white font-bold shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all duration-300 flex items-center justify-center gap-2"
+                        @click.stop="viewBooking(booking._id)"
+                      >
+                        <span class="material-symbols-outlined !text-[20px]">visibility</span>
+                        Ver detalles
+                        <span class="material-symbols-outlined !text-[20px] transition-transform group-hover/btn:translate-x-1">arrow_forward</span>
+                      </button>
+                      
+                      <button
+                        v-if="canCancel(booking)"
+                        type="button"
+                        class="group/btn flex-1 sm:flex-none px-6 py-3 rounded-xl bg-gradient-to-r from-rose-50 to-rose-100 text-rose-700 font-bold ring-2 ring-rose-200 hover:from-rose-100 hover:to-rose-200 hover:ring-rose-300 transition-all duration-300 flex items-center justify-center gap-2"
+                        @click.stop="cancelBooking(booking._id)"
+                      >
+                        <span class="material-symbols-outlined !text-[20px]">cancel</span>
+                        Cancelar reserva
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </article>
             </div>
           </div>
 
@@ -573,73 +629,90 @@ const canCancel = (booking: Booking) => {
               </span>
             </div>
             
-            <div class="space-y-4">
-              <div
+            <div class="space-y-5">
+              <article
                 v-for="booking in pastBookings"
                 :key="booking._id"
-                class="group bg-white rounded-2xl p-6 shadow-sm ring-1 ring-black/5 opacity-80 hover:opacity-100 hover:shadow-md transition-all cursor-pointer"
+                class="group relative overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100/50 rounded-2xl shadow-md ring-1 ring-gray-200/50 hover:shadow-lg hover:from-white hover:to-gray-50 transition-all duration-300 cursor-pointer"
                 @click="viewBooking(booking._id)"
               >
-                <div class="flex flex-col lg:flex-row lg:items-center gap-5">
-                  <!-- Space Info -->
-                  <div class="flex-1">
-                    <div class="flex items-start justify-between mb-4">
-                      <div>
-                        <h3 class="text-lg font-bold text-gray-900 mb-1">{{ booking.space?.name || 'Espacio no disponible' }}</h3>
-                        <p class="text-sm text-gray-500 flex items-center gap-1.5">
-                          <span class="material-symbols-outlined !text-[16px]">location_on</span>
+                <div class="p-6 lg:p-8">
+                  <div class="flex flex-col gap-5">
+                    <!-- Header Section -->
+                    <div class="flex items-start justify-between gap-4">
+                      <div class="flex-1 min-w-0">
+                        <h3 class="text-lg font-bold text-gray-800 mb-2 truncate">
+                          {{ booking.space?.name || 'Espacio no disponible' }}
+                        </h3>
+                        <p class="text-sm text-gray-500 flex items-center gap-2">
+                          <span class="material-symbols-outlined !text-[18px] text-gray-400">location_on</span>
                           {{ booking.space?.address || 'Dirección no disponible' }}
                         </p>
                       </div>
-                      <span
-                        class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"
-                        :class="getStatusColor(booking.status)"
+                      
+                      <!-- Status Badge -->
+                      <div
+                        class="shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 ring-1"
+                        :class="booking.status === 'cancelled' 
+                          ? 'bg-gray-100 text-gray-600 ring-gray-300' 
+                          : 'bg-gray-200 text-gray-700 ring-gray-400'"
                       >
                         <span class="material-symbols-outlined !text-[14px]">{{ getStatusIcon(booking.status) }}</span>
                         {{ getStatusLabel(booking.status) }}
-                      </span>
-                    </div>
-
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      <div class="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
-                        <span class="material-symbols-outlined text-gray-400">event</span>
-                        <div>
-                          <p class="text-xs text-gray-500">Fecha</p>
-                          <p class="font-semibold text-gray-900 text-sm">{{ formatDate(booking.startTime) }}</p>
-                        </div>
-                      </div>
-
-                      <div class="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
-                        <span class="material-symbols-outlined text-gray-400">schedule</span>
-                        <div>
-                          <p class="text-xs text-gray-500">Horario</p>
-                          <p class="font-semibold text-gray-900 text-sm">{{ formatTime(booking.startTime) }} - {{ formatTime(booking.endTime) }}</p>
-                        </div>
-                      </div>
-
-                      <div class="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
-                        <span class="material-symbols-outlined text-gray-400">payments</span>
-                        <div>
-                          <p class="text-xs text-gray-500">Total</p>
-                          <p class="font-semibold text-gray-900 text-sm">{{ formatCurrency(booking.totalAmount) }}</p>
-                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <!-- Actions -->
-                  <div>
-                    <button
-                      type="button"
-                      class="px-5 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
-                      @click.stop="viewBooking(booking._id)"
-                    >
-                      <span class="material-symbols-outlined !text-[18px]">visibility</span>
-                      Ver detalles
-                    </button>
+                    <!-- Info Grid simplificado -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <!-- Fecha -->
+                      <div class="flex items-center gap-3 p-3 rounded-xl bg-white/60 ring-1 ring-gray-200">
+                        <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-200">
+                          <span class="material-symbols-outlined text-gray-600 !text-[18px]">event</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Fecha</p>
+                          <p class="font-bold text-gray-800 text-sm truncate">{{ formatDate(booking.startTime) }}</p>
+                        </div>
+                      </div>
+
+                      <!-- Horario -->
+                      <div class="flex items-center gap-3 p-3 rounded-xl bg-white/60 ring-1 ring-gray-200">
+                        <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-200">
+                          <span class="material-symbols-outlined text-gray-600 !text-[18px]">schedule</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Horario</p>
+                          <p class="font-bold text-gray-800 text-sm truncate">{{ formatTime(booking.startTime) }} - {{ formatTime(booking.endTime) }}</p>
+                        </div>
+                      </div>
+
+                      <!-- Total -->
+                      <div class="flex items-center gap-3 p-3 rounded-xl bg-white/60 ring-1 ring-gray-200">
+                        <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-200">
+                          <span class="material-symbols-outlined text-gray-600 !text-[18px]">payments</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total</p>
+                          <p class="font-bold text-gray-800 text-sm truncate">{{ formatCurrency(booking.totalAmount) }}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Actions Section -->
+                    <div class="pt-3 border-t border-gray-200">
+                      <button
+                        type="button"
+                        class="group/btn w-full sm:w-auto px-6 py-2.5 rounded-xl bg-white text-gray-700 font-semibold ring-1 ring-gray-300 hover:bg-gray-50 hover:ring-gray-400 transition-all flex items-center justify-center gap-2"
+                        @click.stop="viewBooking(booking._id)"
+                      >
+                        <span class="material-symbols-outlined !text-[18px]">visibility</span>
+                        Ver detalles
+                        <span class="material-symbols-outlined !text-[18px] transition-transform group-hover/btn:translate-x-1">arrow_forward</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </article>
             </div>
           </div>
         </div>
