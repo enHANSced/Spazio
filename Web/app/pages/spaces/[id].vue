@@ -643,98 +643,103 @@ const formatNumber = (value: number) => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30">
     <!-- Loading -->
     <div v-if="pending" class="px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto">
-      <div class="animate-pulse space-y-6">
-        <div class="h-8 w-32 bg-gray-200 rounded"></div>
-        <div class="h-96 bg-gray-200 rounded-xl"></div>
+      <div class="animate-pulse space-y-8">
+        <div class="flex items-center gap-4">
+          <div class="h-10 w-10 rounded-xl bg-gray-200"></div>
+          <div class="h-6 w-32 bg-gray-200 rounded-lg"></div>
+        </div>
+        <div class="h-[500px] bg-gradient-to-br from-gray-200 to-gray-300 rounded-2xl"></div>
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div class="lg:col-span-2 space-y-6">
-            <div class="h-64 bg-gray-200 rounded-lg"></div>
+            <div class="h-64 bg-gray-200 rounded-2xl"></div>
+            <div class="h-48 bg-gray-200 rounded-2xl"></div>
           </div>
-          <div class="h-96 bg-gray-200 rounded-lg"></div>
+          <div class="h-[500px] bg-gray-200 rounded-2xl"></div>
         </div>
       </div>
     </div>
 
     <!-- Error -->
     <div v-else-if="error || !space" class="px-4 sm:px-6 lg:px-8 py-16 max-w-4xl mx-auto">
-      <div class="text-center">
-        <div class="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-red-100">
-          <span class="material-symbols-outlined text-4xl text-red-600">error</span>
+      <div class="text-center bg-white rounded-2xl shadow-sm ring-1 ring-black/5 p-12">
+        <div class="mx-auto flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/30">
+          <span class="material-symbols-outlined text-5xl text-white">error</span>
         </div>
-        <h2 class="mt-6 text-2xl font-bold text-gray-900">Espacio no encontrado</h2>
-        <p class="mt-2 text-gray-600">El espacio que buscas no existe o no está disponible.</p>
+        <h2 class="mt-8 text-3xl font-black text-gray-900">Espacio no encontrado</h2>
+        <p class="mt-3 text-gray-500 text-lg">El espacio que buscas no existe o no está disponible.</p>
         <button
           type="button"
-          class="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-white hover:bg-primary/90"
+          class="mt-8 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-primary-dark px-8 py-3 font-bold text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all"
           @click="goBack"
         >
-          <span class="material-symbols-outlined !text-[18px]">arrow_back</span>
+          <span class="material-symbols-outlined !text-[20px]">arrow_back</span>
           Volver a inicio
         </button>
       </div>
     </div>
 
     <!-- Contenido principal -->
-    <div v-else class="px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto space-y-6">
+    <div v-else class="px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto space-y-8">
       <!-- Breadcrumb y botón volver -->
       <div class="flex items-center gap-4">
         <button
           type="button"
-          class="inline-flex items-center gap-2 text-gray-600 hover:text-primary transition"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white shadow-sm ring-1 ring-black/5 text-gray-600 hover:text-primary hover:ring-primary/30 transition-all"
           @click="goBack"
         >
           <span class="material-symbols-outlined">arrow_back</span>
-          <span class="text-sm font-medium">Volver</span>
+          <span class="text-sm font-semibold">Volver</span>
         </button>
       </div>
 
       <!-- Título y metadatos -->
-      <div class="space-y-4">
+      <div class="space-y-5">
         <div>
-          <h1 class="text-3xl lg:text-4xl font-black text-gray-900 leading-tight">
+          <h1 class="text-4xl lg:text-5xl font-black text-gray-900 leading-tight">
             {{ space.name }}
           </h1>
-          <div class="mt-3 flex flex-wrap items-center gap-3 text-sm">
-            <div class="inline-flex items-center gap-1.5 bg-primary/10 text-primary px-3 py-1.5 rounded-full font-medium">
-              <span class="material-symbols-outlined !text-[18px]">group</span>
+          <div class="mt-4 flex flex-wrap items-center gap-3">
+            <div class="inline-flex items-center gap-2 bg-gradient-to-r from-primary/10 to-blue-500/10 text-primary px-4 py-2 rounded-xl font-bold">
+              <span class="material-symbols-outlined !text-[20px]">group</span>
               <span>{{ formatNumber(space.capacity) }} personas</span>
             </div>
-            <div class="inline-flex items-center gap-1.5 bg-green-100 text-green-700 px-3 py-1.5 rounded-full font-medium">
-              <span class="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+            <div class="inline-flex items-center gap-2 bg-gradient-to-r from-green-500/10 to-emerald-500/10 text-green-700 px-4 py-2 rounded-xl font-bold">
+              <span class="flex h-2.5 w-2.5 rounded-full bg-green-500 animate-pulse"></span>
               <span>Disponible ahora</span>
             </div>
-            <div class="inline-flex items-center gap-1.5 text-gray-600">
-              <span class="material-symbols-outlined !text-[18px]">location_on</span>
-              <span>{{ space.city }}{{ space.state ? `, ${space.state}` : '' }}</span>
+            <div class="inline-flex items-center gap-2 text-gray-600 bg-gray-100 px-4 py-2 rounded-xl">
+              <span class="material-symbols-outlined !text-[20px]">location_on</span>
+              <span class="font-medium">{{ space.city }}{{ space.state ? `, ${space.state}` : '' }}</span>
             </div>
           </div>
           
-          <div v-if="space.address" class="mt-2 text-sm text-gray-500 flex items-center gap-1.5">
-            <span class="material-symbols-outlined !text-[16px]">map</span>
+          <div v-if="space.address" class="mt-3 text-sm text-gray-500 flex items-center gap-2">
+            <span class="material-symbols-outlined !text-[18px]">map</span>
             {{ space.address }}
           </div>
         </div>
 
         <!-- Info del propietario en header -->
-        <div class="flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <div class="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 flex-shrink-0">
-            <span class="material-symbols-outlined text-2xl text-primary">store</span>
+        <div class="flex items-center gap-4 p-5 bg-white rounded-2xl shadow-sm ring-1 ring-black/5">
+          <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary-dark shadow-lg shadow-primary/25 flex-shrink-0">
+            <span class="material-symbols-outlined text-3xl text-white">store</span>
           </div>
           <div class="flex-1 min-w-0">
-            <p class="font-semibold text-gray-900 truncate">{{ ownerName }}</p>
-            <p class="text-xs text-gray-600">Propietario verificado</p>
+            <p class="font-bold text-gray-900 text-lg truncate">{{ ownerName }}</p>
+            <p class="text-sm text-gray-500">Propietario verificado</p>
           </div>
-          <div class="flex items-center gap-1 text-sm">
-            <span class="material-symbols-outlined !text-[18px] text-yellow-500">verified</span>
+          <div class="flex items-center gap-1 bg-green-100 px-3 py-1.5 rounded-full">
+            <span class="material-symbols-outlined !text-[18px] text-green-600">verified</span>
+            <span class="text-xs font-bold text-green-700">Verificado</span>
           </div>
         </div>
       </div>
 
       <!-- Galería de imágenes -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-2 rounded-xl overflow-hidden h-[400px] md:h-[500px]">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-3 rounded-2xl overflow-hidden h-[420px] md:h-[520px] ring-1 ring-black/5">
         <!-- Imagen principal con controles de navegación -->
         <div class="md:col-span-3 h-full relative group/gallery">
           <div v-if="hasRealImage" class="h-full">
@@ -750,49 +755,49 @@ const formatNumber = (value: number) => {
               <button
                 type="button"
                 @click="prevImage"
-                class="absolute left-4 top-1/2 -translate-y-1/2 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-gray-800 shadow-xl opacity-0 group-hover/gallery:opacity-100 hover:bg-white hover:scale-110 transition-all duration-200"
+                class="absolute left-4 top-1/2 -translate-y-1/2 z-10 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/95 text-gray-800 shadow-2xl opacity-0 group-hover/gallery:opacity-100 hover:bg-white hover:scale-110 transition-all duration-200 ring-1 ring-black/5"
                 aria-label="Imagen anterior"
               >
-                <span class="material-symbols-outlined !text-[28px]">chevron_left</span>
+                <span class="material-symbols-outlined !text-[32px]">chevron_left</span>
               </button>
 
               <!-- Botón siguiente -->
               <button
                 type="button"
                 @click="nextImage"
-                class="absolute right-4 top-1/2 -translate-y-1/2 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-gray-800 shadow-xl opacity-0 group-hover/gallery:opacity-100 hover:bg-white hover:scale-110 transition-all duration-200"
+                class="absolute right-4 top-1/2 -translate-y-1/2 z-10 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/95 text-gray-800 shadow-2xl opacity-0 group-hover/gallery:opacity-100 hover:bg-white hover:scale-110 transition-all duration-200 ring-1 ring-black/5"
                 aria-label="Imagen siguiente"
               >
-                <span class="material-symbols-outlined !text-[28px]">chevron_right</span>
+                <span class="material-symbols-outlined !text-[32px]">chevron_right</span>
               </button>
 
               <!-- Contador de imágenes -->
-              <div class="absolute bottom-4 right-4 z-10 bg-black/70 text-white px-3 py-1.5 rounded-full text-sm font-medium backdrop-blur">
+              <div class="absolute bottom-4 right-4 z-10 bg-black/80 text-white px-4 py-2 rounded-xl text-sm font-bold backdrop-blur-sm">
                 {{ currentImageIndex + 1 }} / {{ images.length }}
               </div>
             </template>
           </div>
           <div v-else class="h-full bg-gradient-to-br" :class="placeholderImage">
-            <div class="h-full flex items-center justify-center bg-black/10">
+            <div class="h-full flex items-center justify-center bg-black/20">
               <div class="text-center text-white">
-                <span class="material-symbols-outlined text-8xl opacity-60">home_work</span>
-                <p class="mt-4 text-xl font-semibold">{{ space.name }}</p>
+                <span class="material-symbols-outlined text-8xl opacity-70">home_work</span>
+                <p class="mt-4 text-2xl font-bold">{{ space.name }}</p>
               </div>
             </div>
           </div>
         </div>
 
         <!-- Miniaturas de imágenes reales -->
-        <div v-if="hasRealImage && images.length > 0" class="hidden md:flex md:flex-col gap-2 h-full overflow-y-auto custom-scrollbar">
+        <div v-if="hasRealImage && images.length > 0" class="hidden md:flex md:flex-col gap-3 h-full overflow-y-auto custom-scrollbar p-1">
           <button
             v-for="(img, index) in images"
             :key="index"
             type="button"
             @click="selectImage(index)"
             :class="[
-              'relative flex-shrink-0 rounded-lg overflow-hidden transition-all duration-200 hover:ring-4 hover:ring-primary/50',
-              index === currentImageIndex ? 'ring-4 ring-primary' : '',
-              images.length === 1 ? 'h-full' : images.length === 2 ? 'h-[calc(50%-4px)]' : 'h-40'
+              'relative flex-shrink-0 rounded-xl overflow-hidden transition-all duration-200',
+              index === currentImageIndex ? 'ring-4 ring-primary shadow-lg shadow-primary/30' : 'ring-1 ring-black/10 hover:ring-primary/50',
+              images.length === 1 ? 'h-full' : images.length === 2 ? 'h-[calc(50%-6px)]' : 'h-44'
             ]"
           >
             <img 
@@ -805,20 +810,20 @@ const formatNumber = (value: number) => {
               v-if="index === currentImageIndex"
               class="absolute inset-0 bg-primary/20 flex items-center justify-center"
             >
-              <div class="bg-white rounded-full p-1">
-                <span class="material-symbols-outlined text-primary !text-[20px]">check_circle</span>
+              <div class="bg-white rounded-full p-1.5 shadow-lg">
+                <span class="material-symbols-outlined text-primary !text-[24px]">check_circle</span>
               </div>
             </div>
           </button>
         </div>
 
         <!-- Miniaturas placeholder (solo si no hay imágenes reales) -->
-        <div v-else class="hidden md:grid md:grid-rows-2 gap-2 h-full">
-          <div class="bg-gradient-to-br from-gray-300 to-gray-400 rounded-lg flex items-center justify-center">
-            <span class="material-symbols-outlined text-4xl text-white opacity-50">photo_camera</span>
+        <div v-else class="hidden md:grid md:grid-rows-2 gap-3 h-full p-1">
+          <div class="bg-gradient-to-br from-gray-200 to-gray-300 rounded-xl flex items-center justify-center">
+            <span class="material-symbols-outlined text-5xl text-white opacity-60">photo_camera</span>
           </div>
-          <div class="bg-gradient-to-br from-gray-300 to-gray-400 rounded-lg flex items-center justify-center">
-            <span class="material-symbols-outlined text-4xl text-white opacity-50">photo_camera</span>
+          <div class="bg-gradient-to-br from-gray-200 to-gray-300 rounded-xl flex items-center justify-center">
+            <span class="material-symbols-outlined text-5xl text-white opacity-60">photo_camera</span>
           </div>
         </div>
       </div>
@@ -828,71 +833,77 @@ const formatNumber = (value: number) => {
         <!-- Columna izquierda: Detalles -->
         <div class="lg:col-span-2 space-y-8">
           <!-- Descripción -->
-          <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-200">
-            <div class="flex items-center gap-3 mb-6">
-              <div class="h-10 w-1 bg-primary rounded-full"></div>
+          <div class="bg-white rounded-2xl p-8 shadow-sm ring-1 ring-black/5">
+            <div class="flex items-center gap-4 mb-6">
+              <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dark shadow-lg shadow-primary/25">
+                <span class="material-symbols-outlined text-white text-2xl">description</span>
+              </div>
               <h2 class="text-2xl font-bold text-gray-900">Acerca de este espacio</h2>
             </div>
             
-            <p class="text-gray-700 leading-relaxed text-lg">
+            <p class="text-gray-600 leading-relaxed text-lg">
               {{ space.description || 'Este espacio está diseñado para ofrecer el ambiente perfecto para tus reuniones, eventos o sesiones de trabajo. Con instalaciones modernas y servicios completos, garantizamos una experiencia profesional y cómoda para ti y tu equipo.' }}
             </p>
             
             <div class="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div class="flex flex-col items-center text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-xl">
-                <div class="flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 mb-3">
-                  <span class="material-symbols-outlined text-white text-2xl">group</span>
+              <div class="flex flex-col items-center text-center p-5 bg-white rounded-2xl ring-1 ring-black/5 shadow-sm">
+                <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 mb-4 shadow-lg shadow-blue-500/30">
+                  <span class="material-symbols-outlined text-white text-3xl">group</span>
                 </div>
-                <p class="text-xs text-gray-600 uppercase font-semibold mb-1">Capacidad</p>
-                <p class="text-2xl font-bold text-gray-900">{{ formatNumber(space.capacity) }}</p>
-                <p class="text-xs text-gray-600">personas</p>
+                <p class="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Capacidad</p>
+                <p class="text-3xl font-black text-gray-900">{{ formatNumber(space.capacity) }}</p>
+                <p class="text-sm text-gray-500">personas</p>
               </div>
               
-              <div class="flex flex-col items-center text-center p-4 bg-gradient-to-br from-green-50 to-green-100/50 rounded-xl">
-                <div class="flex h-14 w-14 items-center justify-center rounded-full bg-green-600 mb-3">
-                  <span class="material-symbols-outlined text-white text-2xl">schedule</span>
+              <div class="flex flex-col items-center text-center p-5 bg-white rounded-2xl ring-1 ring-black/5 shadow-sm">
+                <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 mb-4 shadow-lg shadow-green-500/30">
+                  <span class="material-symbols-outlined text-white text-3xl">schedule</span>
                 </div>
-                <p class="text-xs text-gray-600 uppercase font-semibold mb-1">Mínimo</p>
-                <p class="text-2xl font-bold text-gray-900">1</p>
-                <p class="text-xs text-gray-600">hora</p>
+                <p class="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Mínimo</p>
+                <p class="text-3xl font-black text-gray-900">1</p>
+                <p class="text-sm text-gray-500">hora</p>
               </div>
 
-              <div class="flex flex-col items-center text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-xl">
-                <div class="flex h-14 w-14 items-center justify-center rounded-full bg-purple-600 mb-3">
-                  <span class="material-symbols-outlined text-white text-2xl">reply</span>
+              <div class="flex flex-col items-center text-center p-5 bg-white rounded-2xl ring-1 ring-black/5 shadow-sm">
+                <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 mb-4 shadow-lg shadow-purple-500/30">
+                  <span class="material-symbols-outlined text-white text-3xl">reply</span>
                 </div>
-                <p class="text-xs text-gray-600 uppercase font-semibold mb-1">Respuesta</p>
-                <p class="text-2xl font-bold text-gray-900">&lt;1</p>
-                <p class="text-xs text-gray-600">hora</p>
+                <p class="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Respuesta</p>
+                <p class="text-3xl font-black text-gray-900">&lt;1</p>
+                <p class="text-sm text-gray-500">hora</p>
               </div>
             </div>
           </div>
 
           <!-- Características -->
-          <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-200">
-            <div class="flex items-center gap-3 mb-6">
-              <div class="h-10 w-1 bg-primary rounded-full"></div>
+          <div class="bg-white rounded-2xl p-8 shadow-sm ring-1 ring-black/5">
+            <div class="flex items-center gap-4 mb-6">
+              <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dark shadow-lg shadow-primary/25">
+                <span class="material-symbols-outlined text-white text-2xl">check_circle</span>
+              </div>
               <h2 class="text-2xl font-bold text-gray-900">Lo que incluye</h2>
             </div>
             
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div 
                 v-for="feature in features" 
                 :key="feature.icon"
-                class="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100/50 border border-gray-200 hover:border-primary hover:shadow-md transition-all duration-200"
+                class="flex items-center gap-4 p-4 rounded-xl bg-gray-50/80 ring-1 ring-black/5 hover:ring-primary/30 hover:shadow-md hover:bg-white transition-all duration-200"
               >
-                <div class="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 flex-shrink-0">
+                <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-blue-500/10 flex-shrink-0">
                   <span class="material-symbols-outlined text-primary text-xl">{{ feature.icon }}</span>
                 </div>
-                <span class="text-gray-900 font-semibold">{{ feature.label }}</span>
+                <span class="text-gray-800 font-semibold">{{ feature.label }}</span>
               </div>
             </div>
 
-            <div class="mt-6 p-4 bg-green-50 border border-green-200 rounded-xl">
-              <div class="flex items-start gap-3">
-                <span class="material-symbols-outlined text-green-600 text-2xl flex-shrink-0">verified</span>
+            <div class="mt-6 p-5 bg-gradient-to-r from-green-50 to-emerald-50/50 ring-1 ring-green-200 rounded-xl">
+              <div class="flex items-start gap-4">
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-green-500 flex-shrink-0">
+                  <span class="material-symbols-outlined text-white">verified</span>
+                </div>
                 <div>
-                  <p class="font-semibold text-green-900">Espacio verificado</p>
+                  <p class="font-bold text-green-900">Espacio verificado</p>
                   <p class="text-sm text-green-700 mt-1">
                     Todas las características han sido verificadas por nuestro equipo para garantizar tu satisfacción.
                   </p>
@@ -902,50 +913,52 @@ const formatNumber = (value: number) => {
           </div>
 
           <!-- Reglas y Políticas -->
-          <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-200">
-            <div class="flex items-center gap-3 mb-6">
-              <div class="h-10 w-1 bg-primary rounded-full"></div>
+          <div class="bg-white rounded-2xl p-8 shadow-sm ring-1 ring-black/5">
+            <div class="flex items-center gap-4 mb-6">
+              <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dark shadow-lg shadow-primary/25">
+                <span class="material-symbols-outlined text-white text-2xl">gavel</span>
+              </div>
               <h2 class="text-2xl font-bold text-gray-900">Reglas y Políticas</h2>
             </div>
 
             <div class="space-y-6">
               <!-- Reglas -->
               <div v-if="space.rules">
-                <h3 class="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <span class="material-symbols-outlined text-gray-500">gavel</span>
+                <h3 class="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-gray-400">list_alt</span>
                   Reglas del espacio
                 </h3>
-                <p class="text-gray-700 leading-relaxed whitespace-pre-line bg-gray-50 p-4 rounded-lg border border-gray-100">
+                <p class="text-gray-600 leading-relaxed whitespace-pre-line bg-gray-50/80 p-5 rounded-xl ring-1 ring-black/5">
                   {{ space.rules }}
                 </p>
               </div>
 
               <!-- Política de cancelación -->
               <div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <span class="material-symbols-outlined text-gray-500">policy</span>
+                <h3 class="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-gray-400">policy</span>
                   Política de cancelación
                 </h3>
-                <div class="flex items-start gap-4 p-4 rounded-xl border"
+                <div class="flex items-start gap-4 p-5 rounded-xl ring-1"
                   :class="{
-                    'bg-green-50 border-green-200': space.cancellationPolicy === 'flexible',
-                    'bg-yellow-50 border-yellow-200': space.cancellationPolicy === 'moderate',
-                    'bg-red-50 border-red-200': space.cancellationPolicy === 'strict'
+                    'bg-green-50/80 ring-green-200': space.cancellationPolicy === 'flexible',
+                    'bg-yellow-50/80 ring-yellow-200': space.cancellationPolicy === 'moderate',
+                    'bg-red-50/80 ring-red-200': space.cancellationPolicy === 'strict'
                   }"
                 >
-                  <div class="p-2 rounded-full bg-white/50">
-                    <span class="material-symbols-outlined"
-                      :class="{
-                        'text-green-600': space.cancellationPolicy === 'flexible',
-                        'text-yellow-600': space.cancellationPolicy === 'moderate',
-                        'text-red-600': space.cancellationPolicy === 'strict'
-                      }"
-                    >
+                  <div class="flex h-12 w-12 items-center justify-center rounded-xl flex-shrink-0"
+                    :class="{
+                      'bg-green-500': space.cancellationPolicy === 'flexible',
+                      'bg-yellow-500': space.cancellationPolicy === 'moderate',
+                      'bg-red-500': space.cancellationPolicy === 'strict'
+                    }"
+                  >
+                    <span class="material-symbols-outlined text-white text-xl">
                       {{ space.cancellationPolicy === 'flexible' ? 'event_available' : space.cancellationPolicy === 'moderate' ? 'event_note' : 'event_busy' }}
                     </span>
                   </div>
                   <div>
-                    <p class="font-bold"
+                    <p class="font-bold text-lg"
                       :class="{
                         'text-green-900': space.cancellationPolicy === 'flexible',
                         'text-yellow-900': space.cancellationPolicy === 'moderate',
@@ -956,9 +969,9 @@ const formatNumber = (value: number) => {
                     </p>
                     <p class="text-sm mt-1"
                       :class="{
-                        'text-green-800': space.cancellationPolicy === 'flexible',
-                        'text-yellow-800': space.cancellationPolicy === 'moderate',
-                        'text-red-800': space.cancellationPolicy === 'strict'
+                        'text-green-700': space.cancellationPolicy === 'flexible',
+                        'text-yellow-700': space.cancellationPolicy === 'moderate',
+                        'text-red-700': space.cancellationPolicy === 'strict'
                       }"
                     >
                       {{ 
@@ -974,24 +987,26 @@ const formatNumber = (value: number) => {
           </div>
 
           <!-- Propietario -->
-          <div class="bg-gradient-to-br from-primary/5 via-blue-50 to-white rounded-2xl p-8 shadow-sm border-2 border-primary/20">
-            <div class="flex items-center gap-3 mb-6">
-              <div class="h-10 w-1 bg-primary rounded-full"></div>
+          <div class="bg-white rounded-2xl p-8 shadow-sm ring-1 ring-primary/20 bg-gradient-to-br from-primary/5 via-blue-50/50 to-white">
+            <div class="flex items-center gap-4 mb-6">
+              <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dark shadow-lg shadow-primary/25">
+                <span class="material-symbols-outlined text-white text-2xl">person</span>
+              </div>
               <h2 class="text-2xl font-bold text-gray-900">Conoce a tu anfitrión</h2>
             </div>
 
-            <div class="flex items-start gap-4 mb-6">
-              <div class="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-blue-600 shadow-lg flex-shrink-0">
-                <span class="material-symbols-outlined text-4xl text-white">store</span>
+            <div class="flex items-start gap-5 mb-6">
+              <div class="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-blue-600 shadow-xl shadow-primary/30 flex-shrink-0">
+                <span class="material-symbols-outlined text-5xl text-white">store</span>
               </div>
               <div class="flex-1">
-                <p class="text-xl font-bold text-gray-900">{{ ownerName }}</p>
-                <div class="flex items-center gap-2 mt-2">
-                  <span class="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-semibold">
+                <p class="text-2xl font-black text-gray-900">{{ ownerName }}</p>
+                <div class="flex items-center gap-2 mt-3 flex-wrap">
+                  <span class="inline-flex items-center gap-1.5 bg-green-100 text-green-700 px-3 py-1.5 rounded-lg text-xs font-bold">
                     <span class="material-symbols-outlined !text-[14px]">verified</span>
                     Verificado
                   </span>
-                  <span class="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-semibold">
+                  <span class="inline-flex items-center gap-1.5 bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg text-xs font-bold">
                     <span class="material-symbols-outlined !text-[14px]">star</span>
                     Anfitrión destacado
                   </span>
@@ -999,25 +1014,25 @@ const formatNumber = (value: number) => {
               </div>
             </div>
 
-            <p v-if="space.owner?.businessDescription" class="text-gray-700 leading-relaxed mb-6">
+            <p v-if="space.owner?.businessDescription" class="text-gray-600 leading-relaxed mb-6">
               {{ space.owner.businessDescription }}
             </p>
-            <p v-else class="text-gray-700 leading-relaxed mb-6">
+            <p v-else class="text-gray-600 leading-relaxed mb-6">
               Anfitrión profesional comprometido con brindarte la mejor experiencia en su espacio. Responde rápidamente y se asegura de que todo esté en perfecto estado para tu visita.
             </p>
 
             <div class="grid grid-cols-3 gap-4 mb-6">
-              <div class="text-center p-3 bg-white rounded-xl border border-gray-200">
-                <p class="text-2xl font-bold text-primary">5.0</p>
-                <p class="text-xs text-gray-600 mt-1">Calificación</p>
+              <div class="text-center p-4 bg-white rounded-xl ring-1 ring-black/5">
+                <p class="text-3xl font-black text-primary">5.0</p>
+                <p class="text-xs text-gray-500 mt-1 font-medium">Calificación</p>
               </div>
-              <div class="text-center p-3 bg-white rounded-xl border border-gray-200">
-                <p class="text-2xl font-bold text-primary">24</p>
-                <p class="text-xs text-gray-600 mt-1">Reservas</p>
+              <div class="text-center p-4 bg-white rounded-xl ring-1 ring-black/5">
+                <p class="text-3xl font-black text-primary">24</p>
+                <p class="text-xs text-gray-500 mt-1 font-medium">Reservas</p>
               </div>
-              <div class="text-center p-3 bg-white rounded-xl border border-gray-200">
-                <p class="text-2xl font-bold text-primary">&lt;1h</p>
-                <p class="text-xs text-gray-600 mt-1">Respuesta</p>
+              <div class="text-center p-4 bg-white rounded-xl ring-1 ring-black/5">
+                <p class="text-3xl font-black text-primary">&lt;1h</p>
+                <p class="text-xs text-gray-500 mt-1 font-medium">Respuesta</p>
               </div>
             </div>
 
@@ -1027,7 +1042,7 @@ const formatNumber = (value: number) => {
                 :href="whatsappLink"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] border-2 border-[#25D366] px-6 py-3 text-sm font-bold text-white hover:bg-[#20BA5A] transition-all duration-200"
+                class="w-full inline-flex items-center justify-center gap-3 rounded-xl bg-[#25D366] px-6 py-4 text-base font-bold text-white hover:bg-[#20BA5A] transition-all duration-200 shadow-lg shadow-[#25D366]/30"
               >
                 <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
@@ -1066,39 +1081,41 @@ const formatNumber = (value: number) => {
 
         <!-- Columna derecha: Panel de reserva -->
         <div class="lg:col-span-1">
-          <div class="sticky top-24 space-y-4">
+          <div class="sticky top-24 space-y-5">
             <!-- Tarjeta de precio -->
-            <div class="bg-gradient-to-br from-primary/5 to-blue-50 rounded-2xl p-6 border-2 border-primary/20">
-              <div class="flex items-center justify-between mb-2">
+            <div class="bg-white rounded-2xl p-6 shadow-sm ring-1 ring-primary/20 bg-gradient-to-br from-primary/5 via-blue-50/50 to-white">
+              <div class="flex items-center justify-between mb-3">
                 <div>
                   <p class="text-4xl font-black text-gray-900">{{ formatCurrency(pricePerHour) }}</p>
-                  <p class="text-sm text-gray-600 mt-1">por hora de uso</p>
+                  <p class="text-sm text-gray-500 mt-1 font-medium">por hora de uso</p>
                 </div>
-                <div class="flex items-center gap-1 text-yellow-500">
-                  <span class="material-symbols-outlined text-2xl">star</span>
-                  <span class="font-bold text-lg text-gray-900">5.0</span>
+                <div class="flex items-center gap-1 bg-yellow-100 px-3 py-1.5 rounded-xl">
+                  <span class="material-symbols-outlined text-yellow-500 text-xl">star</span>
+                  <span class="font-black text-lg text-gray-900">5.0</span>
                 </div>
               </div>
-              <div class="mt-4 grid grid-cols-3 gap-2 text-center">
-                <div class="bg-white/80 rounded-lg p-2">
-                  <p class="text-xs text-gray-600">Min.</p>
-                  <p class="font-bold text-gray-900">1h</p>
+              <div class="mt-5 grid grid-cols-3 gap-3 text-center">
+                <div class="bg-white/80 rounded-xl p-3 ring-1 ring-black/5">
+                  <p class="text-xs text-gray-500 font-medium">Min.</p>
+                  <p class="font-black text-gray-900 text-lg">1h</p>
                 </div>
-                <div class="bg-white/80 rounded-lg p-2">
-                  <p class="text-xs text-gray-600">Máx.</p>
-                  <p class="font-bold text-gray-900">24h</p>
+                <div class="bg-white/80 rounded-xl p-3 ring-1 ring-black/5">
+                  <p class="text-xs text-gray-500 font-medium">Máx.</p>
+                  <p class="font-black text-gray-900 text-lg">24h</p>
                 </div>
-                <div class="bg-white/80 rounded-lg p-2">
-                  <p class="text-xs text-gray-600">Resp.</p>
-                  <p class="font-bold text-gray-900">1h</p>
+                <div class="bg-white/80 rounded-xl p-3 ring-1 ring-black/5">
+                  <p class="text-xs text-gray-500 font-medium">Resp.</p>
+                  <p class="font-black text-gray-900 text-lg">1h</p>
                 </div>
               </div>
             </div>
 
             <!-- Formulario de reserva -->
-            <div class="bg-white rounded-2xl p-6 shadow-lg border border-gray-200">
-              <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <span class="material-symbols-outlined text-primary">calendar_month</span>
+            <div class="bg-white rounded-2xl p-6 shadow-lg ring-1 ring-black/5">
+              <h3 class="text-xl font-bold text-gray-900 mb-5 flex items-center gap-3">
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dark">
+                  <span class="material-symbols-outlined text-white">calendar_month</span>
+                </div>
                 Programa tu visita
               </h3>
 
@@ -1257,32 +1274,32 @@ const formatNumber = (value: number) => {
               </div>
 
               <!-- Desglose de precio con animación -->
-              <div class="mt-6 space-y-3 bg-gray-50 rounded-lg p-4">
-                <div class="flex justify-between text-sm text-gray-700">
-                  <span class="flex items-center gap-1">
-                    <span class="material-symbols-outlined !text-[16px]">payments</span>
+              <div class="mt-6 space-y-3 bg-gray-50/80 rounded-xl p-5 ring-1 ring-black/5">
+                <div class="flex justify-between text-sm text-gray-600">
+                  <span class="flex items-center gap-2">
+                    <span class="material-symbols-outlined !text-[18px] text-primary">payments</span>
                     {{ formatCurrency(pricePerHour) }} × {{ bookingHours }} {{ bookingHours === 1 ? 'hora' : 'horas' }}
                   </span>
-                  <span class="font-semibold">{{ formatCurrency(subtotal) }}</span>
+                  <span class="font-bold text-gray-900">{{ formatCurrency(subtotal) }}</span>
                 </div>
-                <div class="flex justify-between text-sm text-gray-700">
-                  <span class="flex items-center gap-1">
-                    <span class="material-symbols-outlined !text-[16px]">receipt_long</span>
+                <div class="flex justify-between text-sm text-gray-600">
+                  <span class="flex items-center gap-2">
+                    <span class="material-symbols-outlined !text-[18px] text-primary">receipt_long</span>
                     Tarifa de servicio (8%)
                   </span>
-                  <span class="font-semibold">{{ formatCurrency(serviceFee) }}</span>
+                  <span class="font-bold text-gray-900">{{ formatCurrency(serviceFee) }}</span>
                 </div>
-                <div class="flex justify-between items-center text-xl font-bold text-gray-900 border-t-2 border-gray-300 pt-3 mt-3">
+                <div class="flex justify-between items-center text-xl font-black text-gray-900 border-t-2 border-gray-200 pt-4 mt-4">
                   <span>Total a pagar</span>
-                  <span class="text-primary">{{ formatCurrency(total) }}</span>
+                  <span class="text-primary text-2xl">{{ formatCurrency(total) }}</span>
                 </div>
               </div>
 
               <!-- Botón de reserva -->
               <button
                 type="button"
-                class="mt-6 w-full rounded-xl bg-gradient-to-r from-primary to-blue-600 px-6 py-4 text-base font-bold text-white shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                :class="bookingDate && bookingTime ? 'hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]' : ''"
+                class="mt-6 w-full rounded-xl bg-gradient-to-r from-primary to-primary-dark px-6 py-4 text-lg font-bold text-white shadow-lg shadow-primary/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                :class="bookingDate && bookingTime ? 'hover:shadow-xl hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.98]' : ''"
                 :disabled="!bookingDate || !bookingTime"
                 @click="handleBooking"
               >
@@ -1296,18 +1313,20 @@ const formatNumber = (value: number) => {
                 </span>
               </button>
               
-              <div class="mt-4 flex items-start gap-2 text-xs text-gray-600 bg-blue-50 p-3 rounded-lg">
-                <span class="material-symbols-outlined !text-[16px] text-blue-600 flex-shrink-0">info</span>
+              <div class="mt-5 flex items-start gap-3 text-sm text-gray-500 bg-blue-50/80 p-4 rounded-xl ring-1 ring-blue-100">
+                <span class="material-symbols-outlined !text-[20px] text-blue-500 flex-shrink-0">info</span>
                 <p>
-                  <strong class="text-blue-900">Reserva sin cargo inmediato.</strong> El propietario confirmará tu solicitud y luego podrás proceder con el pago.
+                  <strong class="text-blue-700">Reserva sin cargo inmediato.</strong> El propietario confirmará tu solicitud y luego podrás proceder con el pago.
                 </p>
               </div>
             </div>
 
             <!-- Tarjeta de contacto rápido -->
-            <div class="bg-white rounded-2xl p-6 border border-gray-200">
-              <h3 class="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                <span class="material-symbols-outlined !text-[18px] text-primary">support_agent</span>
+            <div class="bg-white rounded-2xl p-6 ring-1 ring-black/5">
+              <h3 class="text-base font-bold text-gray-900 mb-4 flex items-center gap-3">
+                <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary-dark">
+                  <span class="material-symbols-outlined text-white !text-[18px]">support_agent</span>
+                </div>
                 ¿Tienes preguntas?
               </h3>
               <a
@@ -1315,7 +1334,7 @@ const formatNumber = (value: number) => {
                 :href="whatsappLink"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#25D366] px-4 py-3 text-sm font-semibold text-white hover:bg-[#20BA5A] transition"
+                class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3.5 text-sm font-bold text-white hover:bg-[#20BA5A] transition shadow-lg shadow-[#25D366]/20"
               >
                 <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
@@ -1342,16 +1361,16 @@ const formatNumber = (value: number) => {
       <Transition name="modal">
         <div
           v-if="showBookingModal"
-          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
           @click.self="closeModal"
         >
-          <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+          <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl ring-1 ring-black/10">
             <!-- Header -->
-            <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+            <div class="sticky top-0 bg-white border-b border-gray-100 px-6 py-5 flex items-center justify-between rounded-t-2xl">
               <h3 class="text-xl font-bold text-gray-900">Confirmar reserva</h3>
               <button
                 type="button"
-                class="text-gray-400 hover:text-gray-600 transition"
+                class="flex h-10 w-10 items-center justify-center rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
                 :disabled="isSubmitting"
                 @click="closeModal"
               >
@@ -1361,64 +1380,68 @@ const formatNumber = (value: number) => {
 
             <!-- Success State -->
             <div v-if="bookingSuccess" class="p-8 text-center">
-              <div class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-green-100 mb-4">
-                <span class="material-symbols-outlined text-4xl text-green-600">check_circle</span>
+              <div class="mx-auto flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-br from-green-500 to-emerald-600 mb-6 shadow-lg shadow-green-500/30">
+                <span class="material-symbols-outlined text-5xl text-white">check_circle</span>
               </div>
-              <h4 class="text-2xl font-bold text-gray-900 mb-2">¡Reserva creada!</h4>
+              <h4 class="text-2xl font-black text-gray-900 mb-3">¡Reserva creada!</h4>
               
               <!-- Mensaje específico para transferencia -->
-              <div v-if="selectedPaymentMethod === 'transfer'" class="mb-4">
-                <p class="text-gray-600 mb-3">
+              <div v-if="selectedPaymentMethod === 'transfer'" class="mb-5">
+                <p class="text-gray-500 mb-4">
                   Tu reserva ha sido creada. Para completar el proceso, sube tu comprobante de transferencia desde el detalle de tu reserva.
                 </p>
-                <div class="inline-flex items-center gap-2 text-sm text-blue-600 bg-blue-50 px-4 py-2 rounded-lg">
-                  <span class="material-symbols-outlined !text-[18px]">upload_file</span>
+                <div class="inline-flex items-center gap-2 text-sm text-blue-700 bg-blue-50 px-5 py-3 rounded-xl font-bold ring-1 ring-blue-200">
+                  <span class="material-symbols-outlined !text-[20px]">upload_file</span>
                   <span>Recuerda subir tu comprobante</span>
                 </div>
               </div>
               
               <!-- Mensaje genérico -->
-              <p v-else class="text-gray-600 mb-4">
+              <p v-else class="text-gray-500 mb-5">
                 Tu solicitud de reserva ha sido enviada al propietario. Te notificaremos cuando sea confirmada.
               </p>
               
-              <p class="text-sm text-gray-500">Redirigiendo a tus reservas...</p>
+              <p class="text-sm text-gray-400">Redirigiendo a tus reservas...</p>
             </div>
 
             <!-- Form Content -->
             <div v-else class="p-6 space-y-6">
               <!-- Resumen de reserva -->
-              <div class="bg-gray-50 rounded-xl p-4 space-y-3">
-                <h4 class="font-semibold text-gray-900 mb-3">Resumen de tu reserva</h4>
+              <div class="bg-gray-50/80 rounded-xl p-5 space-y-4 ring-1 ring-black/5">
+                <h4 class="font-bold text-gray-900 mb-4 text-lg">Resumen de tu reserva</h4>
                 
-                <div class="flex items-start gap-3">
-                  <span class="material-symbols-outlined text-primary">home_work</span>
+                <div class="flex items-start gap-4">
+                  <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 flex-shrink-0">
+                    <span class="material-symbols-outlined text-primary">home_work</span>
+                  </div>
                   <div class="flex-1">
-                    <p class="font-semibold text-gray-900">{{ space?.name }}</p>
-                    <p class="text-sm text-gray-600">{{ space?.address }}</p>
+                    <p class="font-bold text-gray-900">{{ space?.name }}</p>
+                    <p class="text-sm text-gray-500">{{ space?.address }}</p>
                   </div>
                 </div>
 
-                <div class="flex items-center gap-3">
-                  <span class="material-symbols-outlined text-primary">event</span>
+                <div class="flex items-center gap-4">
+                  <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 flex-shrink-0">
+                    <span class="material-symbols-outlined text-primary">event</span>
+                  </div>
                   <div>
-                    <p class="font-semibold text-gray-900">
+                    <p class="font-bold text-gray-900">
                       {{ selectedDate ? selectedDate.toLocaleDateString('es-HN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '' }}
                     </p>
-                    <p class="text-sm text-gray-600">{{ formatTimeDisplay(bookingTime) }} por {{ bookingHours }} {{ bookingHours === 1 ? 'hora' : 'horas' }}</p>
+                    <p class="text-sm text-gray-500">{{ formatTimeDisplay(bookingTime) }} por {{ bookingHours }} {{ bookingHours === 1 ? 'hora' : 'horas' }}</p>
                   </div>
                 </div>
 
-                <div class="border-t border-gray-200 pt-3 space-y-2">
+                <div class="border-t border-gray-200 pt-4 space-y-3">
                   <div class="flex justify-between text-sm">
-                    <span class="text-gray-600">Subtotal</span>
-                    <span class="font-semibold text-gray-900">{{ formatCurrency(subtotal) }}</span>
+                    <span class="text-gray-500">Subtotal</span>
+                    <span class="font-bold text-gray-900">{{ formatCurrency(subtotal) }}</span>
                   </div>
                   <div class="flex justify-between text-sm">
-                    <span class="text-gray-600">Tarifa de servicio</span>
-                    <span class="font-semibold text-gray-900">{{ formatCurrency(serviceFee) }}</span>
+                    <span class="text-gray-500">Tarifa de servicio</span>
+                    <span class="font-bold text-gray-900">{{ formatCurrency(serviceFee) }}</span>
                   </div>
-                  <div class="flex justify-between text-lg font-bold border-t border-gray-300 pt-2">
+                  <div class="flex justify-between text-lg font-black border-t border-gray-200 pt-3">
                     <span class="text-gray-900">Total</span>
                     <span class="text-primary">{{ formatCurrency(total) }}</span>
                   </div>
@@ -1427,42 +1450,42 @@ const formatNumber = (value: number) => {
 
               <!-- Selección de opción de pago -->
               <div v-if="!paymentChoice">
-                <label class="block text-sm font-semibold text-gray-700 mb-3">
+                <label class="block text-sm font-bold text-gray-700 mb-4">
                   <span class="flex items-center gap-2">
-                    <span class="material-symbols-outlined !text-[18px] text-primary">schedule</span>
+                    <span class="material-symbols-outlined !text-[20px] text-primary">schedule</span>
                     ¿Cuándo deseas pagar?
                   </span>
                 </label>
                 <div class="grid grid-cols-2 gap-4">
                   <button
                     type="button"
-                    class="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-gray-200 hover:border-primary hover:bg-primary/5 transition group"
+                    class="flex flex-col items-center gap-3 p-6 rounded-xl ring-1 ring-black/10 hover:ring-primary hover:bg-primary/5 transition group"
                     @click="selectPaymentChoice('now')"
                   >
-                    <div class="h-12 w-12 rounded-full bg-green-100 group-hover:bg-green-200 flex items-center justify-center transition">
-                      <span class="material-symbols-outlined text-2xl text-green-600">
+                    <div class="h-14 w-14 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 group-hover:scale-110 flex items-center justify-center transition shadow-lg shadow-green-500/30">
+                      <span class="material-symbols-outlined text-3xl text-white">
                         bolt
                       </span>
                     </div>
                     <div class="text-center">
                       <p class="font-bold text-gray-900 mb-1">Pagar ahora</p>
-                      <p class="text-xs text-gray-600">Pago digital instantáneo</p>
+                      <p class="text-xs text-gray-500">Pago digital instantáneo</p>
                     </div>
                   </button>
 
                   <button
                     type="button"
-                    class="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-gray-200 hover:border-primary hover:bg-primary/5 transition group"
+                    class="flex flex-col items-center gap-3 p-6 rounded-xl ring-1 ring-black/10 hover:ring-primary hover:bg-primary/5 transition group"
                     @click="selectPaymentChoice('later')"
                   >
-                    <div class="h-12 w-12 rounded-full bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center transition">
-                      <span class="material-symbols-outlined text-2xl text-blue-600">
+                    <div class="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 group-hover:scale-110 flex items-center justify-center transition shadow-lg shadow-blue-500/30">
+                      <span class="material-symbols-outlined text-3xl text-white">
                         schedule
                       </span>
                     </div>
                     <div class="text-center">
                       <p class="font-bold text-gray-900 mb-1">Pagar más tarde</p>
-                      <p class="text-xs text-gray-600">Antes de tu reserva</p>
+                      <p class="text-xs text-gray-500">Antes de tu reserva</p>
                     </div>
                   </button>
                 </div>
@@ -1597,16 +1620,16 @@ const formatNumber = (value: number) => {
               </div>
 
               <!-- Error message -->
-              <div v-if="bookingError" class="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
-                <span class="material-symbols-outlined text-red-600">error</span>
-                <p class="text-sm text-red-800">{{ bookingError }}</p>
+              <div v-if="bookingError" class="bg-red-50 ring-1 ring-red-200 rounded-xl p-4 flex items-start gap-3">
+                <span class="material-symbols-outlined text-red-500 flex-shrink-0">error</span>
+                <p class="text-sm text-red-700">{{ bookingError }}</p>
               </div>
 
               <!-- Actions -->
-              <div class="flex gap-3">
+              <div class="flex gap-4">
                 <button
                   type="button"
-                  class="flex-1 rounded-xl border-2 border-gray-300 px-6 py-3 font-semibold text-gray-700 hover:bg-gray-50 transition"
+                  class="flex-1 rounded-xl ring-1 ring-gray-200 bg-white px-6 py-3.5 font-bold text-gray-700 hover:bg-gray-50 transition"
                   :disabled="isSubmitting"
                   @click="closeModal"
                 >
@@ -1614,7 +1637,7 @@ const formatNumber = (value: number) => {
                 </button>
                 <button
                   type="button"
-                  class="flex-1 rounded-xl bg-gradient-to-r from-primary to-blue-600 px-6 py-3 font-semibold text-white hover:shadow-lg transition disabled:opacity-50"
+                  class="flex-1 rounded-xl bg-gradient-to-r from-primary to-primary-dark px-6 py-3.5 font-bold text-white hover:shadow-lg hover:shadow-primary/30 transition disabled:opacity-50"
                   :disabled="isSubmitting"
                   @click="confirmBooking"
                 >
@@ -1624,7 +1647,7 @@ const formatNumber = (value: number) => {
                   </span>
                   <span v-else class="flex items-center justify-center gap-2">
                     <span class="material-symbols-outlined">check_circle</span>
-                    Confirmar reserva
+                    Confirmar
                   </span>
                 </button>
               </div>
