@@ -307,7 +307,7 @@ const formatNumber = (value: number) => new Intl.NumberFormat('es-HN').format(va
               
               <button
                 type="button"
-                class="inline-flex items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-primary via-primary-dark to-blue-100 px-10 py-4 font-bold text-white shadow-lg shadow-primary/30 transition-all duration-200 hover:shadow-xl hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.98]"
+                class="inline-flex items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-primary via-primary-dark to-blue-200 px-10 py-4 font-bold text-white shadow-lg shadow-primary/30 transition-all duration-200 hover:shadow-xl hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.98]"
                 :disabled="isSearching || pending"
                 @click="handleSearch"
               >
