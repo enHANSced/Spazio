@@ -23,15 +23,15 @@ const closeMobileMenu = () => {
 <template>
   <div class="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 text-gray-900">
     <!-- Header con diseño moderno -->
-    <header class="bg-white/80 backdrop-blur-lg border-b border-gray-200/50 sticky top-0 z-40">
+    <header class="bg-white/70 backdrop-blur-lg border-b border-gray-200/50 sticky top-0 z-40">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-16">
+        <div class="flex items-center justify-between h-20">
           <!-- Logo -->
           <NuxtLink to="/" class="flex items-center gap-2.5 group">
             <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dark shadow-lg shadow-primary/25 transition-all group-hover:shadow-xl group-hover:shadow-primary/30">
               <span class="material-symbols-outlined text-xl text-white">home_work</span>
             </div>
-            <span class="text-xl font-bold bg-gradient-to-r from-primary to-primary-dark bg-clip-text text-transparent">Spazio</span>
+            <span class="text-xl font-bold bg-gradient-to-r from-primary via-primary-dark to-blue-100 bg-clip-text text-transparent">Spazio</span>
           </NuxtLink>
           
           <!-- Desktop Navigation -->
