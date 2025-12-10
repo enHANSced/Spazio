@@ -455,241 +455,266 @@ const formatNumber = (value: number) => new Intl.NumberFormat('es-HN').format(va
       </div>
     </section>
 
-    <!-- Sección de contenido principal -->
-    <section ref="resultsRef" class="px-4 sm:px-6 lg:px-8 py-12 max-w-7xl mx-auto space-y-8">
+    <!-- Sección de contenido principal con transición suave -->
+    <section ref="resultsRef" class="relative -mt-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6">
       
-      <!-- Categorías por tipo de espacio -->
-      <div class="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 p-8">
-        <div class="flex items-center justify-between mb-6">
-          <div class="flex items-center gap-4">
-            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dark shadow-lg shadow-primary/25">
-              <span class="material-symbols-outlined text-white text-2xl">category</span>
-            </div>
-            <div>
-              <h3 class="text-xl font-bold text-gray-900">¿Qué tipo de espacio buscas?</h3>
-              <p class="text-sm text-gray-500 mt-0.5">Selecciona una categoría para filtrar</p>
-            </div>
-          </div>
-          <button 
-            v-if="selectedCategory"
-            type="button"
-            class="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-primary transition px-3 py-2 rounded-lg hover:bg-gray-50"
-            @click="selectedCategory = null"
-          >
-            <span class="material-symbols-outlined !text-[18px]">close</span>
-            Limpiar filtro
-          </button>
-        </div>
+      <!-- Categorías por tipo de espacio - Diseño tipo Netflix/Airbnb -->
+      <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-white via-white to-blue-50/30 shadow-xl ring-1 ring-black/5 backdrop-blur-xl">
+        <!-- Decoración de fondo -->
+        <div class="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-primary/5 to-transparent rounded-full blur-3xl -z-0"></div>
+        <div class="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-purple-500/5 to-transparent rounded-full blur-3xl -z-0"></div>
         
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
-          <button
-            v-for="cat in spaceCategories"
-            :key="cat.value"
-            type="button"
-            class="group relative flex flex-col items-center p-4 rounded-xl transition-all duration-200 transform hover:scale-105"
-            :class="getCategoryColor(cat.color, selectedCategory === cat.value)"
-            @click="selectCategory(cat.value)"
-          >
-            <div class="relative mb-2">
-              <span 
-                class="material-symbols-outlined text-3xl transition-transform group-hover:scale-110"
-                :class="selectedCategory === cat.value ? 'text-white' : ''"
-              >{{ cat.icon }}</span>
-              <span 
-                v-if="categoryCountMap[cat.value] > 0"
-                class="absolute -top-2 -right-3 text-xs font-bold px-1.5 py-0.5 rounded-full"
-                :class="selectedCategory === cat.value ? 'bg-white/30 text-white' : 'bg-gray-200 text-gray-700'"
-              >
-                {{ categoryCountMap[cat.value] }}
-              </span>
-            </div>
-            <span class="text-sm font-semibold text-center">{{ cat.label }}</span>
-            <span 
-              class="text-[10px] text-center leading-tight mt-1 hidden sm:block"
-              :class="selectedCategory === cat.value ? 'text-white/80' : 'text-gray-500'"
-            >{{ cat.description }}</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Filtros por tamaño y controles -->
-      <div class="flex flex-wrap items-center justify-between gap-4">
-        <div class="flex flex-wrap items-center gap-3">
-          <span class="text-sm font-medium text-gray-500 mr-2">Por capacidad:</span>
-          <button
-            type="button"
-            class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition"
-            :class="selectedSizeFilter === 'all' 
-              ? 'bg-primary text-white shadow-lg shadow-primary/30' 
-              : 'bg-white text-gray-700 border border-gray-200 hover:border-primary hover:text-primary'"
-            @click="selectedSizeFilter = 'all'"
-          >
-            <span class="material-symbols-outlined !text-[18px]">home_work</span>
-            <span>Todos</span>
-          </button>
-
-          <button
-            type="button"
-            class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition"
-            :class="selectedSizeFilter === 'small' 
-              ? 'bg-green-500 text-white shadow-lg shadow-green-500/30' 
-              : 'bg-white text-gray-700 border border-gray-200 hover:border-green-500 hover:text-green-600'"
-            @click="selectedSizeFilter = 'small'"
-          >
-            <span class="material-symbols-outlined !text-[18px]">person</span>
-            <span>&lt;20</span>
-            <span class="text-xs opacity-80">({{ sizeFilters.small }})</span>
-          </button>
-
-          <button
-            type="button"
-            class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition"
-            :class="selectedSizeFilter === 'medium' 
-              ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30' 
-              : 'bg-white text-gray-700 border border-gray-200 hover:border-orange-500 hover:text-orange-600'"
-            @click="selectedSizeFilter = 'medium'"
-          >
-            <span class="material-symbols-outlined !text-[18px]">group</span>
-            <span>20-50</span>
-            <span class="text-xs opacity-80">({{ sizeFilters.medium }})</span>
-          </button>
-
-          <button
-            type="button"
-            class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition"
-            :class="selectedSizeFilter === 'large' 
-              ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30' 
-              : 'bg-white text-gray-700 border border-gray-200 hover:border-purple-500 hover:text-purple-600'"
-            @click="selectedSizeFilter = 'large'"
-          >
-            <span class="material-symbols-outlined !text-[18px]">groups</span>
-            <span>50+</span>
-            <span class="text-xs opacity-80">({{ sizeFilters.large }})</span>
-          </button>
-        </div>
-
-        <!-- Filtros activos y controles de vista -->
-        <div class="flex items-center gap-3">
-          <!-- Indicador de filtros activos -->
-          <div v-if="selectedCategory || selectedSizeFilter !== 'all'" class="hidden sm:flex items-center gap-2">
-            <span class="text-xs text-gray-500">Filtros:</span>
-            <span 
-              v-if="selectedCategory" 
-              class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-primary/10 text-primary rounded-full"
-            >
-              {{ spaceCategories.find(c => c.value === selectedCategory)?.label }}
-              <button type="button" class="hover:text-primary/80" @click="selectedCategory = null">
-                <span class="material-symbols-outlined !text-[14px]">close</span>
-              </button>
-            </span>
-            <span 
-              v-if="selectedSizeFilter !== 'all'" 
-              class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-full"
-            >
-              {{ selectedSizeFilter === 'small' ? '<20 personas' : selectedSizeFilter === 'medium' ? '20-50 personas' : '50+ personas' }}
-              <button type="button" class="hover:text-gray-600" @click="selectedSizeFilter = 'all'">
-                <span class="material-symbols-outlined !text-[14px]">close</span>
-              </button>
-            </span>
-          </div>
-
-          <!-- Controles de vista -->
-          <div class="flex items-center gap-2 bg-white rounded-xl border border-gray-200 p-1">
-            <button
-              type="button"
-              class="rounded-lg px-3 py-2 transition"
-              :class="viewMode === 'grid' ? 'bg-primary text-white' : 'text-gray-600 hover:text-primary'"
-              @click="viewMode = 'grid'"
-            >
-              <span class="material-symbols-outlined !text-[20px]">grid_view</span>
-            </button>
-            <button
-              type="button"
-              class="rounded-lg px-3 py-2 transition"
-              :class="viewMode === 'list' ? 'bg-primary text-white' : 'text-gray-600 hover:text-primary'"
-              @click="viewMode = 'list'"
-            >
-              <span class="material-symbols-outlined !text-[20px]">view_list</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Filtros avanzados -->
-      <div class="rounded-2xl bg-white shadow-sm ring-1 ring-black/5 overflow-hidden">
-        <div class="bg-gradient-to-r from-gray-50 via-gray-50/80 to-white px-6 py-5 border-b border-gray-100">
-          <div class="flex items-center justify-between">
+        <div class="relative p-6 sm:p-8">
+          <div class="flex items-center justify-between mb-8">
             <div class="flex items-center gap-3">
-              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dark">
-                <span class="material-symbols-outlined text-white">tune</span>
+              <div class="relative">
+                <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dark shadow-md">
+                  <span class="material-symbols-outlined text-white text-xl">category</span>
+                </div>
+                <div class="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 border-2 border-white shadow-sm animate-pulse"></div>
               </div>
-              <h3 class="font-bold text-gray-900 text-lg">Filtros avanzados</h3>
+              <div>
+                <h3 class="text-lg sm:text-xl font-bold text-gray-900">¿Qué tipo de espacio buscas?</h3>
+                <p class="text-xs sm:text-sm text-gray-500 mt-0.5">Selecciona una categoría para filtrar</p>
+              </div>
             </div>
-            <button
+            
+            <!-- Botón restablecer filtros -->
+            <button 
+              v-if="selectedCategory || selectedSizeFilter !== 'all'"
               type="button"
-              class="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-primary/80 transition px-3 py-2 rounded-lg hover:bg-primary/5"
+              class="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-gray-600 hover:text-primary transition px-3 py-2 rounded-lg hover:bg-white/60 active:scale-95"
               @click="resetFilters"
             >
               <span class="material-symbols-outlined !text-[18px]">restart_alt</span>
-              Restablecer
+              <span class="hidden sm:inline">Restablecer</span>
             </button>
           </div>
-        </div>
-
-        <div class="p-6">
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-3">
-                <span class="flex items-center gap-2">
-                  <span class="material-symbols-outlined !text-[18px] text-primary">group_add</span>
-                  Capacidad mínima
-                </span>
-              </label>
-              <input
-                v-model="capacityInput"
-                type="number"
-                min="1"
-                placeholder="Ej: 10 personas"
-                class="w-full h-12 rounded-xl border-gray-200 bg-gray-50/50 px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
-              />
-            </div>
-
-            <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-3">
-                <span class="flex items-center gap-2">
-                  <span class="material-symbols-outlined !text-[18px] text-primary">group_remove</span>
-                  Capacidad máxima
-                </span>
-              </label>
-              <input
-                v-model.number="maxCapacity"
-                type="number"
-                min="1"
-                placeholder="Ej: 100 personas"
-                class="w-full h-12 rounded-xl border-gray-200 bg-gray-50/50 px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
-              />
-            </div>
-
-            <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-3">
-                <span class="flex items-center gap-2">
-                  <span class="material-symbols-outlined !text-[18px] text-primary">sort</span>
-                  Ordenar por
-                </span>
-              </label>
-              <select
-                v-model="sortOption"
-                class="w-full h-12 rounded-xl border-gray-200 bg-gray-50/50 px-4 py-3 text-gray-900 focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+          
+          <!-- Grid de categorías mejorado -->
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
+            <button
+              v-for="cat in spaceCategories"
+              :key="cat.value"
+              type="button"
+              class="group relative flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 active:scale-95"
+              :class="selectedCategory === cat.value 
+                ? `${getCategoryColor(cat.color, true)} shadow-xl ring-2 ring-offset-2 ring-offset-white` 
+                : `${getCategoryColor(cat.color, false)} hover:shadow-lg`"
+              @click="selectCategory(cat.value)"
+            >
+              <!-- Badge de contador -->
+              <div 
+                v-if="categoryCountMap[cat.value] > 0"
+                class="absolute top-2 right-2 flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold transition-transform group-hover:scale-110"
+                :class="selectedCategory === cat.value ? 'bg-white/30 text-white shadow-sm' : 'bg-white text-gray-700 shadow-sm'"
               >
-                <option value="recent">Más recientes</option>
-                <option value="capacity">Mayor capacidad</option>
-                <option value="price">Menor precio</option>
-                <option value="name">Nombre (A-Z)</option>
-              </select>
+                {{ categoryCountMap[cat.value] }}
+              </div>
+              
+              <!-- Icono -->
+              <div class="relative mb-2.5">
+                <span 
+                  class="material-symbols-outlined text-3xl sm:text-4xl transition-all duration-300 group-hover:scale-110"
+                  :class="selectedCategory === cat.value ? 'text-white' : ''"
+                >{{ cat.icon }}</span>
+              </div>
+              
+              <!-- Texto -->
+              <span 
+                class="text-xs sm:text-sm font-bold text-center leading-tight"
+                :class="selectedCategory === cat.value ? 'text-white' : ''"
+              >{{ cat.label }}</span>
+              
+              <!-- Descripción (oculta en móviles) -->
+              <span 
+                class="text-[10px] text-center leading-tight mt-1 hidden lg:block"
+                :class="selectedCategory === cat.value ? 'text-white/80' : 'text-gray-500'"
+              >{{ cat.description }}</span>
+              
+              <!-- Efecto hover -->
+              <div 
+                class="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                :class="selectedCategory === cat.value ? '' : 'bg-gradient-to-t from-white/50 to-transparent'"
+              ></div>
+            </button>
+          </div>
+
+          <!-- Filtros por capacidad - Diseño horizontal mejorado -->
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-6 border-t border-gray-100">
+            <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+              <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                <span class="material-symbols-outlined !text-[16px]">groups</span>
+                Por capacidad:
+              </span>
+              
+              <div class="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1.5 sm:gap-2 rounded-xl px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold transition-all duration-300 active:scale-95"
+                  :class="selectedSizeFilter === 'all' 
+                    ? 'bg-gradient-to-r from-primary to-primary-dark text-white shadow-lg shadow-primary/30 ring-2 ring-primary/20 ring-offset-2' 
+                    : 'bg-white text-gray-600 border border-gray-200 hover:border-primary/50 hover:text-primary hover:shadow-md'"
+                  @click="selectedSizeFilter = 'all'"
+                >
+                  <span class="material-symbols-outlined !text-[16px] sm:!text-[18px]">home_work</span>
+                  <span>Todos</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1.5 sm:gap-2 rounded-xl px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold transition-all duration-300 active:scale-95"
+                  :class="selectedSizeFilter === 'small' 
+                    ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/30 ring-2 ring-green-500/20 ring-offset-2' 
+                    : 'bg-white text-gray-600 border border-gray-200 hover:border-green-500/50 hover:text-green-600 hover:shadow-md'"
+                  @click="selectedSizeFilter = 'small'"
+                >
+                  <span class="material-symbols-outlined !text-[16px] sm:!text-[18px]">person</span>
+                  <span>&lt;20</span>
+                  <span class="text-[10px] sm:text-xs opacity-75 bg-white/20 px-1.5 py-0.5 rounded-full">{{ sizeFilters.small }}</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1.5 sm:gap-2 rounded-xl px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold transition-all duration-300 active:scale-95"
+                  :class="selectedSizeFilter === 'medium' 
+                    ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-lg shadow-orange-500/30 ring-2 ring-orange-500/20 ring-offset-2' 
+                    : 'bg-white text-gray-600 border border-gray-200 hover:border-orange-500/50 hover:text-orange-600 hover:shadow-md'"
+                  @click="selectedSizeFilter = 'medium'"
+                >
+                  <span class="material-symbols-outlined !text-[16px] sm:!text-[18px]">group</span>
+                  <span>20-50</span>
+                  <span class="text-[10px] sm:text-xs opacity-75 bg-white/20 px-1.5 py-0.5 rounded-full">{{ sizeFilters.medium }}</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1.5 sm:gap-2 rounded-xl px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold transition-all duration-300 active:scale-95"
+                  :class="selectedSizeFilter === 'large' 
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-lg shadow-purple-500/30 ring-2 ring-purple-500/20 ring-offset-2' 
+                    : 'bg-white text-gray-600 border border-gray-200 hover:border-purple-500/50 hover:text-purple-600 hover:shadow-md'"
+                  @click="selectedSizeFilter = 'large'"
+                >
+                  <span class="material-symbols-outlined !text-[16px] sm:!text-[18px]">groups</span>
+                  <span>50+</span>
+                  <span class="text-[10px] sm:text-xs opacity-75 bg-white/20 px-1.5 py-0.5 rounded-full">{{ sizeFilters.large }}</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Controles de vista y ordenamiento -->
+            <div class="flex items-center gap-3">
+              <!-- Controles de vista -->
+              <div class="flex items-center gap-1 bg-white rounded-xl border border-gray-200 p-1 shadow-sm">
+                <button
+                  type="button"
+                  class="rounded-lg px-2.5 sm:px-3 py-2 transition-all duration-200 active:scale-95"
+                  :class="viewMode === 'grid' ? 'bg-primary text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'"
+                  @click="viewMode = 'grid'"
+                  title="Vista en cuadrícula"
+                >
+                  <span class="material-symbols-outlined !text-[18px] sm:!text-[20px]">grid_view</span>
+                </button>
+                <button
+                  type="button"
+                  class="rounded-lg px-2.5 sm:px-3 py-2 transition-all duration-200 active:scale-95"
+                  :class="viewMode === 'list' ? 'bg-primary text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'"
+                  @click="viewMode = 'list'"
+                  title="Vista en lista"
+                >
+                  <span class="material-symbols-outlined !text-[18px] sm:!text-[20px]">view_list</span>
+                </button>
+              </div>
+
+              <!-- Selector de ordenamiento compacto -->
+              <div class="relative">
+                <select
+                  v-model="sortOption"
+                  class="appearance-none bg-white border border-gray-200 rounded-xl pl-3 pr-10 py-2 text-xs sm:text-sm font-semibold text-gray-700 hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer shadow-sm"
+                >
+                  <option value="recent">Más recientes</option>
+                  <option value="capacity">Mayor capacidad</option>
+                  <option value="price">Menor precio</option>
+                  <option value="name">A-Z</option>
+                </select>
+                <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none !text-[18px]">unfold_more</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      <!-- Filtros avanzados (colapsable en acordeón) -->
+      <details class="group rounded-3xl bg-white shadow-lg ring-1 ring-black/5 overflow-hidden transition-all duration-300 hover:shadow-xl">
+        <summary class="cursor-pointer px-6 py-5 flex items-center justify-between hover:bg-gray-50/50 transition-colors select-none">
+          <div class="flex items-center gap-3">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-md group-open:shadow-lg transition-shadow">
+              <span class="material-symbols-outlined text-white text-xl">tune</span>
+            </div>
+            <div>
+              <h3 class="font-bold text-gray-900 text-base sm:text-lg">Filtros avanzados</h3>
+              <p class="text-xs text-gray-500 mt-0.5">Afina tu búsqueda con más opciones</p>
+            </div>
+          </div>
+          <span class="material-symbols-outlined text-gray-400 group-open:rotate-180 transition-transform duration-300">expand_more</span>
+        </summary>
+
+        <div class="border-t border-gray-100 p-6 bg-gradient-to-br from-gray-50/50 to-white">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <!-- Capacidad mínima -->
+            <div class="space-y-2">
+              <label class="block text-xs sm:text-sm font-bold text-gray-700">
+                <span class="flex items-center gap-2">
+                  <span class="material-symbols-outlined !text-[16px] text-emerald-600">group_add</span>
+                  Capacidad mínima
+                </span>
+              </label>
+              <div class="relative">
+                <input
+                  v-model="capacityInput"
+                  type="number"
+                  min="1"
+                  placeholder="Ej: 10 personas"
+                  class="w-full h-11 rounded-xl border-gray-200 bg-white px-4 py-3 pr-12 text-sm text-gray-900 placeholder:text-gray-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all shadow-sm"
+                />
+                <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 !text-[20px]">person</span>
+              </div>
+            </div>
+
+            <!-- Capacidad máxima -->
+            <div class="space-y-2">
+              <label class="block text-xs sm:text-sm font-bold text-gray-700">
+                <span class="flex items-center gap-2">
+                  <span class="material-symbols-outlined !text-[16px] text-orange-600">group_remove</span>
+                  Capacidad máxima
+                </span>
+              </label>
+              <div class="relative">
+                <input
+                  v-model.number="maxCapacity"
+                  type="number"
+                  min="1"
+                  placeholder="Ej: 100 personas"
+                  class="w-full h-11 rounded-xl border-gray-200 bg-white px-4 py-3 pr-12 text-sm text-gray-900 placeholder:text-gray-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all shadow-sm"
+                />
+                <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 !text-[20px]">groups</span>
+              </div>
+            </div>
+
+            <!-- Botón aplicar filtros (en móviles) -->
+            <div class="flex items-end sm:col-span-2 lg:col-span-1">
+              <button
+                type="button"
+                class="w-full h-11 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-primary-dark text-white font-bold text-sm shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 active:scale-[0.98] transition-all"
+                @click="handleSearch"
+              >
+                <span class="material-symbols-outlined !text-[18px]">filter_alt</span>
+                <span>Aplicar filtros</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </details>
 
       <!-- Mensajes de error -->
       <div v-if="errorMessage" class="rounded-2xl bg-white shadow-sm ring-1 ring-red-200 p-8">
