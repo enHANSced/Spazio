@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import type { Space } from '../types/space'
 
-const props = defineProps<{ space: Space }>()
+const props = withDefaults(defineProps<{ 
+  space: Space
+  viewMode?: 'grid' | 'list'
+}>(), {
+  viewMode: 'grid'
+})
 
 const ownerName = computed(() => props.space.owner?.businessName || props.space.owner?.name || 'Propietario verificado')
 
@@ -127,8 +132,17 @@ const amenityIcons: Record<string, string> = {
 const displayAmenities = computed(() => {
   const items: { icon: string; label: string }[] = []
   
+  // Helper para formatear texto
+  const formatLabel = (text: string) => {
+    return text
+      .replace(/[_-]/g, ' ')
+      .trim()
+      .toLowerCase()
+      .replace(/^\w/, c => c.toUpperCase())
+  }
+  
   if (props.space.amenities && props.space.amenities.length > 0) {
-    for (const amenity of props.space.amenities.slice(0, 3)) {
+    for (const amenity of props.space.amenities) {
       const lowerAmenity = amenity.toLowerCase()
       let icon = 'check_circle'
       
@@ -139,15 +153,85 @@ const displayAmenities = computed(() => {
         }
       }
       
-      items.push({ icon, label: amenity })
+      items.push({ icon, label: formatLabel(amenity) })
     }
   } else {
     if (props.space.capacity >= 10) items.push({ icon: 'wifi', label: 'Wi-Fi' })
-    if (props.space.capacity >= 20) items.push({ icon: 'ac_unit', label: 'A/C' })
+    if (props.space.capacity >= 20) items.push({ icon: 'ac_unit', label: 'Aire acondicionado' })
     if (props.space.capacity >= 40) items.push({ icon: 'mic', label: 'Audio' })
   }
   
-  return items.slice(0, 3)
+  return items
+})
+
+// Lógica para cálculo dinámico de amenidades visibles
+const amenitiesContainerRef = ref<HTMLElement | null>(null)
+const visibleAmenitiesCount = ref(3)
+let resizeObserver: ResizeObserver | null = null
+
+const calculateVisibleAmenities = () => {
+  if (!amenitiesContainerRef.value) return
+  
+  const containerWidth = amenitiesContainerRef.value.offsetWidth
+  if (containerWidth === 0) return
+
+  let currentWidth = 0
+  let count = 0
+  const gap = 8 // gap-2 = 8px
+  const badgeWidth = 45 // Espacio reservado para el badge +N
+  
+  const allItems = displayAmenities.value
+  
+  for (let i = 0; i < allItems.length; i++) {
+    const item = allItems[i]
+    // Estimación: padding(8) + icon(14) + gap(4) + text(chars * 7)
+    const itemWidth = 26 + (item.label.length * 7.5) 
+    
+    const isLast = i === allItems.length - 1
+    const spaceNeeded = itemWidth + (count > 0 ? gap : 0)
+    
+    // Si no es el último, necesitamos reservar espacio para el badge por si acaso
+    const spaceWithBadge = spaceNeeded + gap + badgeWidth
+    
+    if (isLast) {
+      if (currentWidth + spaceNeeded <= containerWidth) {
+        currentWidth += spaceNeeded
+        count++
+      }
+    } else {
+      // Verificamos si cabe el item Y el badge (conservador)
+      if (currentWidth + spaceWithBadge <= containerWidth) {
+        currentWidth += spaceNeeded
+        count++
+      } else {
+        // Si no cabe con badge, paramos aquí para dejar espacio al badge
+        break
+      }
+    }
+  }
+  
+  visibleAmenitiesCount.value = Math.max(1, count)
+}
+
+onMounted(() => {
+  if (amenitiesContainerRef.value) {
+    resizeObserver = new ResizeObserver(() => {
+      calculateVisibleAmenities()
+    })
+    resizeObserver.observe(amenitiesContainerRef.value)
+    // Pequeño delay para asegurar renderizado inicial
+    setTimeout(calculateVisibleAmenities, 100)
+  }
+})
+
+onUnmounted(() => {
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+  }
+})
+
+watch(displayAmenities, () => {
+  nextTick(calculateVisibleAmenities)
 })
 
 // Ubicación formateada
@@ -164,7 +248,123 @@ const locationText = computed(() => {
 </script>
 
 <template>
+  <!-- Vista de lista compacta -->
   <article
+    v-if="viewMode === 'list'"
+    class="group relative flex overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-black/5 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:ring-primary/20"
+  >
+    <!-- Imagen compacta a la izquierda -->
+    <div class="relative w-48 flex-shrink-0 overflow-hidden">
+      <!-- Imagen real -->
+      <img 
+        v-if="hasRealImage"
+        :src="imageUrl!"
+        :alt="space.name"
+        class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+      />
+      
+      <!-- Placeholder con gradiente -->
+      <div 
+        v-else
+        class="h-full w-full bg-gradient-to-br" 
+        :class="placeholderGradient"
+      >
+        <div class="absolute inset-0 flex items-center justify-center">
+          <div class="flex flex-col items-center gap-2 text-white">
+            <span class="material-symbols-outlined text-3xl">{{ usageBadge.icon }}</span>
+            <span class="text-xs font-medium">{{ space.capacity }} personas</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Badge de categoría -->
+      <div class="absolute left-2 top-2 z-10">
+        <span 
+          class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-white shadow-md backdrop-blur-sm bg-gradient-to-r"
+          :class="usageBadge.gradient"
+        >
+          <span class="material-symbols-outlined !text-[14px]">{{ usageBadge.icon }}</span>
+          {{ usageBadge.label }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Contenido compacto a la derecha -->
+    <div class="flex flex-1 flex-col justify-between p-4">
+      <div class="flex items-start justify-between gap-4">
+        <div class="flex-1 min-w-0">
+          <!-- Título -->
+          <h3 class="text-base font-bold text-gray-900 group-hover:text-primary transition-colors line-clamp-1">
+            {{ space.name }}
+          </h3>
+          
+          <!-- Descripción compacta -->
+          <p class="mt-1 text-sm text-gray-600 line-clamp-1">
+            {{ description }}
+          </p>
+
+          <!-- Info rápida -->
+          <div class="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+            <!-- Capacidad -->
+            <div class="flex items-center gap-1">
+              <span class="material-symbols-outlined !text-[16px] text-blue-600">group</span>
+              <span class="font-semibold text-gray-900">{{ space.capacity }}</span> personas
+            </div>
+            
+            <!-- Ubicación -->
+            <div v-if="locationText" class="flex items-center gap-1">
+              <span class="material-symbols-outlined !text-[16px] text-gray-400">location_on</span>
+              {{ locationText }}
+            </div>
+
+            <!-- Propietario -->
+            <div class="flex items-center gap-1">
+              <span class="material-symbols-outlined !text-[14px] text-emerald-500">verified</span>
+              <span class="font-medium">{{ ownerName }}</span>
+            </div>
+          </div>
+
+          <!-- Amenidades compactas -->
+          <div class="mt-2 flex flex-wrap gap-1.5">
+            <span 
+              v-for="(amenity, idx) in displayAmenities.slice(0, 4)" 
+              :key="idx"
+              class="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700"
+            >
+              <span class="material-symbols-outlined !text-[14px]">{{ amenity.icon }}</span>
+              {{ amenity.label }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Precio y botón -->
+        <div class="flex flex-col items-end gap-3 flex-shrink-0">
+          <!-- Precio -->
+          <div v-if="formattedPrice" class="text-right">
+            <div class="text-2xl font-black text-gray-900">{{ formattedPrice }}</div>
+            <div class="text-xs font-medium text-gray-500">por hora</div>
+          </div>
+          <div v-else class="text-right">
+            <div class="text-sm font-bold text-gray-900">Consultar</div>
+            <div class="text-xs text-gray-500">precio</div>
+          </div>
+
+          <!-- Botón compacto -->
+          <NuxtLink
+            :to="`/spaces/${space.id}`"
+            class="group/btn inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-primary-dark px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/30 transition-all duration-300 hover:shadow-xl hover:shadow-primary/40 whitespace-nowrap"
+          >
+            <span>Ver detalles</span>
+            <span class="material-symbols-outlined !text-[18px] transition-transform group-hover/btn:translate-x-1">arrow_forward</span>
+          </NuxtLink>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Vista de grid (diseño original) -->
+  <article
+    v-else
     class="group relative flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-black/5 transition-all duration-300 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-1"
   >
     <!-- Borde gradiente en hover -->
@@ -293,6 +493,29 @@ const locationText = computed(() => {
           <p class="mt-2 text-sm leading-relaxed text-gray-600 line-clamp-2">
             {{ description }}
           </p>
+        </div>
+
+        <!-- Amenidades compactas con iconos -->
+        <div 
+          ref="amenitiesContainerRef"
+          class="mt-3 flex items-center gap-2 overflow-hidden h-[30px]"
+        >
+          <div 
+            v-for="(amenity, idx) in displayAmenities.slice(0, visibleAmenitiesCount)" 
+            :key="idx"
+            class="flex items-center gap-1 rounded-lg bg-gray-50 px-2 py-1.5 text-xs font-medium text-gray-700 ring-1 ring-gray-100 shrink-0 whitespace-nowrap"
+            :title="amenity.label"
+          >
+            <span class="material-symbols-outlined !text-[14px] text-primary shrink-0">{{ amenity.icon }}</span>
+            <span>{{ amenity.label }}</span>
+          </div>
+          <div 
+            v-if="displayAmenities.length > visibleAmenitiesCount"
+            class="flex items-center justify-center rounded-lg bg-primary/5 px-2 py-1.5 text-xs font-bold text-primary shrink-0"
+            :title="`${displayAmenities.length - visibleAmenitiesCount} más`"
+          >
+            +{{ displayAmenities.length - visibleAmenitiesCount }}
+          </div>
         </div>
 
         <!-- Stats rápidas con diseño premium -->

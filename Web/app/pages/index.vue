@@ -844,7 +844,8 @@ const formatNumber = (value: number) => new Intl.NumberFormat('es-HN').format(va
             <SpaceCard 
               v-for="space in featuredSpaces" 
               :key="`featured-${space.id}`" 
-              :space="space" 
+              :space="space"
+              :view-mode="viewMode"
             />
           </div>
         </div>
@@ -868,6 +869,7 @@ const formatNumber = (value: number) => new Intl.NumberFormat('es-HN').format(va
               v-for="space in secondarySpaces"
               :key="space.id"
               :space="space"
+              :view-mode="viewMode"
             />
           </div>
         </div>
@@ -882,6 +884,7 @@ const formatNumber = (value: number) => new Intl.NumberFormat('es-HN').format(va
               v-for="space in filteredSpaces"
               :key="space.id"
               :space="space"
+              :view-mode="viewMode"
             />
           </div>
         </div>
