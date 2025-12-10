@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import SpacesService from '~/services/spaces.service'
 import type { Space } from '~/types/space'
 
@@ -13,6 +13,49 @@ useSeoMeta({
 })
 
 const { user, logout } = useAuth()
+
+// ========== SISTEMA DE EFECTOS OPTIMIZADO (CSS-only) ==========
+const heroRef = ref<HTMLElement | null>(null)
+const mousePosition = ref({ x: 50, y: 50 })
+const isMouseInHero = ref(false)
+const showRipple = ref(false)
+const ripplePosition = ref({ x: 0, y: 0 })
+
+// Throttle para el mouse move (mejora rendimiento)
+let lastMouseMove = 0
+const THROTTLE_MS = 16 // ~60fps
+
+const handleMouseMove = (e: MouseEvent) => {
+  const now = Date.now()
+  if (now - lastMouseMove < THROTTLE_MS) return
+  lastMouseMove = now
+  
+  if (!heroRef.value) return
+  const rect = heroRef.value.getBoundingClientRect()
+  mousePosition.value = {
+    x: ((e.clientX - rect.left) / rect.width) * 100,
+    y: ((e.clientY - rect.top) / rect.height) * 100
+  }
+}
+
+const handleMouseEnter = () => {
+  isMouseInHero.value = true
+}
+
+const handleMouseLeave = () => {
+  isMouseInHero.value = false
+}
+
+const handleHeroClick = (e: MouseEvent) => {
+  if (!heroRef.value) return
+  const rect = heroRef.value.getBoundingClientRect()
+  ripplePosition.value = {
+    x: ((e.clientX - rect.left) / rect.width) * 100,
+    y: ((e.clientY - rect.top) / rect.height) * 100
+  }
+  showRipple.value = true
+  setTimeout(() => { showRipple.value = false }, 800)
+}
 
 const searchQuery = ref('')
 const minCapacity = ref<number | null>(null)
@@ -204,54 +247,97 @@ const formatNumber = (value: number) => new Intl.NumberFormat('es-HN').format(va
 </script>
 
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30">
-    <!-- Hero Section Mejorado -->
-    <section class="relative overflow-hidden bg-gradient-to-br from-primary via-primary-dark to-blue-900 pb-20 pt-10">
-      <!-- Patrón de fondo animado -->
-      <div class="absolute inset-0 opacity-10">
-        <div class="absolute left-1/4 top-0 h-[500px] w-[500px] rounded-full bg-white blur-3xl animate-pulse"></div>
-        <div class="absolute right-1/4 bottom-0 h-[400px] w-[400px] rounded-full bg-white blur-3xl animate-pulse" style="animation-delay: 1s;"></div>
-        <div class="absolute left-1/2 top-1/2 h-72 w-72 rounded-full bg-white blur-2xl animate-pulse" style="animation-delay: 2s;"></div>
+  <div class="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30 overflow-hidden">
+    <!-- Hero Section Mejorado con Animaciones OPTIMIZADAS -->
+    <section 
+      ref="heroRef"
+      class="relative overflow-hidden hero-animated-bg pb-20 pt-10"
+      @mousemove="handleMouseMove"
+      @mouseenter="handleMouseEnter"
+      @mouseleave="handleMouseLeave"
+      @click="handleHeroClick"
+    >
+      <!-- Partículas CSS puras (GPU accelerated) -->
+      <div class="particles-container">
+        <div class="particle particle-1"></div>
+        <div class="particle particle-2"></div>
+        <div class="particle particle-3"></div>
+        <div class="particle particle-4"></div>
+        <div class="particle particle-5"></div>
+        <div class="particle particle-6"></div>
+        <div class="particle particle-7"></div>
+        <div class="particle particle-8"></div>
       </div>
 
-      <!-- Formas geométricas decorativas -->
-      <div class="absolute inset-0 overflow-hidden pointer-events-none">
-        <div class="absolute top-20 left-10 h-3 w-3 rounded-full bg-white/20 animate-bounce" style="animation-duration: 3s;"></div>
-        <div class="absolute top-40 right-20 h-4 w-4 rounded-full bg-white/15 animate-bounce" style="animation-duration: 4s; animation-delay: 1s;"></div>
-        <div class="absolute bottom-32 left-1/3 h-3 w-3 rounded-full bg-white/20 animate-bounce" style="animation-duration: 5s; animation-delay: 2s;"></div>
-        <div class="absolute top-1/2 right-1/4 h-20 w-20 border border-white/10 rounded-2xl rotate-12"></div>
-        <div class="absolute bottom-1/4 left-1/4 h-16 w-16 border border-white/10 rounded-full"></div>
+      <!-- Click ripple effect (single element, reused) -->
+      <div 
+        v-if="showRipple"
+        class="click-ripple"
+        :style="{
+          left: `${ripplePosition.x}%`,
+          top: `${ripplePosition.y}%`,
+        }"
+      />
+
+      <!-- Aurora gradient animado (CSS only) -->
+      <div class="aurora-container">
+        <div class="aurora aurora-1"></div>
+        <div class="aurora aurora-2"></div>
       </div>
+
+      <!-- Orbes flotantes (CSS only, will-change optimized) -->
+      <div class="floating-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+        <div class="orb orb-4"></div>
+      </div>
+
+      <!-- Formas geométricas rotantes -->
+      <div class="geometric-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+      </div>
+
+      <!-- Cursor follower glow (optimized with will-change) -->
+      <div 
+        class="cursor-glow"
+        :class="{ 'cursor-glow-visible': isMouseInHero }"
+        :style="{
+          '--mouse-x': `${mousePosition.x}%`,
+          '--mouse-y': `${mousePosition.y}%`,
+        }"
+      />
 
       <div class="relative px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <!-- Header mejorado -->
-        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-12">
-          <div class="flex items-center gap-4">
+        <!-- Header mejorado con animaciones de entrada -->
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-12 animate-slide-down">
+          <div class="flex items-center gap-4 group cursor-pointer hover-lift">
             <div class="relative">
-              <div class="h-14 w-14 rounded-2xl bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-xl flex items-center justify-center ring-2 ring-white/20 shadow-lg shadow-black/10">
-                <span class="material-symbols-outlined text-white text-3xl">account_circle</span>
+              <div class="h-14 w-14 rounded-2xl bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-xl flex items-center justify-center ring-2 ring-white/20 shadow-lg shadow-black/10 group-hover:ring-white/40 group-hover:shadow-xl transition-all duration-300 avatar-glow">
+                <span class="material-symbols-outlined text-white text-3xl group-hover:scale-110 transition-transform">account_circle</span>
               </div>
-              <div class="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-green-400 border-2 border-white shadow-sm flex items-center justify-center">
+              <div class="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-green-400 border-2 border-white shadow-sm flex items-center justify-center status-pulse">
                 <span class="material-symbols-outlined text-white !text-[12px]">check</span>
               </div>
             </div>
             <div>
-              <p class="text-xs text-white/60 uppercase tracking-wider font-semibold">¡Bienvenido de nuevo!</p>
-              <p class="text-white font-bold text-xl">{{ user?.name ?? user?.email ?? 'Usuario' }}</p>
+              <p class="text-xs text-white/60 uppercase tracking-wider font-semibold animate-fade-in" style="animation-delay: 0.2s;">¡Bienvenido de nuevo!</p>
+              <p class="text-white font-bold text-xl text-glow animate-fade-in" style="animation-delay: 0.3s;">{{ user?.name ?? user?.email ?? 'Usuario' }}</p>
             </div>
           </div>
           
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-3 animate-fade-in" style="animation-delay: 0.4s;">
             <NuxtLink
               to="/bookings"
-              class="inline-flex items-center gap-2 rounded-xl bg-white/15 backdrop-blur-xl border border-white/20 px-5 py-3 text-sm font-bold text-white hover:bg-white/25 transition-all duration-200 shadow-lg shadow-black/10"
+              class="inline-flex items-center gap-2 rounded-xl bg-white/15 backdrop-blur-xl border border-white/20 px-5 py-3 text-sm font-bold text-white hover:bg-white/25 transition-all duration-300 shadow-lg shadow-black/10 btn-hover"
             >
-              <span class="material-symbols-outlined !text-[20px]">calendar_month</span>
+              <span class="material-symbols-outlined !text-[20px] btn-icon">calendar_month</span>
               <span class="hidden sm:inline">Mis Reservas</span>
             </NuxtLink>
             <button
               type="button"
-              class="inline-flex items-center gap-2 rounded-xl bg-white/15 backdrop-blur-xl border border-white/20 px-5 py-3 text-sm font-bold text-white hover:bg-white/25 transition-all duration-200 shadow-lg shadow-black/10"
+              class="inline-flex items-center gap-2 rounded-xl bg-white/15 backdrop-blur-xl border border-white/20 px-5 py-3 text-sm font-bold text-white hover:bg-white/25 transition-all duration-300 shadow-lg shadow-black/10 btn-hover"
               @click="logout"
             >
               <span class="material-symbols-outlined !text-[20px]">logout</span>
@@ -260,31 +346,35 @@ const formatNumber = (value: number) => new Intl.NumberFormat('es-HN').format(va
           </div>
         </div>
 
-        <!-- Título principal con estilo mejorado -->
+        <!-- Título principal con animaciones -->
         <div class="text-center max-w-4xl mx-auto mb-14">
-          <div class="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 px-5 py-2.5 mb-8 shadow-lg">
-            <span class="flex h-2 w-2 rounded-full bg-green-400 animate-pulse"></span>
+          <div class="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 px-5 py-2.5 mb-8 shadow-lg animate-bounce-in badge-shimmer">
+            <span class="flex h-2 w-2 rounded-full bg-green-400 status-pulse"></span>
             <span class="text-white text-sm font-bold">Espacios verificados y listos para reservar</span>
           </div>
+          
           <h1 class="text-5xl md:text-7xl font-black text-white tracking-tight leading-[1.1] mb-8">
-            Descubre espacios
-            <span class="relative">
-              <span class="bg-gradient-to-r from-yellow-300 via-orange-300 to-pink-300 bg-clip-text text-transparent">increíbles</span>
-              <span class="absolute -bottom-2 left-0 right-0 h-1 bg-gradient-to-r from-yellow-300 via-orange-300 to-pink-300 rounded-full opacity-50"></span>
+            <span class="inline-block animate-slide-up" style="animation-delay: 0.1s;">Descubre</span> <span class="inline-block animate-slide-up" style="animation-delay: 0.2s;">espacios</span>
+            <br>
+            <span class="relative inline-block animate-slide-up" style="animation-delay: 0.3s;">
+              <span class="title-gradient-animated">increíbles</span>
+              <span class="absolute -bottom-2 left-0 right-0 h-1.5 title-underline rounded-full"></span>
             </span>
           </h1>
-          <p class="text-xl md:text-2xl text-white/80 max-w-2xl mx-auto leading-relaxed font-medium">
+          
+          <p class="text-xl md:text-2xl text-white/80 max-w-2xl mx-auto leading-relaxed font-medium animate-fade-in-up" style="animation-delay: 0.5s;">
             Encuentra el lugar perfecto para tu próxima reunión, evento o proyecto. 
             <span class="text-white font-bold">Reserva en segundos.</span>
           </p>
         </div>
 
         <!-- Barra de búsqueda premium -->
-        <div class="max-w-4xl mx-auto mb-12">
-          <div class="relative">
-            <div class="absolute inset-0 bg-white/20 rounded-3xl blur-xl"></div>
-            <div class="relative flex flex-col lg:flex-row gap-3 p-4 rounded-2xl bg-white shadow-2xl shadow-black/20 ring-1 ring-black/5">
-              <div class="flex-1 flex items-center gap-4 px-5 py-3 rounded-xl bg-gray-50/80 border border-gray-100">
+        <div class="max-w-4xl mx-auto mb-12 animate-scale-in" style="animation-delay: 0.6s;">
+          <div class="relative group">
+            <div class="absolute inset-0 bg-white/20 rounded-3xl blur-xl transition-all duration-500"></div>
+            <div class="search-glow-border"></div>
+            <div class="relative flex flex-col lg:flex-row gap-3 p-4 rounded-2xl bg-white shadow-2xl shadow-black/20 ring-1 ring-black/5 search-card">
+              <div class="flex-1 flex items-center gap-4 px-5 py-3 rounded-xl bg-gray-50/80 border border-gray-100 transition-all duration-300">
                 <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dark">
                   <span class="material-symbols-outlined text-white text-xl">search</span>
                 </div>
@@ -298,7 +388,7 @@ const formatNumber = (value: number) => new Intl.NumberFormat('es-HN').format(va
                 <button
                   v-if="searchQuery"
                   type="button"
-                  class="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
+                  class="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all duration-200 hover:rotate-90"
                   @click="searchQuery = ''"
                 >
                   <span class="material-symbols-outlined !text-[20px]">close</span>
@@ -307,7 +397,7 @@ const formatNumber = (value: number) => new Intl.NumberFormat('es-HN').format(va
               
               <button
                 type="button"
-                class="inline-flex items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-primary via-primary-dark to-blue-200 px-10 py-4 font-bold text-white shadow-lg shadow-primary/30 transition-all duration-200 hover:shadow-xl hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.98]"
+                class="search-btn inline-flex items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-primary via-primary-dark to-blue-300 px-10 py-4 font-bold text-white shadow-lg shadow-primary/30 transition-all duration-300 hover:shadow-xl hover:shadow-primary/50 active:scale-[0.98]"
                 :disabled="isSearching || pending"
                 @click="handleSearch"
               >
@@ -318,17 +408,16 @@ const formatNumber = (value: number) => new Intl.NumberFormat('es-HN').format(va
           </div>
         </div>
 
-        <!-- Cards promocionales premium -->
+        <!-- Cards promocionales -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 max-w-4xl mx-auto">
           <!-- Reserva rápida -->
-          <div class="relative group cursor-pointer" @click="handleSearch">
-            <div class="absolute inset-0 bg-gradient-to-br from-emerald-400/40 to-green-500/30 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            <div class="relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-7 hover:bg-white/20 hover:scale-[1.03] transition-all duration-300 shadow-lg">
+          <div class="promo-card-wrapper animate-slide-up" style="animation-delay: 0.7s;" @click="handleSearch">
+            <div class="promo-card promo-card-green">
               <div class="flex items-center justify-between mb-4">
                 <div class="h-14 w-14 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
                   <span class="material-symbols-outlined text-white text-3xl">bolt</span>
                 </div>
-                <span class="material-symbols-outlined text-white/50 group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                <span class="material-symbols-outlined text-white/50 promo-arrow">arrow_forward</span>
               </div>
               <p class="text-2xl font-black text-white mb-2">Reserva Rápida</p>
               <p class="text-sm text-white/70 font-medium">Encuentra y reserva en minutos</p>
@@ -336,24 +425,22 @@ const formatNumber = (value: number) => new Intl.NumberFormat('es-HN').format(va
           </div>
 
           <!-- Verificación -->
-          <div class="relative group">
-            <div class="absolute inset-0 bg-gradient-to-br from-blue-400/40 to-cyan-500/30 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            <div class="relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-7 hover:bg-white/20 transition-all duration-300 shadow-lg">
+          <div class="promo-card-wrapper animate-slide-up" style="animation-delay: 0.8s;">
+            <div class="promo-card promo-card-blue">
               <div class="flex items-center justify-between mb-4">
                 <div class="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/30">
                   <span class="material-symbols-outlined text-white text-3xl">verified</span>
                 </div>
-                <span class="flex h-3 w-3 rounded-full bg-green-400 animate-pulse shadow-lg shadow-green-400/50"></span>
+                <span class="flex h-3 w-3 rounded-full bg-green-400 status-pulse"></span>
               </div>
-              <p class="text-2xl font-black text-white mb-2">100% Verificado</p>
+              <p class="text-2xl font-black text-white mb-2 group-hover:text-glow">100% Verificado</p>
               <p class="text-sm text-white/70 font-medium">Espacios confiables y seguros</p>
             </div>
           </div>
 
           <!-- Soporte -->
-          <div class="relative group">
-            <div class="absolute inset-0 bg-gradient-to-br from-purple-400/40 to-pink-500/30 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            <div class="relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-7 hover:bg-white/20 transition-all duration-300 shadow-lg">
+          <div class="promo-card-wrapper animate-slide-up" style="animation-delay: 0.9s;">
+            <div class="promo-card promo-card-purple">
               <div class="flex items-center justify-between mb-4">
                 <div class="h-14 w-14 rounded-2xl bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/30">
                   <span class="material-symbols-outlined text-white text-3xl">support_agent</span>
@@ -777,3 +864,539 @@ const formatNumber = (value: number) => new Intl.NumberFormat('es-HN').format(va
     </section>
   </div>
 </template>
+
+<style scoped>
+/* ========== OPTIMIZADO PARA RENDIMIENTO ==========
+   - Usa will-change solo donde es necesario
+   - Animaciones CSS puras (GPU accelerated)
+   - Reduce repaints y reflows
+   - contain: layout para aislar elementos
+========== */
+
+/* ========== FONDO ANIMADO (GPU) ========== */
+.hero-animated-bg {
+  background: linear-gradient(-45deg, #1e40af, #3b82f6, #0ea5e9, #1e3a8a, #2563eb);
+  background-size: 400% 400%;
+  animation: gradient-flow 20s ease infinite;
+  contain: layout style;
+}
+
+@keyframes gradient-flow {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* ========== PARTÍCULAS CSS PURAS ========== */
+.particles-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.4;
+  will-change: transform;
+}
+
+.particle-1 {
+  width: 6px; height: 6px;
+  background: rgba(96, 165, 250, 0.8);
+  box-shadow: 0 0 12px rgba(96, 165, 250, 0.6);
+  top: 15%; left: 10%;
+  animation: float-particle 25s ease-in-out infinite;
+}
+
+.particle-2 {
+  width: 4px; height: 4px;
+  background: rgba(167, 139, 250, 0.8);
+  box-shadow: 0 0 10px rgba(167, 139, 250, 0.6);
+  top: 25%; right: 15%;
+  animation: float-particle 20s ease-in-out infinite reverse;
+}
+
+.particle-3 {
+  width: 5px; height: 5px;
+  background: rgba(34, 211, 238, 0.8);
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.6);
+  bottom: 30%; left: 20%;
+  animation: float-particle 22s ease-in-out infinite;
+  animation-delay: -5s;
+}
+
+.particle-4 {
+  width: 3px; height: 3px;
+  background: rgba(251, 191, 36, 0.7);
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+  top: 40%; right: 25%;
+  animation: float-particle 18s ease-in-out infinite;
+  animation-delay: -3s;
+}
+
+.particle-5 {
+  width: 4px; height: 4px;
+  background: rgba(244, 114, 182, 0.7);
+  box-shadow: 0 0 10px rgba(244, 114, 182, 0.5);
+  bottom: 20%; right: 10%;
+  animation: float-particle 24s ease-in-out infinite reverse;
+  animation-delay: -8s;
+}
+
+.particle-6 {
+  width: 5px; height: 5px;
+  background: rgba(74, 222, 128, 0.7);
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+  top: 60%; left: 30%;
+  animation: float-particle 21s ease-in-out infinite;
+  animation-delay: -10s;
+}
+
+.particle-7 {
+  width: 3px; height: 3px;
+  background: rgba(129, 140, 248, 0.8);
+  box-shadow: 0 0 8px rgba(129, 140, 248, 0.6);
+  top: 70%; right: 35%;
+  animation: float-particle 19s ease-in-out infinite reverse;
+  animation-delay: -2s;
+}
+
+.particle-8 {
+  width: 4px; height: 4px;
+  background: rgba(252, 211, 77, 0.7);
+  box-shadow: 0 0 10px rgba(252, 211, 77, 0.5);
+  bottom: 40%; left: 45%;
+  animation: float-particle 23s ease-in-out infinite;
+  animation-delay: -7s;
+}
+
+@keyframes float-particle {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(30px, -40px); }
+  50% { transform: translate(-20px, 30px); }
+  75% { transform: translate(40px, 20px); }
+}
+
+/* ========== CLICK RIPPLE ========== */
+.click-ripple {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.5) 0%, transparent 70%);
+  transform: translate(-50%, -50%);
+  animation: ripple-expand 0.8s ease-out forwards;
+  pointer-events: none;
+  will-change: width, height, opacity;
+}
+
+@keyframes ripple-expand {
+  0% { width: 0; height: 0; opacity: 1; }
+  100% { width: 250px; height: 250px; opacity: 0; }
+}
+
+/* ========== AURORA (CSS only) ========== */
+.aurora-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0.15;
+  contain: strict;
+}
+
+.aurora {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  will-change: transform;
+}
+
+.aurora-1 {
+  width: 400px; height: 400px;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.5), rgba(59, 130, 246, 0.3));
+  top: -100px; left: 10%;
+  animation: aurora-float 25s ease-in-out infinite;
+}
+
+.aurora-2 {
+  width: 350px; height: 350px;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.4), rgba(236, 72, 153, 0.3));
+  bottom: -50px; right: 15%;
+  animation: aurora-float 20s ease-in-out infinite reverse;
+}
+
+@keyframes aurora-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(50px, 30px) scale(1.1); }
+}
+
+/* ========== ORBES FLOTANTES ========== */
+.floating-orbs {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  contain: strict;
+}
+
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  will-change: transform;
+}
+
+.orb-1 {
+  width: 8px; height: 8px;
+  background: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+  top: 15%; left: 8%;
+  animation: orb-float 6s ease-in-out infinite;
+}
+
+.orb-2 {
+  width: 10px; height: 10px;
+  background: rgba(34, 211, 238, 0.5);
+  box-shadow: 0 0 20px rgba(34, 211, 238, 0.3);
+  top: 30%; right: 12%;
+  animation: orb-float 7s ease-in-out infinite;
+  animation-delay: -2s;
+}
+
+.orb-3 {
+  width: 6px; height: 6px;
+  background: rgba(251, 191, 36, 0.5);
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.3);
+  bottom: 25%; left: 25%;
+  animation: orb-float 5s ease-in-out infinite;
+  animation-delay: -1s;
+}
+
+.orb-4 {
+  width: 7px; height: 7px;
+  background: rgba(244, 114, 182, 0.4);
+  box-shadow: 0 0 14px rgba(244, 114, 182, 0.3);
+  top: 45%; right: 30%;
+  animation: orb-float 8s ease-in-out infinite;
+  animation-delay: -3s;
+}
+
+@keyframes orb-float {
+  0%, 100% { transform: translateY(0); opacity: 0.6; }
+  50% { transform: translateY(-15px); opacity: 1; }
+}
+
+/* ========== FORMAS GEOMÉTRICAS ========== */
+.geometric-shapes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  contain: strict;
+}
+
+.shape {
+  position: absolute;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  will-change: transform;
+}
+
+.shape-1 {
+  width: 80px; height: 80px;
+  border-radius: 16px;
+  top: 50%; right: 20%;
+  animation: rotate-shape 30s linear infinite;
+}
+
+.shape-2 {
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  bottom: 25%; left: 15%;
+  animation: rotate-shape 25s linear infinite reverse;
+}
+
+@keyframes rotate-shape {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ========== CURSOR GLOW ========== */
+.cursor-glow {
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%);
+  left: var(--mouse-x, 50%);
+  top: var(--mouse-y, 50%);
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  will-change: left, top;
+}
+
+.cursor-glow-visible {
+  opacity: 1;
+}
+
+/* ========== ANIMACIONES DE ENTRADA ========== */
+.animate-slide-down {
+  animation: slide-down 0.6s ease-out forwards;
+}
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.6s ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.6s cubic-bezier(0.68, -0.3, 0.265, 1.3) forwards;
+}
+
+@keyframes bounce-in {
+  0% { opacity: 0; transform: scale(0.5); }
+  70% { transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.animate-scale-in {
+  animation: scale-in 0.5s ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ========== TÍTULO GRADIENTE ========== */
+.title-gradient-animated {
+  background: linear-gradient(90deg, #fcd34d, #fb923c, #f472b6, #fb923c, #fcd34d);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradient-text 4s linear infinite;
+}
+
+@keyframes gradient-text {
+  from { background-position: 0% center; }
+  to { background-position: 200% center; }
+}
+
+.title-underline {
+  background: linear-gradient(90deg, #fcd34d, #fb923c, #f472b6);
+  opacity: 0.7;
+  animation: underline-expand 0.8s ease-out 0.5s forwards;
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+@keyframes underline-expand {
+  to { transform: scaleX(1); }
+}
+
+/* ========== EFECTOS HOVER SIMPLES ========== */
+.text-glow {
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+}
+
+.avatar-glow {
+  transition: box-shadow 0.3s ease;
+}
+
+.avatar-glow:hover {
+  box-shadow: 0 0 25px rgba(255, 255, 255, 0.3);
+}
+
+.hover-lift {
+  transition: transform 0.2s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+}
+
+.btn-hover {
+  transition: all 0.2s ease;
+}
+
+.btn-hover:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+/* ========== STATUS PULSE (optimizado) ========== */
+.status-pulse {
+  animation: status-pulse 2s ease-in-out infinite;
+}
+
+@keyframes status-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.1); }
+}
+
+/* ========== BADGE SHIMMER ========== */
+.badge-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.badge-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+  animation: shimmer 4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { left: -100%; }
+  50%, 100% { left: 200%; }
+}
+
+/* ========== SEARCH CARD ========== */
+.search-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.search-card:hover {
+  transform: translateY(-2px);
+}
+
+.search-glow-border {
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(45deg, #06b6d4, #3b82f6, #8b5cf6);
+  border-radius: 1.5rem;
+  opacity: 0;
+  z-index: -1;
+  filter: blur(8px);
+  transition: opacity 0.4s ease;
+}
+
+.group:hover .search-glow-border {
+  opacity: 0.4;
+}
+
+.search-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.search-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.search-btn:hover::before {
+  left: 100%;
+}
+
+/* ========== PROMO CARDS ========== */
+.promo-card-wrapper {
+  cursor: pointer;
+}
+
+.promo-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 1rem;
+  padding: 1.75rem;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.promo-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent, rgba(255, 255, 255, 0.05));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.promo-card-wrapper:hover .promo-card {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.3);
+}
+
+.promo-card-wrapper:hover .promo-card::before {
+  opacity: 1;
+}
+
+.promo-arrow {
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.promo-card-wrapper:hover .promo-arrow {
+  transform: translateX(4px);
+  color: white;
+}
+
+/* Card colors on hover */
+.promo-card-green:hover { box-shadow: 0 20px 40px -10px rgba(16, 185, 129, 0.3); }
+.promo-card-blue:hover { box-shadow: 0 20px 40px -10px rgba(59, 130, 246, 0.3); }
+.promo-card-purple:hover { box-shadow: 0 20px 40px -10px rgba(168, 85, 247, 0.3); }
+
+/* ========== REDUCED MOTION ========== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .particles-container,
+  .aurora-container,
+  .floating-orbs,
+  .geometric-shapes {
+    display: none;
+  }
+}
+</style>
