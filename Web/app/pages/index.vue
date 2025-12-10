@@ -604,25 +604,34 @@ const formatNumber = (value: number) => new Intl.NumberFormat('es-HN').format(va
 
             <!-- Controles de vista y ordenamiento -->
             <div class="flex items-center gap-3">
-              <!-- Controles de vista -->
-              <div class="flex items-center gap-1 bg-white rounded-xl border border-gray-200 p-1 shadow-sm">
+              <!-- Controles de vista con diseño premium -->
+              <div class="relative flex items-center bg-gray-100/80 p-1 rounded-xl border border-gray-200/50 shadow-inner w-[104px] sm:w-[120px]">
+                <!-- Fondo deslizante -->
+                <div 
+                  class="absolute inset-y-1 w-[calc(50%-4px)] bg-white rounded-lg shadow-sm ring-1 ring-black/5 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+                  :class="viewMode === 'grid' ? 'left-1' : 'left-[calc(50%+2px)]'"
+                ></div>
+
+                <!-- Botón Grid -->
                 <button
                   type="button"
-                  class="rounded-lg px-2.5 sm:px-3 py-2 transition-all duration-200 active:scale-95"
-                  :class="viewMode === 'grid' ? 'bg-primary text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'"
+                  class="relative z-10 flex-1 flex items-center justify-center py-2 rounded-lg transition-colors duration-200"
+                  :class="viewMode === 'grid' ? 'text-primary' : 'text-gray-500 hover:text-gray-700'"
                   @click="viewMode = 'grid'"
                   title="Vista en cuadrícula"
                 >
-                  <span class="material-symbols-outlined !text-[18px] sm:!text-[20px]">grid_view</span>
+                  <span class="material-symbols-outlined !text-[20px] transition-transform duration-300" :class="{ 'scale-110': viewMode === 'grid' }">grid_view</span>
                 </button>
+
+                <!-- Botón Lista -->
                 <button
                   type="button"
-                  class="rounded-lg px-2.5 sm:px-3 py-2 transition-all duration-200 active:scale-95"
-                  :class="viewMode === 'list' ? 'bg-primary text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'"
+                  class="relative z-10 flex-1 flex items-center justify-center py-2 rounded-lg transition-colors duration-200"
+                  :class="viewMode === 'list' ? 'text-primary' : 'text-gray-500 hover:text-gray-700'"
                   @click="viewMode = 'list'"
                   title="Vista en lista"
                 >
-                  <span class="material-symbols-outlined !text-[18px] sm:!text-[20px]">view_list</span>
+                  <span class="material-symbols-outlined !text-[20px] transition-transform duration-300" :class="{ 'scale-110': viewMode === 'list' }">view_list</span>
                 </button>
               </div>
 
