@@ -283,6 +283,122 @@
             </div>
           </div>
 
+          <!-- Sección: Información Bancaria para Pagos -->
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
+              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+              Información Bancaria para Pagos
+            </h3>
+            <p class="text-sm text-gray-500 mb-6">
+              Configura tu cuenta bancaria para recibir pagos por transferencia de tus reservas.
+            </p>
+
+            <!-- Alerta informativa -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <div class="flex items-start gap-3">
+                <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p class="text-sm text-blue-900 font-medium">¿Cómo funciona?</p>
+                  <p class="text-xs text-blue-700 mt-1">
+                    Cuando un usuario elija pagar por transferencia, verá estos datos para realizar el depósito. 
+                    Luego podrás verificar el comprobante de pago desde el panel de reservas.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Banco -->
+              <div>
+                <label for="bankName" class="block text-sm font-medium text-gray-700 mb-1">
+                  Banco
+                </label>
+                <select
+                  id="bankName"
+                  v-model="form.bankName"
+                  class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
+                >
+                  <option value="">Selecciona un banco</option>
+                  <option v-for="bank in HONDURAS_BANKS" :key="bank" :value="bank">
+                    {{ bank }}
+                  </option>
+                </select>
+              </div>
+
+              <!-- Tipo de Cuenta -->
+              <div>
+                <label for="bankAccountType" class="block text-sm font-medium text-gray-700 mb-1">
+                  Tipo de Cuenta
+                </label>
+                <select
+                  id="bankAccountType"
+                  v-model="form.bankAccountType"
+                  class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
+                >
+                  <option value="">Selecciona tipo de cuenta</option>
+                  <option value="ahorro_lempiras">Ahorro (Lempiras)</option>
+                  <option value="ahorro_dolares">Ahorro (Dólares)</option>
+                  <option value="corriente_lempiras">Corriente (Lempiras)</option>
+                  <option value="corriente_dolares">Corriente (Dólares)</option>
+                </select>
+              </div>
+
+              <!-- Número de Cuenta -->
+              <div>
+                <label for="bankAccountNumber" class="block text-sm font-medium text-gray-700 mb-1">
+                  Número de Cuenta
+                </label>
+                <input
+                  id="bankAccountNumber"
+                  v-model="form.bankAccountNumber"
+                  type="text"
+                  placeholder="Ej: 123456789012"
+                  class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                />
+                <p class="text-xs text-gray-500 mt-1">
+                  Este número se mostrará a los usuarios que paguen por transferencia
+                </p>
+              </div>
+
+              <!-- Nombre del Titular -->
+              <div>
+                <label for="bankAccountHolder" class="block text-sm font-medium text-gray-700 mb-1">
+                  Nombre del Titular
+                </label>
+                <input
+                  id="bankAccountHolder"
+                  v-model="form.bankAccountHolder"
+                  type="text"
+                  placeholder="Nombre como aparece en la cuenta"
+                  class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                />
+              </div>
+            </div>
+
+            <!-- Preview de cómo se verá -->
+            <div v-if="form.bankName && form.bankAccountNumber" class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <p class="text-xs font-medium text-gray-500 mb-3 uppercase tracking-wider">Vista previa (cómo lo verán los usuarios)</p>
+              <div class="bg-white rounded-lg p-4 border border-gray-200">
+                <div class="flex items-center gap-2 mb-3">
+                  <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                  </svg>
+                  <span class="font-semibold text-gray-900">Datos para Transferencia</span>
+                </div>
+                <div class="space-y-2 text-sm">
+                  <p><span class="text-gray-500">Banco:</span> <span class="font-medium text-gray-900">{{ form.bankName }}</span></p>
+                  <p v-if="form.bankAccountType"><span class="text-gray-500">Tipo:</span> <span class="font-medium text-gray-900">{{ formatAccountType(form.bankAccountType) }}</span></p>
+                  <p><span class="text-gray-500">Cuenta:</span> <span class="font-medium text-gray-900 font-mono">{{ form.bankAccountNumber }}</span></p>
+                  <p v-if="form.bankAccountHolder"><span class="text-gray-500">Titular:</span> <span class="font-medium text-gray-900">{{ form.bankAccountHolder }}</span></p>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </form>
       </div>
     </div>
@@ -291,6 +407,7 @@
 
 <script setup lang="ts">
 import { usersService } from '~/services/users.service'
+import { HONDURAS_BANKS, type BankAccountType, type HondurasBank } from '~/types/auth'
 
 definePageMeta({
   layout: 'owner',
@@ -312,7 +429,12 @@ const profile = ref({
   whatsappNumber: '',
   instagram: '',
   facebook: '',
-  linkedin: ''
+  linkedin: '',
+  // Información bancaria
+  bankName: '' as HondurasBank | '',
+  bankAccountType: '' as BankAccountType | '',
+  bankAccountNumber: '',
+  bankAccountHolder: ''
 })
 
 const form = reactive({
@@ -323,7 +445,12 @@ const form = reactive({
   whatsappNumber: '',
   instagram: '',
   facebook: '',
-  linkedin: ''
+  linkedin: '',
+  // Información bancaria
+  bankName: '' as HondurasBank | '',
+  bankAccountType: '' as BankAccountType | '',
+  bankAccountNumber: '',
+  bankAccountHolder: ''
 })
 
 const errors = reactive({
@@ -340,8 +467,29 @@ const hasChanges = computed(() => {
     form.whatsappNumber !== profile.value.whatsappNumber ||
     form.instagram !== profile.value.instagram ||
     form.facebook !== profile.value.facebook ||
-    form.linkedin !== profile.value.linkedin
+    form.linkedin !== profile.value.linkedin ||
+    form.bankName !== profile.value.bankName ||
+    form.bankAccountType !== profile.value.bankAccountType ||
+    form.bankAccountNumber !== profile.value.bankAccountNumber ||
+    form.bankAccountHolder !== profile.value.bankAccountHolder
 })
+
+// Helper para formatear tipo de cuenta
+const formatAccountType = (type: BankAccountType | string | null | undefined): string => {
+  const types: Record<string, string> = {
+    'ahorro_lempiras': 'Ahorro (Lempiras)',
+    'ahorro_dolares': 'Ahorro (Dólares)',
+    'corriente_lempiras': 'Corriente (Lempiras)',
+    'corriente_dolares': 'Corriente (Dólares)'
+  }
+  return types[type || ''] || ''
+}
+
+// Helper para enmascarar número de cuenta (para mostrar en el perfil del owner)
+const maskAccountNumber = (number: string | null | undefined): string => {
+  if (!number || number.length < 4) return number || ''
+  return '*'.repeat(number.length - 4) + number.slice(-4)
+}
 
 // Helper para iniciales
 const getInitials = (name: string) => {
@@ -371,7 +519,12 @@ const loadProfile = async () => {
         whatsappNumber: response.data.whatsappNumber || '',
         instagram: response.data.instagram || '',
         facebook: response.data.facebook || '',
-        linkedin: response.data.linkedin || ''
+        linkedin: response.data.linkedin || '',
+        // Información bancaria
+        bankName: response.data.bankName || '',
+        bankAccountType: response.data.bankAccountType || '',
+        bankAccountNumber: response.data.bankAccountNumber || '',
+        bankAccountHolder: response.data.bankAccountHolder || ''
       }
 
       // Copiar al formulario
@@ -383,7 +536,12 @@ const loadProfile = async () => {
         whatsappNumber: profile.value.whatsappNumber,
         instagram: profile.value.instagram,
         facebook: profile.value.facebook,
-        linkedin: profile.value.linkedin
+        linkedin: profile.value.linkedin,
+        // Información bancaria
+        bankName: profile.value.bankName,
+        bankAccountType: profile.value.bankAccountType,
+        bankAccountNumber: profile.value.bankAccountNumber,
+        bankAccountHolder: profile.value.bankAccountHolder
       })
     }
   } catch (error: any) {
@@ -434,7 +592,12 @@ const handleSubmit = async () => {
       whatsappNumber: form.whatsappNumber.trim(),
       instagram: form.instagram.trim(),
       facebook: form.facebook.trim(),
-      linkedin: form.linkedin.trim()
+      linkedin: form.linkedin.trim(),
+      // Información bancaria
+      bankName: form.bankName || null,
+      bankAccountType: form.bankAccountType || null,
+      bankAccountNumber: form.bankAccountNumber.trim() || null,
+      bankAccountHolder: form.bankAccountHolder.trim() || null
     })
 
     if (response.success) {
@@ -461,7 +624,12 @@ const resetForm = () => {
     whatsappNumber: profile.value.whatsappNumber,
     instagram: profile.value.instagram,
     facebook: profile.value.facebook,
-    linkedin: profile.value.linkedin
+    linkedin: profile.value.linkedin,
+    // Información bancaria
+    bankName: profile.value.bankName,
+    bankAccountType: profile.value.bankAccountType,
+    bankAccountNumber: profile.value.bankAccountNumber,
+    bankAccountHolder: profile.value.bankAccountHolder
   })
   errors.name = ''
   errors.businessName = ''

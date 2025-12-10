@@ -20,7 +20,12 @@ class SpacesUseCase {
       include: [{
         model: User,
         as: 'owner',
-        attributes: ['id', 'businessName', 'name', 'businessDescription', 'whatsappNumber', 'instagram', 'facebook', 'linkedin']
+        attributes: [
+          'id', 'businessName', 'name', 'businessDescription', 
+          'whatsappNumber', 'instagram', 'facebook', 'linkedin',
+          // Campos bancarios para mostrar al usuario en transferencias
+          'bankName', 'bankAccountType', 'bankAccountNumber', 'bankAccountHolder'
+        ]
       }]
     });
     if (!space || !space.isActive) {

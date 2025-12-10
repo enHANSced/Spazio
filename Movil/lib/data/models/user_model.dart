@@ -20,6 +20,11 @@ class User extends Equatable {
   final String? instagram;
   final String? twitter;
   final String? linkedin;
+  // Campos de información bancaria (solo para owners)
+  final String? bankName;
+  final String? bankAccountType;
+  final String? bankAccountNumber;
+  final String? bankAccountHolder;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   
@@ -42,6 +47,10 @@ class User extends Equatable {
     this.instagram,
     this.twitter,
     this.linkedin,
+    this.bankName,
+    this.bankAccountType,
+    this.bankAccountNumber,
+    this.bankAccountHolder,
     this.createdAt,
     this.updatedAt,
   });
@@ -67,6 +76,10 @@ class User extends Equatable {
       instagram: json['instagram'] as String?,
       twitter: json['twitter'] as String?,
       linkedin: json['linkedin'] as String?,
+      bankName: json['bankName'] as String?,
+      bankAccountType: json['bankAccountType'] as String?,
+      bankAccountNumber: json['bankAccountNumber'] as String?,
+      bankAccountHolder: json['bankAccountHolder'] as String?,
       createdAt: json['createdAt'] != null 
           ? DateTime.parse(json['createdAt'] as String) 
           : null,
@@ -97,6 +110,10 @@ class User extends Equatable {
       'instagram': instagram,
       'twitter': twitter,
       'linkedin': linkedin,
+      'bankName': bankName,
+      'bankAccountType': bankAccountType,
+      'bankAccountNumber': bankAccountNumber,
+      'bankAccountHolder': bankAccountHolder,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
     };
@@ -137,6 +154,10 @@ class User extends Equatable {
     String? instagram,
     String? twitter,
     String? linkedin,
+    String? bankName,
+    String? bankAccountType,
+    String? bankAccountNumber,
+    String? bankAccountHolder,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -159,9 +180,32 @@ class User extends Equatable {
       instagram: instagram ?? this.instagram,
       twitter: twitter ?? this.twitter,
       linkedin: linkedin ?? this.linkedin,
+      bankName: bankName ?? this.bankName,
+      bankAccountType: bankAccountType ?? this.bankAccountType,
+      bankAccountNumber: bankAccountNumber ?? this.bankAccountNumber,
+      bankAccountHolder: bankAccountHolder ?? this.bankAccountHolder,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
+  }
+  
+  /// Verifica si el owner tiene información bancaria configurada
+  bool get hasBankInfo => bankName != null && bankAccountNumber != null;
+  
+  /// Formatea el tipo de cuenta bancaria para mostrar
+  String get formattedBankAccountType {
+    switch (bankAccountType) {
+      case 'ahorro_lempiras':
+        return 'Ahorro (Lempiras)';
+      case 'ahorro_dolares':
+        return 'Ahorro (Dólares)';
+      case 'corriente_lempiras':
+        return 'Corriente (Lempiras)';
+      case 'corriente_dolares':
+        return 'Corriente (Dólares)';
+      default:
+        return bankAccountType ?? '';
+    }
   }
   
   @override
@@ -169,6 +213,7 @@ class User extends Equatable {
     id, email, name, role, phone, avatar, isVerified, isActive,
     businessName, businessDescription, businessPhone, businessEmail,
     businessAddress, website, facebook, instagram, twitter, linkedin,
+    bankName, bankAccountType, bankAccountNumber, bankAccountHolder,
     createdAt, updatedAt,
   ];
 }

@@ -89,7 +89,9 @@ class UsersUseCase {
     // Campos que el usuario puede actualizar
     const allowedFields = [
       'name', 'businessName', 'businessDescription', 
-      'phone', 'whatsappNumber', 'instagram', 'facebook', 'linkedin'
+      'phone', 'whatsappNumber', 'instagram', 'facebook', 'linkedin',
+      // Campos bancarios para owners
+      'bankName', 'bankAccountType', 'bankAccountNumber', 'bankAccountHolder'
     ];
     
     allowedFields.forEach(field => {
@@ -116,7 +118,9 @@ class UsersUseCase {
     const allowedFields = [
       'name', 'role', 'isActive', 'isVerified',
       'businessName', 'businessDescription', 
-      'phone', 'whatsappNumber', 'instagram', 'facebook', 'linkedin'
+      'phone', 'whatsappNumber', 'instagram', 'facebook', 'linkedin',
+      // Campos bancarios para owners
+      'bankName', 'bankAccountType', 'bankAccountNumber', 'bankAccountHolder'
     ];
     
     allowedFields.forEach(field => {

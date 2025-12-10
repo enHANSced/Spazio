@@ -640,6 +640,42 @@ const formatCurrency = (value: number) => {
 const formatNumber = (value: number) => {
   return new Intl.NumberFormat('es-HN').format(value)
 }
+
+// Formatear tipo de cuenta bancaria para mostrar al usuario
+const formatBankAccountType = (type: string | null | undefined): string => {
+  const types: Record<string, string> = {
+    'ahorro_lempiras': 'Ahorro (Lempiras)',
+    'ahorro_dolares': 'Ahorro (Dólares)',
+    'corriente_lempiras': 'Corriente (Lempiras)',
+    'corriente_dolares': 'Corriente (Dólares)'
+  }
+  return types[type || ''] || type || ''
+}
+
+// Copiar información bancaria al portapapeles
+const toast = useToast()
+const copyBankInfo = async () => {
+  if (!space.value?.owner) return
+  
+  const owner = space.value.owner
+  let bankInfo = `Datos para Transferencia:\n`
+  bankInfo += `Banco: ${owner.bankName || ''}\n`
+  if (owner.bankAccountType) {
+    bankInfo += `Tipo: ${formatBankAccountType(owner.bankAccountType)}\n`
+  }
+  bankInfo += `Cuenta: ${owner.bankAccountNumber || ''}\n`
+  if (owner.bankAccountHolder) {
+    bankInfo += `Titular: ${owner.bankAccountHolder}`
+  }
+  
+  try {
+    await navigator.clipboard.writeText(bankInfo.trim())
+    toast.success('Datos bancarios copiados al portapapeles')
+  } catch (error) {
+    console.error('Error al copiar:', error)
+    toast.error('No se pudo copiar al portapapeles')
+  }
+}
 </script>
 
 <template>
@@ -1557,27 +1593,66 @@ const formatNumber = (value: number) => {
                   </div>
                   
                   <!-- Mensaje para Transferencia -->
-                  <div v-if="selectedPaymentMethod === 'transfer'" class="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
-                    <span class="material-symbols-outlined text-blue-600">account_balance</span>
-                    <div class="flex-1">
-                      <p class="text-sm font-semibold text-blue-900 mb-1">Pago por transferencia</p>
-                      <p class="text-xs text-blue-700 mb-2">
-                        Después de confirmar tu reserva, deberás subir el comprobante de transferencia desde el detalle de tu reserva.
-                      </p>
-                      <ul class="text-xs text-blue-700 space-y-1">
-                        <li class="flex items-start gap-1">
-                          <span class="material-symbols-outlined !text-[14px]">upload_file</span>
-                          <span>Sube una foto clara del comprobante</span>
-                        </li>
-                        <li class="flex items-start gap-1">
-                          <span class="material-symbols-outlined !text-[14px]">schedule</span>
-                          <span>El propietario verificará tu pago</span>
-                        </li>
-                        <li class="flex items-start gap-1">
-                          <span class="material-symbols-outlined !text-[14px]">verified</span>
-                          <span>Recibirás confirmación cuando sea aprobado</span>
-                        </li>
-                      </ul>
+                  <div v-if="selectedPaymentMethod === 'transfer'" class="mt-4 space-y-4">
+                    <!-- Datos bancarios del owner (si están configurados) -->
+                    <div v-if="space?.owner?.bankName && space?.owner?.bankAccountNumber" class="bg-white border-2 border-blue-300 rounded-xl p-4 shadow-sm">
+                      <div class="flex items-center gap-2 mb-3">
+                        <span class="material-symbols-outlined text-blue-600">account_balance</span>
+                        <span class="font-bold text-gray-900">Datos para Transferencia</span>
+                      </div>
+                      <div class="space-y-2 text-sm bg-blue-50 rounded-lg p-3">
+                        <p class="flex justify-between">
+                          <span class="text-gray-600">Banco:</span>
+                          <span class="font-semibold text-gray-900">{{ space.owner.bankName }}</span>
+                        </p>
+                        <p v-if="space.owner.bankAccountType" class="flex justify-between">
+                          <span class="text-gray-600">Tipo:</span>
+                          <span class="font-semibold text-gray-900">{{ formatBankAccountType(space.owner.bankAccountType) }}</span>
+                        </p>
+                        <p class="flex justify-between">
+                          <span class="text-gray-600">Cuenta:</span>
+                          <span class="font-semibold text-gray-900 font-mono">{{ space.owner.bankAccountNumber }}</span>
+                        </p>
+                        <p v-if="space.owner.bankAccountHolder" class="flex justify-between">
+                          <span class="text-gray-600">Titular:</span>
+                          <span class="font-semibold text-gray-900">{{ space.owner.bankAccountHolder }}</span>
+                        </p>
+                      </div>
+                      <button 
+                        type="button"
+                        @click="copyBankInfo"
+                        class="mt-3 w-full flex items-center justify-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800 bg-blue-100 hover:bg-blue-200 rounded-lg py-2 transition-colors"
+                      >
+                        <span class="material-symbols-outlined !text-[18px]">content_copy</span>
+                        Copiar datos bancarios
+                      </button>
+                    </div>
+
+                    <!-- Instrucciones de transferencia -->
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+                      <span class="material-symbols-outlined text-blue-600">info</span>
+                      <div class="flex-1">
+                        <p class="text-sm font-semibold text-blue-900 mb-1">
+                          {{ space?.owner?.bankName ? 'Instrucciones' : 'Pago por transferencia' }}
+                        </p>
+                        <p v-if="!space?.owner?.bankName" class="text-xs text-blue-700 mb-2">
+                          El propietario no ha configurado sus datos bancarios. Contacta directamente para obtener la información de pago.
+                        </p>
+                        <ul class="text-xs text-blue-700 space-y-1">
+                          <li class="flex items-start gap-1">
+                            <span class="material-symbols-outlined !text-[14px]">upload_file</span>
+                            <span>Después de transferir, sube el comprobante desde "Mis Reservas"</span>
+                          </li>
+                          <li class="flex items-start gap-1">
+                            <span class="material-symbols-outlined !text-[14px]">schedule</span>
+                            <span>El propietario verificará tu pago</span>
+                          </li>
+                          <li class="flex items-start gap-1">
+                            <span class="material-symbols-outlined !text-[14px]">verified</span>
+                            <span>Recibirás confirmación cuando sea aprobado</span>
+                          </li>
+                        </ul>
+                      </div>
                     </div>
                   </div>
                 </div>

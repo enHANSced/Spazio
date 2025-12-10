@@ -1,3 +1,5 @@
+import type { BankAccountType, HondurasBank } from './auth'
+
 export interface SpaceOwner {
   id: string
   name?: string | null
@@ -9,6 +11,11 @@ export interface SpaceOwner {
   instagram?: string | null
   facebook?: string | null
   linkedin?: string | null
+  // Información bancaria para mostrar al usuario en transferencias
+  bankName?: HondurasBank | null
+  bankAccountType?: BankAccountType | null
+  bankAccountNumber?: string | null
+  bankAccountHolder?: string | null
 }
 
 export interface WorkingHours {

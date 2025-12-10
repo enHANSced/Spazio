@@ -25,7 +25,7 @@ const closeMobileMenu = () => {
     <!-- Header con diseño moderno -->
     <header class="bg-white/70 backdrop-blur-lg border-b border-gray-200/50 sticky top-0 z-40">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-20">
+        <div class="flex items-center justify-between h-16">
           <!-- Logo -->
           <NuxtLink to="/" class="flex items-center gap-2.5 group">
             <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dark shadow-lg shadow-primary/25 transition-all group-hover:shadow-xl group-hover:shadow-primary/30">
