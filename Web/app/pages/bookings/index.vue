@@ -14,6 +14,7 @@ useSeoMeta({
 
 const router = useRouter()
 const { user } = useAuth()
+const toast = useToast()
 
 // Cargar reservas del usuario
 const { data: bookingsData, pending, error, refresh } = await useAsyncData<Booking[]>(
@@ -23,6 +24,75 @@ const { data: bookingsData, pending, error, refresh } = await useAsyncData<Booki
 )
 
 const bookings = computed(() => bookingsData.value || [])
+
+// Modal de subir comprobante
+const showUploadModal = ref(false)
+const selectedBookingForUpload = ref<Booking | null>(null)
+const uploadingProof = ref(false)
+const proofFile = ref<File | null>(null)
+const fileInputRef = ref<HTMLInputElement | null>(null)
+
+// Abrir modal de subir comprobante
+const openUploadModal = (booking: Booking) => {
+  selectedBookingForUpload.value = booking
+  proofFile.value = null
+  showUploadModal.value = true
+}
+
+// Seleccionar archivo
+const onFileSelect = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  if (target.files && target.files[0]) {
+    const file = target.files[0]
+    // Validar tipo de archivo
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+      toast.error('Solo se permiten imágenes o archivos PDF')
+      return
+    }
+    // Validar tamaño (máximo 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('El archivo no puede superar los 5MB')
+      return
+    }
+    proofFile.value = file
+  }
+}
+
+// Subir comprobante
+const uploadProof = async () => {
+  if (!selectedBookingForUpload.value || !proofFile.value) return
+
+  uploadingProof.value = true
+  try {
+    await BookingsService.uploadTransferProof(selectedBookingForUpload.value._id, proofFile.value)
+    toast.success('¡Comprobante subido exitosamente! El propietario lo verificará pronto.')
+    showUploadModal.value = false
+    selectedBookingForUpload.value = null
+    proofFile.value = null
+    await refresh()
+  } catch (error: any) {
+    console.error('Error al subir comprobante:', error)
+    toast.error(error?.data?.message || 'Error al subir el comprobante. Intenta nuevamente.')
+  } finally {
+    uploadingProof.value = false
+  }
+}
+
+// Verificar si una reserva necesita comprobante de transferencia
+const needsTransferProof = (booking: Booking) => {
+  return booking.paymentMethod === 'transfer' && 
+         !booking.transferProofUrl && 
+         booking.status !== 'cancelled' &&
+         booking.paymentStatus !== 'paid'
+}
+
+// Verificar si el comprobante está pendiente de verificación
+const isTransferPending = (booking: Booking) => {
+  return booking.paymentMethod === 'transfer' && 
+         booking.transferProofUrl && 
+         !booking.transferVerifiedAt &&
+         !booking.transferRejectedAt
+}
 
 // Filtros
 const statusFilter = ref<BookingStatus | 'all'>('all')
@@ -589,6 +659,39 @@ const canCancel = (booking: Booking) => {
                       </div>
                     </div>
 
+                    <!-- Transfer Proof Status -->
+                    <div 
+                      v-if="booking.paymentMethod === 'transfer'"
+                      class="flex items-center gap-3 pt-2"
+                    >
+                      <!-- Needs upload -->
+                      <div 
+                        v-if="needsTransferProof(booking)"
+                        class="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 ring-1 ring-amber-200"
+                      >
+                        <span class="material-symbols-outlined text-amber-600 !text-[18px]">info</span>
+                        <span class="text-sm font-medium text-amber-700">Pendiente: Subir comprobante de transferencia</span>
+                      </div>
+                      
+                      <!-- Proof uploaded, pending verification -->
+                      <div 
+                        v-else-if="isTransferPending(booking)"
+                        class="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 ring-1 ring-blue-200"
+                      >
+                        <span class="material-symbols-outlined text-blue-600 !text-[18px]">schedule</span>
+                        <span class="text-sm font-medium text-blue-700">Comprobante enviado, pendiente de verificación</span>
+                      </div>
+                      
+                      <!-- Proof verified -->
+                      <div 
+                        v-else-if="booking.transferProofUrl && booking.transferVerifiedAt"
+                        class="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 ring-1 ring-emerald-200"
+                      >
+                        <span class="material-symbols-outlined text-emerald-600 !text-[18px]">check_circle</span>
+                        <span class="text-sm font-medium text-emerald-700">Transferencia verificada</span>
+                      </div>
+                    </div>
+
                     <!-- Actions Section -->
                     <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-100">
                       <button
@@ -599,6 +702,17 @@ const canCancel = (booking: Booking) => {
                         <span class="material-symbols-outlined !text-[20px]">visibility</span>
                         Ver detalles
                         <span class="material-symbols-outlined !text-[20px] transition-transform group-hover/btn:translate-x-1">arrow_forward</span>
+                      </button>
+                      
+                      <!-- Upload Transfer Proof Button -->
+                      <button
+                        v-if="needsTransferProof(booking)"
+                        type="button"
+                        class="group/btn flex-1 sm:flex-none px-6 py-3 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 text-white font-bold shadow-lg shadow-amber-500/30 hover:shadow-xl hover:shadow-amber-500/40 transition-all duration-300 flex items-center justify-center gap-2"
+                        @click.stop="openUploadModal(booking)"
+                      >
+                        <span class="material-symbols-outlined !text-[20px]">upload_file</span>
+                        Subir comprobante
                       </button>
                       
                       <button
@@ -718,5 +832,145 @@ const canCancel = (booking: Booking) => {
         </div>
       </div>
     </div>
+
+    <!-- Modal: Subir Comprobante de Transferencia -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div 
+          v-if="showUploadModal" 
+          class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        >
+          <!-- Backdrop -->
+          <div 
+            class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            @click="showUploadModal = false"
+          ></div>
+          
+          <!-- Modal Content -->
+          <div class="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <!-- Header -->
+            <div class="px-6 py-5 bg-gradient-to-r from-primary via-primary-dark to-blue-600">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
+                    <span class="material-symbols-outlined text-white">receipt_long</span>
+                  </div>
+                  <h3 class="text-xl font-bold text-white">Subir Comprobante</h3>
+                </div>
+                <button
+                  type="button"
+                  class="p-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition"
+                  @click="showUploadModal = false"
+                >
+                  <span class="material-symbols-outlined">close</span>
+                </button>
+              </div>
+            </div>
+            
+            <!-- Body -->
+            <div class="p-6 space-y-5">
+              <!-- Info del espacio -->
+              <div v-if="selectedBookingForUpload" class="p-4 rounded-xl bg-gray-50 ring-1 ring-gray-200">
+                <p class="text-sm text-gray-500 mb-1">Reserva en:</p>
+                <p class="font-bold text-gray-900">{{ selectedBookingForUpload.space?.name }}</p>
+                <p class="text-sm text-gray-600 mt-1">
+                  {{ formatDate(selectedBookingForUpload.startTime) }} • 
+                  {{ formatCurrency(selectedBookingForUpload.totalAmount) }}
+                </p>
+              </div>
+              
+              <!-- Instrucciones -->
+              <div class="flex items-start gap-3 p-4 rounded-xl bg-amber-50 ring-1 ring-amber-200">
+                <span class="material-symbols-outlined text-amber-600 mt-0.5">info</span>
+                <div>
+                  <p class="text-sm font-medium text-amber-800">Sube una imagen o PDF del comprobante de tu transferencia.</p>
+                  <p class="text-xs text-amber-600 mt-1">Formato: JPG, PNG o PDF • Máximo 5MB</p>
+                </div>
+              </div>
+              
+              <!-- File Upload Area -->
+              <div class="space-y-3">
+                <label 
+                  class="relative flex flex-col items-center justify-center w-full h-44 border-2 border-dashed rounded-xl cursor-pointer transition-all"
+                  :class="proofFile 
+                    ? 'border-emerald-400 bg-emerald-50/50' 
+                    : 'border-gray-300 hover:border-primary hover:bg-primary/5'"
+                >
+                  <input
+                    ref="fileInputRef"
+                    type="file"
+                    accept="image/*,.pdf"
+                    class="sr-only"
+                    @change="onFileSelect"
+                  />
+                  
+                  <template v-if="!proofFile">
+                    <div class="flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 mb-3">
+                      <span class="material-symbols-outlined text-3xl text-gray-400">cloud_upload</span>
+                    </div>
+                    <p class="text-sm font-semibold text-gray-700 mb-1">Haz clic para seleccionar archivo</p>
+                    <p class="text-xs text-gray-500">o arrastra y suelta aquí</p>
+                  </template>
+                  
+                  <template v-else>
+                    <div class="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 mb-3">
+                      <span class="material-symbols-outlined text-3xl text-emerald-600">check_circle</span>
+                    </div>
+                    <p class="text-sm font-bold text-emerald-700 mb-1">{{ proofFile.name }}</p>
+                    <p class="text-xs text-gray-500">{{ (proofFile.size / 1024 / 1024).toFixed(2) }} MB</p>
+                    <button
+                      type="button"
+                      class="mt-2 text-xs text-rose-600 hover:text-rose-700 font-medium"
+                      @click.stop.prevent="proofFile = null"
+                    >
+                      Cambiar archivo
+                    </button>
+                  </template>
+                </label>
+              </div>
+            </div>
+            
+            <!-- Footer -->
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex gap-3">
+              <button
+                type="button"
+                class="flex-1 px-4 py-3 rounded-xl bg-gray-200 text-gray-700 font-semibold hover:bg-gray-300 transition"
+                @click="showUploadModal = false"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                class="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-primary to-primary-dark text-white font-bold shadow-lg shadow-primary/30 hover:shadow-primary/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                :disabled="!proofFile || uploadingProof"
+                @click="uploadProof"
+              >
+                <span v-if="uploadingProof" class="material-symbols-outlined animate-spin">refresh</span>
+                <span v-else class="material-symbols-outlined">upload</span>
+                {{ uploadingProof ? 'Subiendo...' : 'Enviar comprobante' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
+
+<style scoped>
+/* Modal transitions */
+.modal-enter-active,
+.modal-leave-active {
+  transition: all 0.3s ease;
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+
+.modal-enter-from > div:last-child,
+.modal-leave-to > div:last-child {
+  transform: scale(0.95) translateY(10px);
+}
+</style>
