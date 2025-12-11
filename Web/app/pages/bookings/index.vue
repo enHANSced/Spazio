@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import BookingsService from '~/services/bookings.service'
+import reviewsService from '~/services/reviews.service'
 import type { Booking, BookingStatus } from '~/types/booking'
 
 definePageMeta({
@@ -27,6 +28,12 @@ const bookings = computed(() => bookingsData.value || [])
 
 // Estado de notificaciones descartadas (persistido en localStorage)
 const dismissedNotifications = ref<Set<string>>(new Set())
+
+// Estado para reseñas
+const showReviewModal = ref(false)
+const selectedBookingForReview = ref<Booking | null>(null)
+const reviewedBookings = ref<Set<string>>(new Set())
+
 
 // Cargar notificaciones descartadas desde localStorage
 onMounted(() => {
@@ -142,7 +149,7 @@ const isTransferPending = (booking: Booking) => {
 }
 
 // Filtros
-const statusFilter = ref<BookingStatus | 'all'>('all')
+const statusFilter = ref<BookingStatus | 'all' | 'completed'>('all')
 const searchQuery = ref('')
 const sortOption = ref<'created-desc' | 'created-asc' | 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc'>('created-desc')
 
@@ -151,7 +158,10 @@ const filteredBookings = computed(() => {
   let result = bookings.value
 
   // Filtrar por estado
-  if (statusFilter.value !== 'all') {
+  if (statusFilter.value === 'completed') {
+    // Completadas: confirmadas y que ya terminaron
+    result = result.filter(b => b.status === 'confirmed' && new Date(b.endTime) < new Date())
+  } else if (statusFilter.value !== 'all') {
     result = result.filter(b => b.status === statusFilter.value)
   }
 
@@ -246,7 +256,8 @@ const bookingCounts = computed(() => ({
   all: bookings.value.length,
   pending: bookings.value.filter(b => b.status === 'pending').length,
   confirmed: bookings.value.filter(b => b.status === 'confirmed').length,
-  cancelled: bookings.value.filter(b => b.status === 'cancelled').length
+  cancelled: bookings.value.filter(b => b.status === 'cancelled').length,
+  completed: bookings.value.filter(b => b.status === 'confirmed' && new Date(b.endTime) < new Date()).length
 }))
 
 // Acciones
@@ -375,6 +386,59 @@ const getPaymentMethodLabel = (method?: string) => {
 const canCancel = (booking: Booking) => {
   return booking.status !== 'cancelled' && new Date(booking.startTime) > new Date()
 }
+
+// Funciones para reseñas
+const canReview = (booking: Booking) => {
+  // Puede dejar reseña si:
+  // - La reserva está confirmada
+  // - La reserva ya terminó
+  // - No ha dejado reseña antes (tracked localmente)
+  return booking.status === 'confirmed' && 
+         new Date(booking.endTime) < new Date() &&
+         !reviewedBookings.value.has(booking._id)
+}
+
+const openReviewModal = (booking: Booking) => {
+  selectedBookingForReview.value = booking
+  showReviewModal.value = true
+}
+
+const closeReviewModal = () => {
+  showReviewModal.value = false
+  selectedBookingForReview.value = null
+}
+
+const onReviewSubmitted = () => {
+  if (selectedBookingForReview.value) {
+    reviewedBookings.value.add(selectedBookingForReview.value._id)
+    // Guardar en localStorage para persistir entre sesiones
+    try {
+      const saved = localStorage.getItem('spazio_reviewed_bookings')
+      const ids = saved ? JSON.parse(saved) : []
+      if (!ids.includes(selectedBookingForReview.value._id)) {
+        ids.push(selectedBookingForReview.value._id)
+        localStorage.setItem('spazio_reviewed_bookings', JSON.stringify(ids))
+      }
+    } catch (e) {
+      // Ignorar errores de localStorage
+    }
+  }
+  toast.success('¡Gracias por tu reseña! Tu opinión ayuda a otros usuarios.')
+  closeReviewModal()
+}
+
+// Cargar reseñas hechas desde localStorage
+onMounted(() => {
+  try {
+    const saved = localStorage.getItem('spazio_reviewed_bookings')
+    if (saved) {
+      const ids = JSON.parse(saved)
+      reviewedBookings.value = new Set(ids)
+    }
+  } catch (e) {
+    // Ignorar errores
+  }
+})
 </script>
 
 <template>
@@ -659,6 +723,18 @@ const canCancel = (booking: Booking) => {
                 @click="statusFilter = 'confirmed'"
               >
                 Confirmadas
+              </button>
+              <button
+                type="button"
+                class="px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-all flex items-center gap-1.5"
+                :class="statusFilter === 'completed' 
+                  ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg shadow-purple-500/25' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                @click="statusFilter = 'completed'"
+              >
+                <span class="material-symbols-outlined !text-[16px]">task_alt</span>
+                Completadas
+                <span v-if="bookingCounts.completed > 0" class="ml-0.5 text-xs opacity-80">({{ bookingCounts.completed }})</span>
               </button>
               <button
                 type="button"
@@ -1058,16 +1134,36 @@ const canCancel = (booking: Booking) => {
                     </div>
 
                     <!-- Actions Section -->
-                    <div class="pt-3 border-t border-gray-200">
+                    <div class="pt-3 border-t border-gray-200 flex flex-wrap gap-3">
                       <button
                         type="button"
-                        class="group/btn w-full sm:w-auto px-6 py-2.5 rounded-xl bg-white text-gray-700 font-semibold ring-1 ring-gray-300 hover:bg-gray-50 hover:ring-gray-400 transition-all flex items-center justify-center gap-2"
+                        class="group/btn flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-white text-gray-700 font-semibold ring-1 ring-gray-300 hover:bg-gray-50 hover:ring-gray-400 transition-all flex items-center justify-center gap-2"
                         @click.stop="viewBooking(booking._id)"
                       >
                         <span class="material-symbols-outlined !text-[18px]">visibility</span>
                         Ver detalles
                         <span class="material-symbols-outlined !text-[18px] transition-transform group-hover/btn:translate-x-1">arrow_forward</span>
                       </button>
+                      
+                      <!-- Botón de dejar reseña -->
+                      <button
+                        v-if="canReview(booking)"
+                        type="button"
+                        class="group/btn flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-white font-semibold shadow-lg shadow-amber-500/25 hover:shadow-xl hover:shadow-amber-500/40 transition-all flex items-center justify-center gap-2"
+                        @click.stop="openReviewModal(booking)"
+                      >
+                        <span class="material-symbols-outlined !text-[18px]">star</span>
+                        Dejar reseña
+                      </button>
+                      
+                      <!-- Badge de ya reseñado -->
+                      <span
+                        v-else-if="booking.status === 'confirmed' && new Date(booking.endTime) < new Date()"
+                        class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 text-sm font-medium"
+                      >
+                        <span class="material-symbols-outlined !text-[16px]">check_circle</span>
+                        Reseñado
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1077,6 +1173,15 @@ const canCancel = (booking: Booking) => {
         </div>
       </div>
     </div>
+
+    <!-- Modal de Reseña -->
+    <ReviewModal
+      :is-open="showReviewModal"
+      :booking-id="selectedBookingForReview?._id || ''"
+      :space-name="selectedBookingForReview?.space?.name || 'Espacio'"
+      @close="closeReviewModal"
+      @submitted="onReviewSubmitted"
+    />
 
     <!-- Modal: Subir Comprobante de Transferencia -->
     <Teleport to="body">

@@ -1128,13 +1128,16 @@ const copyBankInfo = async () => {
               <h2 class="text-2xl font-bold text-gray-900">Conoce a tu anfitrión</h2>
             </div>
 
-            <div class="flex items-start gap-5 mb-6">
+            <div class="flex items-start gap-5 mb-4">
               <div class="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-blue-600 shadow-xl shadow-primary/30 flex-shrink-0">
                 <span class="material-symbols-outlined text-5xl text-white">store</span>
               </div>
               <div class="flex-1">
                 <p class="text-2xl font-black text-gray-900">{{ ownerName }}</p>
-                <div class="flex items-center gap-2 mt-3 flex-wrap">
+                <p v-if="space.owner?.businessDescription" class="text-gray-600 text-sm leading-relaxed mt-1">
+                  {{ space.owner.businessDescription }}
+                </p>
+                <div class="flex items-center gap-2 mt-2 flex-wrap">
                   <span v-if="space.owner?.isVerified" class="inline-flex items-center gap-1.5 bg-green-100 text-green-700 px-3 py-1.5 rounded-lg text-xs font-bold">
                     <span class="material-symbols-outlined !text-[14px]">verified</span>
                     Verificado
@@ -1143,9 +1146,13 @@ const copyBankInfo = async () => {
               </div>
             </div>
 
-            <p v-if="space.owner?.businessDescription" class="text-gray-600 leading-relaxed mb-6">
-              {{ space.owner.businessDescription }}
-            </p>
+            <!-- Estadísticas y Reseñas del propietario -->
+            <OwnerStatsCard 
+              v-if="space.ownerId"
+              :owner-id="space.ownerId"
+              :owner-name="ownerName"
+              class="mb-6"
+            />
 
             <div class="flex flex-col gap-3">
               <a
