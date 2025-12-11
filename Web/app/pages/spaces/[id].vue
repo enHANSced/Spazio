@@ -396,11 +396,11 @@ const getAmenityIcon = (amenity: string): string => {
   return 'check_circle'
 }
 
-// Características del espacio
+// Características del espacio (solo amenidades reales)
 const features = computed(() => {
   if (!space.value) return []
   
-  // Si tenemos amenidades guardadas del formulario, usarlas
+  // Solo mostrar amenidades si existen
   if (space.value.amenities && Array.isArray(space.value.amenities) && space.value.amenities.length > 0) {
     return space.value.amenities.map((amenity: string) => ({
       icon: getAmenityIcon(amenity),
@@ -409,17 +409,7 @@ const features = computed(() => {
     }))
   }
   
-  // Fallback para espacios antiguos sin amenidades explícitas
-  const items = [
-    { icon: 'wifi', label: 'Wi-Fi de alta velocidad', enabled: true },
-    { icon: 'coffee_maker', label: 'Servicio de café', enabled: space.value.capacity >= 10 },
-    { icon: 'ac_unit', label: 'Aire acondicionado', enabled: true },
-    { icon: 'local_parking', label: 'Estacionamiento', enabled: space.value.capacity >= 20 },
-    { icon: 'videocam', label: 'Proyector HD', enabled: space.value.capacity >= 15 },
-    { icon: 'edit_note', label: 'Pizarra blanca', enabled: space.value.capacity >= 8 },
-  ]
-  
-  return items.filter(item => item.enabled)
+  return []
 })
 
 // Placeholder de imagen
@@ -641,6 +631,80 @@ const formatNumber = (value: number) => {
   return new Intl.NumberFormat('es-HN').format(value)
 }
 
+// Formatear categoría para mostrar
+const formatCategory = (category: string): string => {
+  const categories: Record<string, string> = {
+    'coworking': 'Coworking',
+    'meetings': 'Reuniones',
+    'private': 'Privado',
+    'events': 'Eventos',
+    'training': 'Capacitación',
+    'studio': 'Estudio',
+    'teams': 'Equipos'
+  }
+  return categories[category] || category.charAt(0).toUpperCase() + category.slice(1)
+}
+
+// Formatear horario de operación
+const formatWorkingHours = computed(() => {
+  if (!space.value?.workingHours) return null
+  
+  try {
+    const wh = typeof space.value.workingHours === 'string' 
+      ? JSON.parse(space.value.workingHours) 
+      : space.value.workingHours
+    
+    if (!wh) return null
+    
+    // Si tiene start y end directamente, es horario simple
+    if (wh.start && wh.end) {
+      return {
+        type: 'simple',
+        start: wh.start,
+        end: wh.end
+      }
+    }
+    
+    // Si tiene días de la semana, es horario personalizado
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+    const dayNames: Record<string, string> = {
+      monday: 'Lunes',
+      tuesday: 'Martes',
+      wednesday: 'Miércoles',
+      thursday: 'Jueves',
+      friday: 'Viernes',
+      saturday: 'Sábado',
+      sunday: 'Domingo'
+    }
+    
+    const schedule = days.map(day => ({
+      id: day,
+      name: dayNames[day],
+      isOpen: !!wh[day],
+      start: wh[day]?.start || null,
+      end: wh[day]?.end || null
+    }))
+    
+    return {
+      type: 'custom',
+      schedule
+    }
+  } catch (e) {
+    console.error('Error parsing workingHours', e)
+    return null
+  }
+})
+
+// Formatear hora para mostrar en formato 12h
+const formatTime12h = (time: string): string => {
+  if (!time) return ''
+  const [hourStr, minuteStr] = time.split(':')
+  const hour = parseInt(hourStr || '0')
+  const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour
+  const ampm = hour < 12 ? 'AM' : 'PM'
+  return `${hour12}:${minuteStr || '00'} ${ampm}`
+}
+
 // Formatear tipo de cuenta bancaria para mostrar al usuario
 const formatBankAccountType = (type: string | null | undefined): string => {
   const types: Record<string, string> = {
@@ -742,9 +806,9 @@ const copyBankInfo = async () => {
               <span class="material-symbols-outlined !text-[20px]">group</span>
               <span>{{ formatNumber(space.capacity) }} personas</span>
             </div>
-            <div class="inline-flex items-center gap-2 bg-gradient-to-r from-green-500/10 to-emerald-500/10 text-green-700 px-4 py-2 rounded-xl font-bold">
-              <span class="flex h-2.5 w-2.5 rounded-full bg-green-500 animate-pulse"></span>
-              <span>Disponible ahora</span>
+            <div v-if="space.category" class="inline-flex items-center gap-2 bg-purple-100 text-purple-700 px-4 py-2 rounded-xl font-bold">
+              <span class="material-symbols-outlined !text-[20px]">category</span>
+              <span>{{ formatCategory(space.category) }}</span>
             </div>
             <div class="inline-flex items-center gap-2 text-gray-600 bg-gray-100 px-4 py-2 rounded-xl">
               <span class="material-symbols-outlined !text-[20px]">location_on</span>
@@ -765,9 +829,9 @@ const copyBankInfo = async () => {
           </div>
           <div class="flex-1 min-w-0">
             <p class="font-bold text-gray-900 text-lg truncate">{{ ownerName }}</p>
-            <p class="text-sm text-gray-500">Propietario verificado</p>
+            <p class="text-sm text-gray-500">Propietario</p>
           </div>
-          <div class="flex items-center gap-1 bg-green-100 px-3 py-1.5 rounded-full">
+          <div v-if="space.owner?.isVerified" class="flex items-center gap-1 bg-green-100 px-3 py-1.5 rounded-full">
             <span class="material-symbols-outlined !text-[18px] text-green-600">verified</span>
             <span class="text-xs font-bold text-green-700">Verificado</span>
           </div>
@@ -877,11 +941,14 @@ const copyBankInfo = async () => {
               <h2 class="text-2xl font-bold text-gray-900">Acerca de este espacio</h2>
             </div>
             
-            <p class="text-gray-600 leading-relaxed text-lg">
-              {{ space.description || 'Este espacio está diseñado para ofrecer el ambiente perfecto para tus reuniones, eventos o sesiones de trabajo. Con instalaciones modernas y servicios completos, garantizamos una experiencia profesional y cómoda para ti y tu equipo.' }}
+            <p v-if="space.description" class="text-gray-600 leading-relaxed text-lg">
+              {{ space.description }}
+            </p>
+            <p v-else class="text-gray-400 italic text-lg">
+              El propietario no ha agregado una descripción para este espacio.
             </p>
             
-            <div class="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div class="flex flex-col items-center text-center p-5 bg-white rounded-2xl ring-1 ring-black/5 shadow-sm">
                 <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 mb-4 shadow-lg shadow-blue-500/30">
                   <span class="material-symbols-outlined text-white text-3xl">group</span>
@@ -893,26 +960,17 @@ const copyBankInfo = async () => {
               
               <div class="flex flex-col items-center text-center p-5 bg-white rounded-2xl ring-1 ring-black/5 shadow-sm">
                 <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 mb-4 shadow-lg shadow-green-500/30">
-                  <span class="material-symbols-outlined text-white text-3xl">schedule</span>
+                  <span class="material-symbols-outlined text-white text-3xl">payments</span>
                 </div>
-                <p class="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Mínimo</p>
-                <p class="text-3xl font-black text-gray-900">1</p>
-                <p class="text-sm text-gray-500">hora</p>
-              </div>
-
-              <div class="flex flex-col items-center text-center p-5 bg-white rounded-2xl ring-1 ring-black/5 shadow-sm">
-                <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 mb-4 shadow-lg shadow-purple-500/30">
-                  <span class="material-symbols-outlined text-white text-3xl">reply</span>
-                </div>
-                <p class="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Respuesta</p>
-                <p class="text-3xl font-black text-gray-900">&lt;1</p>
-                <p class="text-sm text-gray-500">hora</p>
+                <p class="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Precio</p>
+                <p class="text-2xl font-black text-gray-900">{{ formatCurrency(pricePerHour) }}</p>
+                <p class="text-sm text-gray-500">por hora</p>
               </div>
             </div>
           </div>
 
-          <!-- Características -->
-          <div class="bg-white rounded-2xl p-8 shadow-sm ring-1 ring-black/5">
+          <!-- Características (solo si hay amenidades) -->
+          <div v-if="features.length > 0" class="bg-white rounded-2xl p-8 shadow-sm ring-1 ring-black/5">
             <div class="flex items-center gap-4 mb-6">
               <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dark shadow-lg shadow-primary/25">
                 <span class="material-symbols-outlined text-white text-2xl">check_circle</span>
@@ -932,24 +990,63 @@ const copyBankInfo = async () => {
                 <span class="text-gray-800 font-semibold">{{ feature.label }}</span>
               </div>
             </div>
+          </div>
 
-            <div class="mt-6 p-5 bg-gradient-to-r from-green-50 to-emerald-50/50 ring-1 ring-green-200 rounded-xl">
-              <div class="flex items-start gap-4">
-                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-green-500 flex-shrink-0">
-                  <span class="material-symbols-outlined text-white">verified</span>
+          <!-- Horarios de Operación (solo si hay horarios configurados) -->
+          <div v-if="formatWorkingHours" class="bg-white rounded-2xl p-8 shadow-sm ring-1 ring-black/5">
+            <div class="flex items-center gap-4 mb-6">
+              <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dark shadow-lg shadow-primary/25">
+                <span class="material-symbols-outlined text-white text-2xl">schedule</span>
+              </div>
+              <h2 class="text-2xl font-bold text-gray-900">Horarios de Operación</h2>
+            </div>
+            
+            <!-- Horario simple -->
+            <div v-if="formatWorkingHours.type === 'simple'" class="flex items-center justify-center gap-4 p-6 bg-gradient-to-r from-blue-50 to-primary/5 rounded-xl ring-1 ring-blue-200">
+              <div class="text-center">
+                <p class="text-sm text-gray-500 font-medium mb-1">Apertura</p>
+                <p class="text-2xl font-black text-gray-900">{{ formatTime12h(formatWorkingHours.start) }}</p>
+              </div>
+              <div class="flex items-center">
+                <span class="material-symbols-outlined text-gray-400 text-3xl">arrow_forward</span>
+              </div>
+              <div class="text-center">
+                <p class="text-sm text-gray-500 font-medium mb-1">Cierre</p>
+                <p class="text-2xl font-black text-gray-900">{{ formatTime12h(formatWorkingHours.end) }}</p>
+              </div>
+            </div>
+            
+            <!-- Horario personalizado por día -->
+            <div v-else-if="formatWorkingHours.type === 'custom'" class="space-y-3">
+              <div
+                v-for="day in formatWorkingHours.schedule"
+                :key="day.id"
+                class="flex items-center justify-between p-4 rounded-xl transition-all"
+                :class="day.isOpen ? 'bg-green-50 ring-1 ring-green-200' : 'bg-gray-50 ring-1 ring-gray-200'"
+              >
+                <div class="flex items-center gap-3">
+                  <div
+                    class="flex h-10 w-10 items-center justify-center rounded-xl"
+                    :class="day.isOpen ? 'bg-green-500' : 'bg-gray-400'"
+                  >
+                    <span class="material-symbols-outlined text-white !text-[20px]">
+                      {{ day.isOpen ? 'check' : 'close' }}
+                    </span>
+                  </div>
+                  <span class="font-semibold text-gray-900">{{ day.name }}</span>
                 </div>
-                <div>
-                  <p class="font-bold text-green-900">Espacio verificado</p>
-                  <p class="text-sm text-green-700 mt-1">
-                    Todas las características han sido verificadas por nuestro equipo para garantizar tu satisfacción.
-                  </p>
+                <div v-if="day.isOpen" class="text-right">
+                  <span class="text-sm font-bold text-gray-900">
+                    {{ formatTime12h(day.start) }} - {{ formatTime12h(day.end) }}
+                  </span>
                 </div>
+                <span v-else class="text-sm font-medium text-gray-500 italic">Cerrado</span>
               </div>
             </div>
           </div>
 
-          <!-- Reglas y Políticas -->
-          <div class="bg-white rounded-2xl p-8 shadow-sm ring-1 ring-black/5">
+          <!-- Reglas y Políticas (solo si hay reglas o política de cancelación) -->
+          <div v-if="space.rules || space.cancellationPolicy" class="bg-white rounded-2xl p-8 shadow-sm ring-1 ring-black/5">
             <div class="flex items-center gap-4 mb-6">
               <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dark shadow-lg shadow-primary/25">
                 <span class="material-symbols-outlined text-white text-2xl">gavel</span>
@@ -970,7 +1067,7 @@ const copyBankInfo = async () => {
               </div>
 
               <!-- Política de cancelación -->
-              <div>
+              <div v-if="space.cancellationPolicy">
                 <h3 class="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
                   <span class="material-symbols-outlined text-gray-400">policy</span>
                   Política de cancelación
@@ -1038,13 +1135,9 @@ const copyBankInfo = async () => {
               <div class="flex-1">
                 <p class="text-2xl font-black text-gray-900">{{ ownerName }}</p>
                 <div class="flex items-center gap-2 mt-3 flex-wrap">
-                  <span class="inline-flex items-center gap-1.5 bg-green-100 text-green-700 px-3 py-1.5 rounded-lg text-xs font-bold">
+                  <span v-if="space.owner?.isVerified" class="inline-flex items-center gap-1.5 bg-green-100 text-green-700 px-3 py-1.5 rounded-lg text-xs font-bold">
                     <span class="material-symbols-outlined !text-[14px]">verified</span>
                     Verificado
-                  </span>
-                  <span class="inline-flex items-center gap-1.5 bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg text-xs font-bold">
-                    <span class="material-symbols-outlined !text-[14px]">star</span>
-                    Anfitrión destacado
                   </span>
                 </div>
               </div>
@@ -1053,24 +1146,6 @@ const copyBankInfo = async () => {
             <p v-if="space.owner?.businessDescription" class="text-gray-600 leading-relaxed mb-6">
               {{ space.owner.businessDescription }}
             </p>
-            <p v-else class="text-gray-600 leading-relaxed mb-6">
-              Anfitrión profesional comprometido con brindarte la mejor experiencia en su espacio. Responde rápidamente y se asegura de que todo esté en perfecto estado para tu visita.
-            </p>
-
-            <div class="grid grid-cols-3 gap-4 mb-6">
-              <div class="text-center p-4 bg-white rounded-xl ring-1 ring-black/5">
-                <p class="text-3xl font-black text-primary">5.0</p>
-                <p class="text-xs text-gray-500 mt-1 font-medium">Calificación</p>
-              </div>
-              <div class="text-center p-4 bg-white rounded-xl ring-1 ring-black/5">
-                <p class="text-3xl font-black text-primary">24</p>
-                <p class="text-xs text-gray-500 mt-1 font-medium">Reservas</p>
-              </div>
-              <div class="text-center p-4 bg-white rounded-xl ring-1 ring-black/5">
-                <p class="text-3xl font-black text-primary">&lt;1h</p>
-                <p class="text-xs text-gray-500 mt-1 font-medium">Respuesta</p>
-              </div>
-            </div>
 
             <div class="flex flex-col gap-3">
               <a
@@ -1125,23 +1200,8 @@ const copyBankInfo = async () => {
                   <p class="text-4xl font-black text-gray-900">{{ formatCurrency(pricePerHour) }}</p>
                   <p class="text-sm text-gray-500 mt-1 font-medium">por hora de uso</p>
                 </div>
-                <div class="flex items-center gap-1 bg-yellow-100 px-3 py-1.5 rounded-xl">
-                  <span class="material-symbols-outlined text-yellow-500 text-xl">star</span>
-                  <span class="font-black text-lg text-gray-900">5.0</span>
-                </div>
-              </div>
-              <div class="mt-5 grid grid-cols-3 gap-3 text-center">
-                <div class="bg-white/80 rounded-xl p-3 ring-1 ring-black/5">
-                  <p class="text-xs text-gray-500 font-medium">Min.</p>
-                  <p class="font-black text-gray-900 text-lg">1h</p>
-                </div>
-                <div class="bg-white/80 rounded-xl p-3 ring-1 ring-black/5">
-                  <p class="text-xs text-gray-500 font-medium">Máx.</p>
-                  <p class="font-black text-gray-900 text-lg">24h</p>
-                </div>
-                <div class="bg-white/80 rounded-xl p-3 ring-1 ring-black/5">
-                  <p class="text-xs text-gray-500 font-medium">Resp.</p>
-                  <p class="font-black text-gray-900 text-lg">1h</p>
+                <div v-if="space.category" class="px-3 py-1.5 rounded-xl bg-primary/10">
+                  <span class="text-sm font-bold text-primary">{{ formatCategory(space.category) }}</span>
                 </div>
               </div>
             </div>
