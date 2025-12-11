@@ -244,6 +244,7 @@ class BookingsUseCase {
 
   /**
    * Subir comprobante de transferencia (usuario)
+   * Permite subir comprobante si el método es 'transfer' o si es 'pending'/'cash' (pagar después)
    */
   async uploadTransferProof(bookingId, userId, proofUrl) {
     const booking = await Booking.findById(bookingId);
@@ -256,8 +257,11 @@ class BookingsUseCase {
       throw new Error('No tienes permiso para actualizar esta reserva');
     }
 
-    // Verificar que el método de pago es transferencia
-    if (booking.paymentMethod !== 'transfer') {
+    // Si el método de pago es 'pending' o 'cash', cambiarlo a 'transfer'
+    // Esto permite que usuarios que eligieron "pagar después" puedan pagar por transferencia
+    if (booking.paymentMethod === 'pending' || booking.paymentMethod === 'cash') {
+      booking.paymentMethod = 'transfer';
+    } else if (booking.paymentMethod !== 'transfer') {
       throw new Error('Esta reserva no está configurada para pago por transferencia');
     }
 
@@ -395,6 +399,67 @@ class BookingsUseCase {
     await booking.save();
 
     return this.enrichBooking(booking);
+  }
+
+  /**
+   * Marcar reserva como pagada (owner) - Para reservas confirmadas con pago pendiente
+   */
+  async markAsPaid(bookingId, ownerId) {
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      throw new Error('Reserva no encontrada');
+    }
+
+    // Verificar que el owner tiene un espacio asociado a esta reserva
+    const space = await Space.findByPk(booking.spaceId);
+    if (!space || space.ownerId !== ownerId) {
+      throw new Error('No tienes permiso para modificar esta reserva');
+    }
+
+    // Solo se pueden marcar como pagadas reservas confirmadas
+    if (booking.status !== 'confirmed') {
+      throw new Error('Solo se pueden marcar como pagadas reservas confirmadas');
+    }
+
+    // Solo si el pago está pendiente
+    if (booking.paymentStatus === 'paid') {
+      throw new Error('Esta reserva ya está marcada como pagada');
+    }
+
+    booking.paymentStatus = 'paid';
+    booking.paidAt = new Date();
+
+    await booking.save();
+
+    return this.enrichBooking(booking);
+  }
+
+  /**
+   * Obtener reservas confirmadas pendientes de pago (owner)
+   * Para pagos en efectivo que ya fueron confirmadas pero aún no pagadas
+   */
+  async getPendingCashPayments(ownerId) {
+    // Obtener todos los espacios del owner
+    const spaces = await Space.findAll({
+      where: { ownerId, isActive: true },
+      attributes: ['id']
+    });
+
+    const spaceIds = spaces.map(s => s.id);
+
+    if (spaceIds.length === 0) {
+      return [];
+    }
+
+    // Buscar reservas confirmadas con pago pendiente (típicamente efectivo)
+    const bookings = await Booking.find({
+      spaceId: { $in: spaceIds },
+      status: 'confirmed',
+      paymentStatus: 'pending',
+      paymentMethod: 'cash'
+    }).sort({ startTime: 1 });
+
+    return Promise.all(bookings.map(b => this.enrichBooking(b)));
   }
 
   /**

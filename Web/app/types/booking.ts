@@ -2,7 +2,7 @@ import type { Space } from './space'
 import type { AuthUser } from './auth'
 
 export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed'
-export type PaymentMethod = 'cash' | 'card' | 'transfer'
+export type PaymentMethod = 'cash' | 'card' | 'transfer' | 'pending'
 export type PaymentStatus = 'pending' | 'paid' | 'refunded'
 
 export interface Booking {

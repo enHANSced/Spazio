@@ -557,7 +557,7 @@ const handleBooking = () => {
 const selectPaymentChoice = (choice: 'now' | 'later') => {
   paymentChoice.value = choice
   if (choice === 'later') {
-    selectedPaymentMethod.value = 'cash' // Por defecto para pago posterior
+    selectedPaymentMethod.value = 'pending' // Método de pago aún no decidido
   } else {
     selectedPaymentMethod.value = 'card' // Por defecto para pago inmediato
   }

@@ -18,6 +18,7 @@ useSeoMeta({
 const bookings = ref<Booking[]>([])
 const pendingTransfers = ref<Booking[]>([])
 const pendingBookings = ref<Booking[]>([])
+const pendingCashPayments = ref<Booking[]>([])
 const spaces = ref<Space[]>([])
 const loading = ref(true)
 const error = ref('')
@@ -67,11 +68,12 @@ const loadBookings = async () => {
   error.value = ''
   
   try {
-    const [bookingsResponse, spacesResponse, pendingTransfersResponse, pendingBookingsResponse] = await Promise.all([
+    const [bookingsResponse, spacesResponse, pendingTransfersResponse, pendingBookingsResponse, pendingCashResponse] = await Promise.all([
       ownerBookingsService.getOwnerBookings(),
       ownerSpacesService.getMySpaces(),
       ownerBookingsService.getPendingTransferVerifications(),
-      ownerBookingsService.getPendingBookings()
+      ownerBookingsService.getPendingBookings(),
+      ownerBookingsService.getPendingCashPayments()
     ])
     
     if (bookingsResponse.success && bookingsResponse.data) {
@@ -88,6 +90,10 @@ const loadBookings = async () => {
 
     if (pendingBookingsResponse.success && pendingBookingsResponse.data) {
       pendingBookings.value = pendingBookingsResponse.data
+    }
+
+    if (pendingCashResponse.success && pendingCashResponse.data) {
+      pendingCashPayments.value = pendingCashResponse.data
     }
   } catch (err: any) {
     error.value = err.data?.message || err.message || 'Error al cargar reservas'
@@ -159,6 +165,49 @@ const formatCurrency = (amount: number) => {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   }).format(amount).replace('HNL', 'L')
+}
+
+const getPaymentMethodLabel = (method: string) => {
+  const labels: Record<string, string> = {
+    cash: 'Efectivo',
+    transfer: 'Transferencia',
+    card: 'Tarjeta',
+    pending: 'Por definir'
+  }
+  return labels[method] || method
+}
+
+const getPaymentMethodIcon = (method: string) => {
+  const icons: Record<string, string> = {
+    cash: 'payments',
+    transfer: 'account_balance',
+    card: 'credit_card',
+    pending: 'schedule'
+  }
+  return icons[method] || 'payment'
+}
+
+const getPaymentStatusBadgeClass = (paymentStatus: string, paymentMethod: string) => {
+  if (paymentStatus === 'paid') {
+    return 'bg-green-100 text-green-700'
+  }
+  if (paymentStatus === 'refunded') {
+    return 'bg-purple-100 text-purple-700'
+  }
+  // Pendiente
+  if (paymentMethod === 'cash') {
+    return 'bg-orange-100 text-orange-700'
+  }
+  return 'bg-yellow-100 text-yellow-700'
+}
+
+const getPaymentStatusLabel = (paymentStatus: string) => {
+  const labels: Record<string, string> = {
+    pending: 'Pendiente',
+    paid: 'Pagado',
+    refunded: 'Reembolsado'
+  }
+  return labels[paymentStatus] || paymentStatus
 }
 
 const handleViewDetail = (booking: Booking) => {
@@ -331,6 +380,53 @@ onMounted(() => {
       </div>
     </div>
 
+    <!-- Pending Cash Payments Alert (reservas confirmadas pendientes de pago en efectivo) -->
+    <div v-if="pendingCashPayments.length > 0" class="rounded-xl border-2 border-orange-300 bg-orange-50 p-5">
+      <div class="flex items-start gap-4">
+        <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-orange-200">
+          <span class="material-symbols-outlined text-2xl text-orange-700">payments</span>
+        </div>
+        <div class="flex-1">
+          <h3 class="text-lg font-bold text-orange-900">
+            {{ pendingCashPayments.length }} {{ pendingCashPayments.length === 1 ? 'pago en efectivo pendiente' : 'pagos en efectivo pendientes' }}
+          </h3>
+          <p class="mt-1 text-sm text-orange-800">
+            Las siguientes reservas ya fueron confirmadas y están pendientes de recibir el pago en efectivo.
+          </p>
+          
+          <div class="mt-4 space-y-3">
+            <div 
+              v-for="booking in pendingCashPayments" 
+              :key="booking._id"
+              class="flex items-center justify-between rounded-lg bg-white p-3 shadow-sm border border-orange-200"
+            >
+              <div class="flex items-center gap-3">
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100">
+                  <span class="material-symbols-outlined text-orange-600">person</span>
+                </div>
+                <div>
+                  <p class="font-semibold text-slate-900">{{ booking.user?.name || 'Usuario' }}</p>
+                  <p class="text-xs text-slate-600">
+                    {{ booking.space?.name }} · {{ formatDate(booking.startTime) }}
+                  </p>
+                  <p class="text-xs text-orange-700 font-bold">
+                    {{ formatCurrency(booking.totalAmount || 0) }}
+                  </p>
+                </div>
+              </div>
+              <button
+                @click="handleViewDetail(booking)"
+                class="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700 transition-colors flex items-center gap-1"
+              >
+                <span class="material-symbols-outlined !text-[18px]">payments</span>
+                Registrar pago
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Filters -->
     <div class="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
       <div class="flex flex-col gap-4 sm:flex-row">
@@ -454,13 +550,13 @@ onMounted(() => {
                 Espacio
               </th>
               <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-slate-700 bg-slate-50">
-                Fecha y Duración
+                Fecha y Hora
               </th>
               <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-slate-700 bg-slate-50">
-                Horario
+                Pago
               </th>
               <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-slate-700 bg-slate-50">
-                Estado y Monto
+                Estado
               </th>
               <th class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wide text-slate-700 bg-slate-50">
                 Acciones
@@ -475,8 +571,8 @@ onMounted(() => {
             >
               <td class="px-6 py-4">
                 <div class="flex items-center gap-3">
-                  <div class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 shadow-sm">
-                    <span class="material-symbols-outlined text-xl text-primary">person</span>
+                  <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 shadow-sm">
+                    <span class="material-symbols-outlined text-lg text-primary">person</span>
                   </div>
                   <div class="min-w-0">
                     <p class="text-sm font-bold text-[#111418] truncate">
@@ -499,15 +595,30 @@ onMounted(() => {
                     {{ formatDateShort(booking.startTime) }}
                   </p>
                   <p class="text-xs text-slate-500 mt-0.5">
-                    {{ booking.durationHours }}h de uso
+                    {{ formatTimeRange(booking.startTime, booking.endTime) }}
                   </p>
                 </div>
               </td>
               <td class="px-6 py-4">
-                <div class="flex items-center gap-2">
-                  <span class="material-symbols-outlined text-slate-400 !text-[18px]">schedule</span>
-                  <span class="text-sm font-medium text-slate-900">
-                    {{ formatTimeRange(booking.startTime, booking.endTime) }}
+                <div class="flex flex-col gap-1.5">
+                  <!-- Método de pago -->
+                  <div class="flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-slate-400 !text-[16px]">{{ getPaymentMethodIcon(booking.paymentMethod || 'cash') }}</span>
+                    <span class="text-xs font-medium text-slate-700">{{ getPaymentMethodLabel(booking.paymentMethod || 'cash') }}</span>
+                  </div>
+                  <!-- Estado del pago -->
+                  <span 
+                    class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold w-fit"
+                    :class="getPaymentStatusBadgeClass(booking.paymentStatus || 'pending', booking.paymentMethod || 'cash')"
+                  >
+                    <span class="material-symbols-outlined !text-[12px]">
+                      {{ booking.paymentStatus === 'paid' ? 'check' : 'schedule' }}
+                    </span>
+                    {{ getPaymentStatusLabel(booking.paymentStatus || 'pending') }}
+                  </span>
+                  <!-- Monto -->
+                  <span class="text-xs font-bold text-slate-900">
+                    {{ formatCurrency(booking.totalAmount || 0) }}
                   </span>
                 </div>
               </td>
@@ -520,9 +631,6 @@ onMounted(() => {
                     <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
                     {{ getStatusLabel(booking.status) }}
                   </span>
-                  <span class="text-xs font-bold text-slate-900">
-                    {{ formatCurrency(booking.totalAmount || 0) }}
-                  </span>
                 </div>
               </td>
               <td class="px-6 py-4">
@@ -533,7 +641,7 @@ onMounted(() => {
                     title="Ver detalle"
                   >
                     <span class="material-symbols-outlined !text-[18px]">visibility</span>
-                    Ver detalle
+                    Ver
                   </button>
                 </div>
               </td>

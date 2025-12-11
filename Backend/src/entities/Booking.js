@@ -34,8 +34,8 @@ const bookingSchema = new mongoose.Schema({
   // Campos de pago
   paymentMethod: {
     type: String,
-    enum: ['cash', 'card', 'transfer'],
-    default: 'cash'
+    enum: ['cash', 'card', 'transfer', 'pending'],
+    default: 'pending'
   },
   paymentStatus: {
     type: String,

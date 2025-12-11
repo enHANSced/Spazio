@@ -212,5 +212,44 @@ export const ownerBookingsService = {
     } catch (error: any) {
       return { success: false, message: extractApiErrorMessage(error) }
     }
+  },
+
+  /**
+   * Marcar reserva como pagada (para efectivo)
+   */
+  async markAsPaid(bookingId: string) {
+    const token = useCookie('spazio_token').value
+    if (!token) throw new Error('No autenticado')
+    
+    try {
+      const url = buildApiUrl(`/bookings/owner/${bookingId}/mark-paid`)
+      const response = await $fetch<{ success: boolean; data?: Booking; message?: string }>(url, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      return { success: response.success, data: response.data, message: response.message }
+    } catch (error: any) {
+      return { success: false, message: extractApiErrorMessage(error) }
+    }
+  },
+
+  /**
+   * Obtener reservas confirmadas pendientes de pago en efectivo
+   */
+  async getPendingCashPayments() {
+    const token = useCookie('spazio_token').value
+    if (!token) throw new Error('No autenticado')
+    
+    try {
+      const url = buildApiUrl('/bookings/owner/pending-cash')
+      const response = await $fetch<BookingsApiResponse>(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      return { success: response.success, data: response.data, message: response.message }
+    } catch (error: any) {
+      return { success: false, data: [], message: extractApiErrorMessage(error) }
+    }
   }
 }

@@ -96,13 +96,46 @@
                   <p class="text-sm text-amber-800 mt-1">
                     El cliente ha solicitado reservar este espacio. Revisa los detalles y decide si aceptar o rechazar la reserva.
                   </p>
-                  <p v-if="booking.paymentMethod === 'cash'" class="text-xs text-amber-700 mt-2">
+                  <p v-if="booking.paymentMethod === 'pending'" class="text-xs text-amber-700 mt-2">
+                    <span class="font-semibold">⏳ Pagar después:</span> El cliente aún no ha decidido el método de pago.
+                  </p>
+                  <p v-else-if="booking.paymentMethod === 'cash'" class="text-xs text-amber-700 mt-2">
                     <span class="font-semibold">💰 Pago en efectivo:</span> El cliente pagará al momento de usar el espacio.
                   </p>
                   <p v-else-if="booking.paymentMethod === 'transfer' && booking.paymentStatus === 'pending' && !booking.transferProofUrl" class="text-xs text-amber-700 mt-2">
                     <span class="font-semibold">🏦 Transferencia pendiente:</span> Esperando que el cliente suba el comprobante.
                   </p>
                 </div>
+              </div>
+            </div>
+
+            <!-- Alerta de pago en efectivo pendiente (reserva ya confirmada) -->
+            <div v-else-if="showPendingCashPayment" class="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-400 rounded-xl p-5">
+              <div class="flex items-start gap-4">
+                <div class="h-12 w-12 rounded-full bg-orange-200 flex items-center justify-center flex-shrink-0">
+                  <span class="material-symbols-outlined text-orange-700 text-2xl">payments</span>
+                </div>
+                <div class="flex-1">
+                  <p class="font-bold text-orange-900 text-lg">Pago en efectivo pendiente</p>
+                  <p class="text-sm text-orange-800 mt-1">
+                    Esta reserva ya está confirmada. El cliente debe pagar <strong>{{ formatCurrency(booking.totalAmount || 0) }}</strong> en efectivo.
+                  </p>
+                  <p class="text-xs text-orange-700 mt-2">
+                    Una vez que recibas el pago, márcalo como pagado para completar el proceso.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Botón de marcar como pagada -->
+              <div class="mt-4">
+                <button
+                  @click="handleMarkAsPaid"
+                  :disabled="isProcessing"
+                  class="w-full px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md"
+                >
+                  <span class="material-symbols-outlined !text-[20px]">check_circle</span>
+                  {{ isProcessing ? 'Procesando...' : 'Confirmar Pago Recibido' }}
+                </button>
               </div>
             </div>
 
@@ -452,19 +485,9 @@
             </div>
 
             <div class="flex gap-3">
-              <!-- Cambiar estado de pago (solo si está confirmada y no es transferencia pendiente) -->
+              <!-- Cancelar reserva (solo si está confirmada y no es pago en efectivo pendiente, que tiene su propia UI) -->
               <button
-                v-if="booking.status === 'confirmed' && booking.paymentStatus === 'pending' && booking.paymentMethod !== 'transfer'"
-                @click="handleMarkAsPaid"
-                :disabled="isProcessing"
-                class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Marcar como Pagada
-              </button>
-
-              <!-- Cancelar reserva -->
-              <button
-                v-if="booking.status !== 'cancelled' && booking.status !== 'completed' && booking.status !== 'pending'"
+                v-if="booking.status === 'confirmed' && !showPendingCashPayment"
                 @click="handleCancel"
                 :disabled="isProcessing"
                 class="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -474,7 +497,7 @@
 
               <button
                 @click="close"
-                class="px-4 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                class="flex-1 px-4 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 Cerrar
               </button>
@@ -680,6 +703,14 @@ const showIntegratedTransferApproval = computed(() => {
          props.booking.paymentStatus === 'pending'
 })
 
+// Computed para mostrar alerta de pago en efectivo pendiente
+// Solo aplica si el método ya es 'cash' (efectivo confirmado), no 'pending' (aún no decidido)
+const showPendingCashPayment = computed(() => {
+  return props.booking.status === 'confirmed' && 
+         props.booking.paymentMethod === 'cash' &&
+         props.booking.paymentStatus === 'pending'
+})
+
 const statusStyles: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
   confirmed: 'bg-blue-100 text-blue-800',
@@ -697,7 +728,8 @@ const statusLabels: Record<string, string> = {
 const paymentMethodLabels: Record<string, string> = {
   cash: 'Efectivo',
   card: 'Tarjeta',
-  transfer: 'Transferencia'
+  transfer: 'Transferencia',
+  pending: 'Por definir (Pagar después)'
 }
 
 const paymentStatusLabels: Record<string, string> = {
@@ -762,25 +794,22 @@ const handleBackdropClick = () => {
 }
 
 const handleMarkAsPaid = async () => {
-  if (!confirm('¿Confirmar que el pago ha sido recibido?')) return
+  if (!confirm('¿Confirmar que el pago en efectivo ha sido recibido?')) return
 
   isProcessing.value = true
   try {
-    const response = await ownerBookingsService.update(props.booking._id, {
-      paymentStatus: 'paid',
-      paidAt: new Date().toISOString()
-    })
+    const response = await ownerBookingsService.markAsPaid(props.booking._id)
 
     if (response.success) {
-      toast.success('Pago actualizado exitosamente')
+      toast.success('¡Pago registrado exitosamente!')
       emit('updated')
       close()
     } else {
-      toast.error(response.message || 'Error al actualizar el pago')
+      toast.error(response.message || 'Error al registrar el pago')
     }
   } catch (error: any) {
-    console.error('Error updating payment:', error)
-    toast.error(error.data?.message || error.message || 'Error al actualizar el pago')
+    console.error('Error marking as paid:', error)
+    toast.error(error.data?.message || error.message || 'Error al registrar el pago')
   } finally {
     isProcessing.value = false
   }

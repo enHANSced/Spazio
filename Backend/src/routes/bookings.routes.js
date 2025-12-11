@@ -56,6 +56,12 @@ router.patch('/owner/:id/confirm', validateBookingId, handleValidationErrors, is
 // Rechazar reserva pendiente (owner)
 router.patch('/owner/:id/reject', validateBookingId, handleValidationErrors, isOwnerOrAdmin, isVerifiedOwner, bookingsController.rejectBooking);
 
+// Marcar reserva como pagada (owner) - Para efectivo
+router.patch('/owner/:id/mark-paid', validateBookingId, handleValidationErrors, isOwnerOrAdmin, isVerifiedOwner, bookingsController.markAsPaid);
+
+// Obtener reservas confirmadas pendientes de pago en efectivo (owner)
+router.get('/owner/pending-cash', isOwnerOrAdmin, isVerifiedOwner, bookingsController.getPendingCashPayments);
+
 // Obtener reservas por espacio (para calendario)
 router.get('/space/:spaceId', validateGetBySpace, handleValidationErrors, bookingsController.getBySpace);
 

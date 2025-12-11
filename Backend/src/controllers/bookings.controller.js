@@ -422,6 +422,54 @@ class BookingsController {
       });
     }
   }
+
+  /**
+   * Marcar reserva como pagada (owner)
+   * Para reservas confirmadas con pago en efectivo pendiente
+   */
+  async markAsPaid(req, res) {
+    try {
+      const { id } = req.params;
+
+      const booking = await bookingsUseCase.markAsPaid(
+        id,
+        req.user.id
+      );
+
+      res.status(200).json({
+        success: true,
+        message: 'Pago registrado exitosamente',
+        data: booking
+      });
+    } catch (error) {
+      console.error('Error marking as paid:', error);
+      const status = error.message.includes('permiso') ? 403 : 
+                     error.message.includes('no encontrada') ? 404 : 400;
+      res.status(status).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * Obtener reservas confirmadas pendientes de pago en efectivo (owner)
+   */
+  async getPendingCashPayments(req, res) {
+    try {
+      const bookings = await bookingsUseCase.getPendingCashPayments(req.user.id);
+      res.status(200).json({
+        success: true,
+        data: bookings
+      });
+    } catch (error) {
+      console.error('Error getting pending cash payments:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
 }
 
 module.exports = new BookingsController();

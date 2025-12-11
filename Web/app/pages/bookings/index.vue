@@ -365,6 +365,8 @@ const getPaymentMethodLabel = (method?: string) => {
       return 'Tarjeta'
     case 'transfer':
       return 'Transferencia'
+    case 'pending':
+      return 'Por definir'
     default:
       return 'No especificado'
   }

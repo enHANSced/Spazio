@@ -134,6 +134,8 @@ const getPaymentMethodLabel = (method?: string) => {
       return 'Tarjeta de crédito/débito'
     case 'transfer':
       return 'Transferencia bancaria'
+    case 'pending':
+      return 'Por definir (Pagar después)'
     default:
       return 'No especificado'
   }
@@ -142,7 +144,8 @@ const getPaymentMethodLabel = (method?: string) => {
 // Estado de transferencia
 const transferStatus = computed(() => {
   if (!booking.value) return null
-  if (booking.value.paymentMethod !== 'transfer') return null
+  // Solo aplica si el método es transfer o si ya hay un comprobante subido
+  if (booking.value.paymentMethod !== 'transfer' && !booking.value.transferProofUrl) return null
   
   if (booking.value.paymentStatus === 'paid') return 'verified'
   if (booking.value.transferRejectedAt) return 'rejected'
@@ -150,9 +153,16 @@ const transferStatus = computed(() => {
   return 'awaiting_proof'
 })
 
+// Puede subir comprobante si:
+// - El método es 'transfer', 'pending', o 'cash' (para cambiar a transfer)
+// - El pago está pendiente
+// - La reserva no está cancelada
+// - No hay comprobante ya subido o fue rechazado
 const canUploadProof = computed(() => {
   if (!booking.value) return false
-  return booking.value.paymentMethod === 'transfer' && 
+  const method = booking.value.paymentMethod
+  const canChangeToTransfer = method === 'transfer' || method === 'pending' || method === 'cash'
+  return canChangeToTransfer && 
          booking.value.paymentStatus === 'pending' &&
          booking.value.status !== 'cancelled' &&
          (!booking.value.transferProofUrl || booking.value.transferRejectedAt)
@@ -170,6 +180,8 @@ const canReschedule = computed(() => {
 
 const canPay = computed(() => {
   if (!booking.value) return false
+  // No mostrar "Pagar ahora" si ya hay comprobante pendiente de verificación
+  if (booking.value.transferProofUrl && !booking.value.transferRejectedAt) return false
   return booking.value.paymentStatus === 'pending' && booking.value.status !== 'cancelled'
 })
 
@@ -177,6 +189,53 @@ const isUpcoming = computed(() => {
   if (!booking.value) return false
   return new Date(booking.value.startTime) > new Date()
 })
+
+// Información bancaria del propietario
+const ownerBankInfo = computed(() => {
+  const owner = booking.value?.space?.owner
+  if (!owner) return null
+  if (!owner.bankName && !owner.bankAccountNumber) return null
+  return {
+    bankName: owner.bankName,
+    accountType: owner.bankAccountType,
+    accountNumber: owner.bankAccountNumber,
+    accountHolder: owner.bankAccountHolder
+  }
+})
+
+const formatBankAccountType = (type: string | null | undefined): string => {
+  const types: Record<string, string> = {
+    'ahorro_lempiras': 'Ahorro (Lempiras)',
+    'ahorro_dolares': 'Ahorro (Dólares)',
+    'corriente_lempiras': 'Corriente (Lempiras)',
+    'corriente_dolares': 'Corriente (Dólares)'
+  }
+  return types[type || ''] || type || ''
+}
+
+const toast = useToast()
+const copyBankInfo = async () => {
+  if (!ownerBankInfo.value) return
+  
+  const info = ownerBankInfo.value
+  let bankText = `Datos para Transferencia:\n`
+  bankText += `Banco: ${info.bankName || ''}\n`
+  if (info.accountType) {
+    bankText += `Tipo: ${formatBankAccountType(info.accountType)}\n`
+  }
+  bankText += `Cuenta: ${info.accountNumber || ''}\n`
+  if (info.accountHolder) {
+    bankText += `Titular: ${info.accountHolder}`
+  }
+  
+  try {
+    await navigator.clipboard.writeText(bankText.trim())
+    toast.success('Datos bancarios copiados al portapapeles')
+  } catch (error) {
+    console.error('Error al copiar:', error)
+    toast.error('No se pudo copiar al portapapeles')
+  }
+}
 
 // Acciones
 const handleCancel = async () => {
@@ -243,7 +302,8 @@ const handleReschedule = async () => {
 const handlePayment = async () => {
   if (!booking.value) return
 
-  // Si es transferencia, abrir el modal de transferencia
+  // Si es transferencia, abrir el modal de transferencia directamente
+  // El backend actualizará el paymentMethod a 'transfer' automáticamente
   if (selectedPaymentMethod.value === 'transfer') {
     showPaymentModal.value = false
     showTransferModal.value = true
@@ -1024,8 +1084,28 @@ const viewSpace = () => {
               </div>
 
               <!-- Notas según método -->
-              <div v-if="selectedPaymentMethod === 'transfer'" class="p-4 rounded-xl bg-blue-50 ring-1 ring-blue-200 text-sm text-blue-800">
-                <strong>Pago por transferencia:</strong> Después de seleccionar, deberás subir una foto del comprobante de transferencia para que el propietario lo verifique.
+              <div v-if="selectedPaymentMethod === 'cash'" class="p-4 rounded-xl bg-emerald-50 ring-1 ring-emerald-200 text-sm text-emerald-800 space-y-2">
+                <p class="font-semibold flex items-center gap-2">
+                  <span class="material-symbols-outlined !text-[18px]">info</span>
+                  Pago en efectivo
+                </p>
+                <ul class="list-disc list-inside space-y-1 text-emerald-700">
+                  <li>Pagarás directamente al propietario <strong>el día de tu reserva</strong></li>
+                  <li>Llega con el monto exacto de preferencia</li>
+                  <li>El propietario confirmará el pago una vez recibido</li>
+                </ul>
+              </div>
+
+              <div v-if="selectedPaymentMethod === 'transfer'" class="p-4 rounded-xl bg-blue-50 ring-1 ring-blue-200 text-sm text-blue-800 space-y-2">
+                <p class="font-semibold flex items-center gap-2">
+                  <span class="material-symbols-outlined !text-[18px]">account_balance</span>
+                  Pago por transferencia
+                </p>
+                <ul class="list-disc list-inside space-y-1 text-blue-700">
+                  <li>Realiza la transferencia con los datos del propietario</li>
+                  <li>Sube el comprobante para verificación</li>
+                  <li>El propietario confirmará una vez verificado</li>
+                </ul>
               </div>
 
               <div v-if="selectedPaymentMethod === 'card'" class="p-4 rounded-xl bg-amber-50 ring-1 ring-amber-200 text-sm text-amber-800">
@@ -1078,11 +1158,55 @@ const viewSpace = () => {
             </div>
 
             <div class="p-6 space-y-6">
+              <!-- Información bancaria del propietario -->
+              <div v-if="ownerBankInfo" class="p-4 rounded-xl bg-gradient-to-br from-primary/5 to-blue-50 ring-2 ring-primary/20">
+                <div class="flex items-center justify-between mb-3">
+                  <h4 class="font-bold text-gray-900 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">account_balance</span>
+                    Datos para transferencia
+                  </h4>
+                  <button
+                    type="button"
+                    class="text-xs px-3 py-1.5 rounded-lg bg-white ring-1 ring-gray-200 font-semibold text-gray-600 hover:bg-gray-50 transition-all flex items-center gap-1"
+                    @click="copyBankInfo"
+                  >
+                    <span class="material-symbols-outlined !text-[14px]">content_copy</span>
+                    Copiar
+                  </button>
+                </div>
+                <div class="space-y-2 text-sm">
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Banco:</span>
+                    <span class="font-semibold text-gray-900">{{ ownerBankInfo.bankName || 'No especificado' }}</span>
+                  </div>
+                  <div v-if="ownerBankInfo.accountType" class="flex justify-between">
+                    <span class="text-gray-600">Tipo de cuenta:</span>
+                    <span class="font-semibold text-gray-900">{{ formatBankAccountType(ownerBankInfo.accountType) }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Número de cuenta:</span>
+                    <span class="font-semibold text-gray-900 font-mono">{{ ownerBankInfo.accountNumber || 'No especificado' }}</span>
+                  </div>
+                  <div v-if="ownerBankInfo.accountHolder" class="flex justify-between">
+                    <span class="text-gray-600">Titular:</span>
+                    <span class="font-semibold text-gray-900">{{ ownerBankInfo.accountHolder }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Aviso si no hay info bancaria -->
+              <div v-else class="p-4 rounded-xl bg-amber-50 ring-1 ring-amber-200">
+                <p class="text-sm text-amber-800 flex items-center gap-2">
+                  <span class="material-symbols-outlined !text-[18px]">warning</span>
+                  <span><strong>Nota:</strong> El propietario no ha configurado sus datos bancarios. Contáctalo directamente para obtener la información de transferencia.</span>
+                </p>
+              </div>
+
               <!-- Instrucciones -->
               <div class="p-4 rounded-xl bg-blue-50 ring-1 ring-blue-200">
-                <h4 class="font-semibold text-blue-900 mb-2">Instrucciones para el pago</h4>
+                <h4 class="font-semibold text-blue-900 mb-2">Pasos a seguir</h4>
                 <ol class="text-sm text-blue-800 list-decimal list-inside space-y-1">
-                  <li>Realiza una transferencia al propietario del espacio</li>
+                  <li>Realiza una transferencia con los datos anteriores</li>
                   <li>Toma una captura de pantalla o foto del comprobante</li>
                   <li>Sube la imagen aquí para que el propietario la verifique</li>
                 </ol>
