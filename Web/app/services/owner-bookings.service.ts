@@ -191,16 +191,21 @@ export const ownerBookingsService = {
   /**
    * Rechazar una reserva pendiente
    */
-  async rejectBooking(bookingId: string, reason: string) {
+  async rejectBooking(bookingId: string, reason?: string) {
     const token = useCookie('spazio_token').value
     if (!token) throw new Error('No autenticado')
     
     try {
       const url = buildApiUrl(`/bookings/owner/${bookingId}/reject`)
+      const body: { reason?: string } = {}
+      if (reason && reason.trim()) {
+        body.reason = reason.trim()
+      }
+      
       const response = await $fetch<{ success: boolean; data?: Booking; message?: string }>(url, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` },
-        body: { reason }
+        body
       })
 
       return { success: response.success, data: response.data, message: response.message }

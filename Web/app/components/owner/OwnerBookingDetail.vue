@@ -44,8 +44,8 @@
               </span>
             </div>
 
-            <!-- Alerta de reserva pendiente de confirmación -->
-            <div v-if="booking.status === 'pending'" class="bg-amber-50 border-2 border-amber-300 rounded-xl p-4">
+            <!-- Alerta de reserva pendiente de confirmación (NO transferencia con comprobante pendiente) -->
+            <div v-if="booking.status === 'pending' && !showIntegratedTransferApproval" class="bg-amber-50 border-2 border-amber-300 rounded-xl p-4">
               <div class="flex items-start gap-3">
                 <div class="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
                   <span class="material-symbols-outlined text-amber-600">hourglass_empty</span>
@@ -58,10 +58,72 @@
                   <p v-if="booking.paymentMethod === 'cash'" class="text-xs text-amber-700 mt-2">
                     <span class="font-semibold">💰 Pago en efectivo:</span> El cliente pagará al momento de usar el espacio.
                   </p>
-                  <p v-else-if="booking.paymentMethod === 'transfer' && booking.paymentStatus === 'pending'" class="text-xs text-amber-700 mt-2">
+                  <p v-else-if="booking.paymentMethod === 'transfer' && booking.paymentStatus === 'pending' && !booking.transferProofUrl" class="text-xs text-amber-700 mt-2">
                     <span class="font-semibold">🏦 Transferencia pendiente:</span> Esperando que el cliente suba el comprobante.
                   </p>
                 </div>
+              </div>
+            </div>
+
+            <!-- Alerta integrada para transferencia con comprobante (aprobación de pago + reserva) -->
+            <div v-if="showIntegratedTransferApproval" class="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-400 rounded-xl p-5">
+              <div class="flex items-start gap-4">
+                <div class="h-12 w-12 rounded-full bg-amber-200 flex items-center justify-center flex-shrink-0">
+                  <span class="material-symbols-outlined text-amber-700 text-2xl">receipt_long</span>
+                </div>
+                <div class="flex-1">
+                  <p class="font-bold text-amber-900 text-lg">Aprobación de Reserva y Pago</p>
+                  <p class="text-sm text-amber-800 mt-1">
+                    El cliente ha subido un comprobante de transferencia. Al aprobar, se confirmará tanto el <strong>pago</strong> como la <strong>reserva</strong> automáticamente.
+                  </p>
+                  <p class="text-xs text-amber-700 mt-2 flex items-center gap-1">
+                    <span class="material-symbols-outlined !text-[16px]">schedule</span>
+                    Comprobante subido el {{ formatDateTime(booking.transferProofUploadedAt!) }}
+                  </p>
+                </div>
+              </div>
+
+              <!-- Vista previa del comprobante integrada -->
+              <div class="mt-4 border border-amber-200 rounded-lg overflow-hidden bg-white">
+                <div class="bg-amber-100 px-4 py-2 border-b border-amber-200 flex items-center justify-between">
+                  <span class="text-sm font-medium text-amber-800">Comprobante de transferencia</span>
+                  <a 
+                    :href="booking.transferProofUrl"
+                    target="_blank"
+                    class="text-sm text-amber-700 hover:underline flex items-center gap-1"
+                  >
+                    <span class="material-symbols-outlined !text-[16px]">open_in_new</span>
+                    Ver completo
+                  </a>
+                </div>
+                <div class="p-4">
+                  <img 
+                    :src="booking.transferProofUrl"
+                    alt="Comprobante de transferencia"
+                    class="max-h-48 mx-auto rounded shadow-sm cursor-pointer hover:opacity-90 transition"
+                    @click="openImageInNewTab(booking.transferProofUrl!)"
+                  />
+                </div>
+              </div>
+
+              <!-- Acciones integradas -->
+              <div class="flex gap-3 mt-4">
+                <button
+                  @click="handleApproveTransferAndBooking"
+                  :disabled="isProcessing"
+                  class="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md"
+                >
+                  <span class="material-symbols-outlined !text-[20px]">check_circle</span>
+                  {{ isProcessing ? 'Procesando...' : 'Aprobar Pago y Reserva' }}
+                </button>
+                <button
+                  @click="showIntegratedRejectModal = true"
+                  :disabled="isProcessing"
+                  class="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md"
+                >
+                  <span class="material-symbols-outlined !text-[20px]">cancel</span>
+                  Rechazar
+                </button>
               </div>
             </div>
 
@@ -214,8 +276,8 @@
                 <p class="text-gray-600 mt-2">El cliente aún no ha subido el comprobante de transferencia</p>
               </div>
 
-              <!-- Con comprobante pendiente de verificación -->
-              <div v-else-if="booking.transferProofUrl && !booking.transferVerifiedAt && booking.paymentStatus === 'pending'" class="space-y-4">
+              <!-- Con comprobante pendiente de verificación (solo si reserva ya está confirmada, no pendiente) -->
+              <div v-else-if="booking.transferProofUrl && !booking.transferVerifiedAt && booking.paymentStatus === 'pending' && booking.status !== 'pending'" class="space-y-4">
                 <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
                   <div class="flex items-start gap-3">
                     <span class="material-symbols-outlined text-amber-600">pending</span>
@@ -328,8 +390,8 @@
 
           <!-- Actions -->
           <div class="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 rounded-b-xl">
-            <!-- Acciones para reservas pendientes de confirmación -->
-            <div v-if="booking.status === 'pending'" class="flex gap-3 mb-3">
+            <!-- Acciones para reservas pendientes de confirmación (no transferencia con comprobante) -->
+            <div v-if="booking.status === 'pending' && !showIntegratedTransferApproval" class="flex gap-3 mb-3">
               <button
                 @click="handleConfirmBooking"
                 :disabled="isProcessing"
@@ -452,12 +514,12 @@
             </div>
 
             <p class="text-gray-600 mb-4">
-              Por favor indica el motivo del rechazo. El cliente recibirá esta información:
+              Puedes agregar un comentario opcional para el cliente:
             </p>
 
             <textarea
               v-model="bookingRejectionReason"
-              placeholder="Ej: El espacio no está disponible en esa fecha, el horario solicitado no es posible, etc."
+              placeholder="(Opcional) Ej: El espacio no está disponible en esa fecha, el horario solicitado no es posible, etc."
               class="w-full rounded-lg border-2 border-gray-300 px-4 py-3 focus:border-red-500 focus:ring-4 focus:ring-red-100 resize-none"
               rows="3"
             ></textarea>
@@ -472,10 +534,67 @@
               </button>
               <button
                 @click="handleRejectBooking"
-                :disabled="isProcessing || !bookingRejectionReason.trim()"
+                :disabled="isProcessing"
                 class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {{ isProcessing ? 'Procesando...' : 'Rechazar Reserva' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Modal de rechazo integrado (para transferencia con comprobante) -->
+    <Transition name="modal">
+      <div
+        v-if="showIntegratedRejectModal"
+        @click="showIntegratedRejectModal = false"
+        class="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4"
+      >
+        <div
+          @click.stop
+          class="bg-white rounded-xl shadow-2xl max-w-md w-full"
+        >
+          <div class="p-6">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+                <span class="material-symbols-outlined text-red-600 text-2xl">cancel</span>
+              </div>
+              <h3 class="text-xl font-bold text-gray-900">Rechazar Solicitud</h3>
+            </div>
+
+            <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+              <p class="text-sm text-amber-800">
+                <span class="font-semibold">⚠️ Nota:</span> Al rechazar, se rechazará tanto el comprobante de pago como la solicitud de reserva.
+              </p>
+            </div>
+
+            <p class="text-gray-600 mb-4">
+              Puedes agregar un comentario opcional para el cliente:
+            </p>
+
+            <textarea
+              v-model="integratedRejectionReason"
+              placeholder="(Opcional) Ej: El comprobante está borroso, el monto no coincide, el espacio no está disponible, etc."
+              class="w-full rounded-lg border-2 border-gray-300 px-4 py-3 focus:border-red-500 focus:ring-4 focus:ring-red-100 resize-none"
+              rows="3"
+            ></textarea>
+
+            <div class="flex gap-3 mt-4">
+              <button
+                @click="showIntegratedRejectModal = false"
+                :disabled="isProcessing"
+                class="flex-1 px-4 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                @click="handleRejectTransferAndBooking"
+                :disabled="isProcessing"
+                class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {{ isProcessing ? 'Procesando...' : 'Rechazar' }}
               </button>
             </div>
           </div>
@@ -508,6 +627,17 @@ const showRejectModal = ref(false)
 const rejectionReason = ref('')
 const showRejectBookingModal = ref(false)
 const bookingRejectionReason = ref('')
+const showIntegratedRejectModal = ref(false)
+const integratedRejectionReason = ref('')
+
+// Computed para mostrar la aprobación integrada (transferencia con comprobante en reserva pendiente)
+const showIntegratedTransferApproval = computed(() => {
+  return props.booking.status === 'pending' && 
+         props.booking.paymentMethod === 'transfer' && 
+         props.booking.transferProofUrl && 
+         !props.booking.transferVerifiedAt &&
+         props.booking.paymentStatus === 'pending'
+})
 
 const statusStyles: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -582,6 +712,8 @@ const close = () => {
   rejectionReason.value = ''
   showRejectBookingModal.value = false
   bookingRejectionReason.value = ''
+  showIntegratedRejectModal.value = false
+  integratedRejectionReason.value = ''
 }
 
 const handleBackdropClick = () => {
@@ -684,7 +816,7 @@ const handleRejectBooking = async () => {
   try {
     const response = await ownerBookingsService.rejectBooking(
       props.booking._id,
-      bookingRejectionReason.value
+      bookingRejectionReason.value || undefined
     )
 
     if (response.success) {
@@ -701,6 +833,57 @@ const handleRejectBooking = async () => {
     isProcessing.value = false
     showRejectBookingModal.value = false
     bookingRejectionReason.value = ''
+  }
+}
+
+// Aprobar transferencia y reserva en una sola acción
+const handleApproveTransferAndBooking = async () => {
+  isProcessing.value = true
+  try {
+    const response = await ownerBookingsService.verifyTransfer(
+      props.booking._id, 
+      true
+    )
+
+    if (response.success) {
+      toast.success('¡Pago verificado y reserva confirmada exitosamente!')
+      emit('updated')
+      close()
+    } else {
+      toast.error(response.message || 'Error al procesar la solicitud')
+    }
+  } catch (error: any) {
+    console.error('Error approving transfer and booking:', error)
+    toast.error(error.data?.message || error.message || 'Error al procesar la solicitud')
+  } finally {
+    isProcessing.value = false
+  }
+}
+
+// Rechazar transferencia y reserva en una sola acción
+const handleRejectTransferAndBooking = async () => {
+  isProcessing.value = true
+  try {
+    // Rechazar la reserva completa (esto también invalida el comprobante)
+    const response = await ownerBookingsService.rejectBooking(
+      props.booking._id,
+      integratedRejectionReason.value || undefined
+    )
+
+    if (response.success) {
+      toast.success('Solicitud rechazada')
+      emit('updated')
+      close()
+    } else {
+      toast.error(response.message || 'Error al rechazar la solicitud')
+    }
+  } catch (error: any) {
+    console.error('Error rejecting transfer and booking:', error)
+    toast.error(error.data?.message || error.message || 'Error al rechazar la solicitud')
+  } finally {
+    isProcessing.value = false
+    showIntegratedRejectModal.value = false
+    integratedRejectionReason.value = ''
   }
 }
 </script>

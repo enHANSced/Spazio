@@ -27,10 +27,11 @@ class BookingsController {
    */
   async getMyBookings(req, res) {
     try {
-      const { startDate, endDate } = req.query;
+      const { startDate, endDate, status } = req.query;
       const bookings = await bookingsUseCase.getUserBookings(req.user.id, {
         startDate,
-        endDate
+        endDate,
+        status
       });
       res.status(200).json({
         success: true,
@@ -398,12 +399,7 @@ class BookingsController {
       const { id } = req.params;
       const { reason } = req.body;
 
-      if (!reason || reason.trim().length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'Debe proporcionar una razón para rechazar la reserva'
-        });
-      }
+      // La razón es ahora opcional
 
       const booking = await bookingsUseCase.rejectBooking(
         id,

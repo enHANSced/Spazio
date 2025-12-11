@@ -114,7 +114,13 @@ class BookingsUseCase {
    * Obtener reservas del usuario autenticado
    */
   async getUserBookings(userId, filters = {}) {
-    const query = { userId, status: { $ne: 'cancelled' } };
+    const query = { userId };
+
+    // Filtrar por status si se proporciona (incluyendo 'cancelled')
+    if (filters.status) {
+      query.status = filters.status;
+    }
+    // Ya no excluimos canceladas por defecto - el usuario debe ver todas sus reservas
 
     // Filtrar por fecha si se proporciona
     if (filters.startDate) {
@@ -124,7 +130,7 @@ class BookingsUseCase {
       query.endTime = { $lte: new Date(filters.endDate) };
     }
 
-    const bookings = await Booking.find(query).sort({ startTime: 1 });
+    const bookings = await Booking.find(query).sort({ startTime: -1 }); // Más recientes primero
     return Promise.all(bookings.map(b => this.enrichBooking(b)));
   }
 
@@ -377,15 +383,14 @@ class BookingsUseCase {
       throw new Error(`No se puede rechazar una reserva con estado "${booking.status}"`);
     }
 
-    if (!reason || reason.trim().length === 0) {
-      throw new Error('Debe proporcionar una razón para rechazar la reserva');
-    }
-
-    // Rechazar = cancelar con razón
+    // La razón es ahora opcional
+    // Rechazar = cancelar con razón opcional
     booking.status = 'cancelled';
     booking.rejectedAt = new Date();
     booking.rejectedBy = ownerId;
-    booking.rejectionReason = reason;
+    if (reason && reason.trim().length > 0) {
+      booking.rejectionReason = reason.trim();
+    }
 
     await booking.save();
 
@@ -501,10 +506,8 @@ class BookingsUseCase {
     // Filtrar por status si se proporciona
     if (filters.status) {
       query.status = filters.status;
-    } else {
-      // Por defecto, no mostrar canceladas
-      query.status = { $ne: 'cancelled' };
     }
+    // Ya no excluimos canceladas por defecto - el owner debe ver todas las reservas
 
     // Filtrar por fecha si se proporciona
     if (filters.startDate) {

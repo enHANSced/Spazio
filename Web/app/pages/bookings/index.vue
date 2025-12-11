@@ -578,6 +578,27 @@ const canCancel = (booking: Booking) => {
                       </div>
                     </div>
 
+                    <!-- Motivo de rechazo (si aplica) -->
+                    <div 
+                      v-if="booking.status === 'cancelled' && booking.rejectedAt"
+                      class="p-4 rounded-xl bg-gradient-to-r from-rose-50 to-rose-100/50 ring-1 ring-rose-200"
+                    >
+                      <div class="flex items-start gap-3">
+                        <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-200 flex-shrink-0">
+                          <span class="material-symbols-outlined text-rose-600 !text-[18px]">info</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-sm font-semibold text-rose-700 mb-1">Reserva rechazada por el propietario</p>
+                          <p v-if="booking.rejectionReason" class="text-sm text-rose-600">
+                            "{{ booking.rejectionReason }}"
+                          </p>
+                          <p v-else class="text-sm text-rose-500 italic">
+                            No se proporcionó un motivo
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
                     <!-- Info Grid con diseño premium -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                       <!-- Fecha -->
@@ -773,6 +794,25 @@ const canCancel = (booking: Booking) => {
                       >
                         <span class="material-symbols-outlined !text-[14px]">{{ getStatusIcon(booking.status) }}</span>
                         {{ getStatusLabel(booking.status) }}
+                      </div>
+                    </div>
+
+                    <!-- Motivo de rechazo (si aplica) -->
+                    <div 
+                      v-if="booking.status === 'cancelled' && booking.rejectedAt"
+                      class="p-3 rounded-xl bg-rose-50 ring-1 ring-rose-200"
+                    >
+                      <div class="flex items-start gap-2">
+                        <span class="material-symbols-outlined text-rose-500 !text-[18px] flex-shrink-0">info</span>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-xs font-semibold text-rose-600 mb-0.5">Rechazada por el propietario</p>
+                          <p v-if="booking.rejectionReason" class="text-sm text-rose-600">
+                            "{{ booking.rejectionReason }}"
+                          </p>
+                          <p v-else class="text-xs text-rose-400 italic">
+                            Sin motivo especificado
+                          </p>
+                        </div>
                       </div>
                     </div>
 
