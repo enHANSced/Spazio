@@ -374,7 +374,7 @@ const formatNumber = (value: number) => new Intl.NumberFormat('es-HN').format(va
             <div class="absolute inset-0 bg-white/20 rounded-3xl blur-xl transition-all duration-500"></div>
             <div class="search-glow-border"></div>
             <div class="relative flex flex-col lg:flex-row gap-3 p-4 rounded-2xl bg-white shadow-2xl shadow-black/20 ring-1 ring-black/5 search-card">
-              <div class="flex-1 flex items-center gap-4 px-5 py-3 rounded-xl bg-gray-50/80 border border-gray-100 transition-all duration-300">
+              <div class="flex-1 flex items-center gap-4 px-5 py-3 rounded-xl bg-gray-50/80 border border-gray-100 transition-all duration-300 search-input-wrapper">
                 <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dark">
                   <span class="material-symbols-outlined text-white text-xl">search</span>
                 </div>
@@ -382,7 +382,7 @@ const formatNumber = (value: number) => new Intl.NumberFormat('es-HN').format(va
                   v-model.trim="searchQuery"
                   type="text"
                   placeholder="¿Qué tipo de espacio necesitas?"
-                  class="flex-1 bg-transparent text-gray-900 placeholder:text-gray-400 focus:outline-none font-medium text-lg border-0"
+                  class="search-input flex-1 bg-transparent text-gray-900 placeholder:text-gray-400 font-medium text-lg border-0"
                   @keypress="handleSearchKeypress"
                 />
                 <button
@@ -1344,10 +1344,90 @@ const formatNumber = (value: number) => new Intl.NumberFormat('es-HN').format(va
   z-index: -1;
   filter: blur(8px);
   transition: opacity 0.4s ease;
+  animation: glow-rotate 3s linear infinite;
 }
 
 .group:hover .search-glow-border {
   opacity: 0.4;
+}
+
+/* Input de búsqueda */
+.search-input {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.search-input:focus {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.search-input-wrapper {
+  position: relative;
+  overflow: hidden;
+}
+
+.search-input-wrapper::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(6, 182, 212, 0.4),
+    rgba(59, 130, 246, 0.4),
+    rgba(139, 92, 246, 0.4),
+    transparent
+  );
+  border-radius: 0.75rem;
+  opacity: 0;
+  z-index: -1;
+  filter: blur(10px);
+  transition: opacity 0.5s ease;
+  animation: shimmer-glow 3s ease-in-out infinite;
+}
+
+.search-input-wrapper:has(.search-input:focus)::before {
+  opacity: 1;
+  animation: shimmer-glow 2s ease-in-out infinite, pulse-glow 1.5s ease-in-out infinite;
+}
+
+.search-input-wrapper:has(.search-input:focus) {
+  border-color: rgba(6, 182, 212, 0.3);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(249, 250, 251, 0.95));
+  box-shadow: 
+    0 0 20px rgba(6, 182, 212, 0.2),
+    0 0 40px rgba(59, 130, 246, 0.1),
+    0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+@keyframes shimmer-glow {
+  0% { 
+    transform: translateX(-100%);
+  }
+  100% { 
+    transform: translateX(200%);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { 
+    filter: blur(10px) brightness(1);
+  }
+  50% { 
+    filter: blur(15px) brightness(1.3);
+  }
+}
+
+@keyframes glow-rotate {
+  0% {
+    filter: blur(8px) hue-rotate(0deg);
+  }
+  100% {
+    filter: blur(8px) hue-rotate(360deg);
+  }
 }
 
 .search-btn {
