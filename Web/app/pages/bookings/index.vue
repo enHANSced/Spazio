@@ -25,6 +25,53 @@ const { data: bookingsData, pending, error, refresh } = await useAsyncData<Booki
 
 const bookings = computed(() => bookingsData.value || [])
 
+// Estado de notificaciones descartadas (persistido en localStorage)
+const dismissedNotifications = ref<Set<string>>(new Set())
+
+// Cargar notificaciones descartadas desde localStorage
+onMounted(() => {
+  try {
+    const saved = localStorage.getItem('spazio_dismissed_booking_notifications')
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      // Limpiar notificaciones viejas (más de 24h)
+      const now = Date.now()
+      const validEntries = parsed.filter((entry: { id: string, timestamp: number }) => 
+        now - entry.timestamp < 24 * 60 * 60 * 1000
+      )
+      dismissedNotifications.value = new Set(validEntries.map((e: { id: string }) => e.id))
+      // Guardar solo las válidas
+      localStorage.setItem('spazio_dismissed_booking_notifications', JSON.stringify(validEntries))
+    }
+  } catch (e) {
+    // Si hay error, limpiar
+    localStorage.removeItem('spazio_dismissed_booking_notifications')
+  }
+})
+
+// Descartar una notificación
+const dismissNotification = (bookingId: string) => {
+  dismissedNotifications.value.add(bookingId)
+  // Guardar en localStorage con timestamp
+  try {
+    const saved = localStorage.getItem('spazio_dismissed_booking_notifications')
+    const entries = saved ? JSON.parse(saved) : []
+    entries.push({ id: bookingId, timestamp: Date.now() })
+    localStorage.setItem('spazio_dismissed_booking_notifications', JSON.stringify(entries))
+  } catch (e) {
+    // Ignorar errores de localStorage
+  }
+}
+
+// Descartar todas las notificaciones
+const dismissAllNotifications = () => {
+  const allIds = [
+    ...recentlyConfirmedBookings.value.map(b => b._id),
+    ...recentlyRejectedBookings.value.map(b => b._id)
+  ]
+  allIds.forEach(id => dismissNotification(id))
+}
+
 // Modal de subir comprobante
 const showUploadModal = ref(false)
 const selectedBookingForUpload = ref<Booking | null>(null)
@@ -144,17 +191,54 @@ const filteredBookings = computed(() => {
   })
 })
 
-// Agrupar reservas
-const upcomingBookings = computed(() => 
-  filteredBookings.value.filter(b => 
+// Agrupar reservas - mantener el orden de filteredBookings
+const upcomingBookings = computed(() => {
+  // Filtrar reservas activas (no canceladas) y futuras
+  const filtered = filteredBookings.value.filter(b => 
     b.status !== 'cancelled' && new Date(b.startTime) > new Date()
   )
-)
+  // El orden ya viene de filteredBookings, no necesitamos reordenar
+  return filtered
+})
 
-const pastBookings = computed(() => 
-  filteredBookings.value.filter(b => 
+const pastBookings = computed(() => {
+  // Reservas canceladas/rechazadas O que ya pasaron
+  const filtered = filteredBookings.value.filter(b => 
     b.status === 'cancelled' || new Date(b.endTime) < new Date()
   )
+  // El orden ya viene de filteredBookings, no necesitamos reordenar
+  return filtered
+})
+
+// Reservas recién confirmadas (para destacar) - excluir descartadas
+const recentlyConfirmedBookings = computed(() => 
+  bookings.value.filter(b => {
+    if (b.status !== 'confirmed' || !b.confirmedAt) return false
+    if (dismissedNotifications.value.has(b._id)) return false
+    // Mostrar como "recién confirmada" si fue confirmada en las últimas 24 horas
+    const confirmedDate = new Date(b.confirmedAt)
+    const now = new Date()
+    const hoursDiff = (now.getTime() - confirmedDate.getTime()) / (1000 * 60 * 60)
+    return hoursDiff <= 24
+  })
+)
+
+// Reservas rechazadas recientemente (para destacar) - excluir descartadas
+const recentlyRejectedBookings = computed(() => 
+  bookings.value.filter(b => {
+    if (b.status !== 'cancelled' || !b.rejectedAt) return false
+    if (dismissedNotifications.value.has(b._id)) return false
+    // Mostrar como "recién rechazada" si fue rechazada en las últimas 24 horas
+    const rejectedDate = new Date(b.rejectedAt)
+    const now = new Date()
+    const hoursDiff = (now.getTime() - rejectedDate.getTime()) / (1000 * 60 * 60)
+    return hoursDiff <= 24
+  })
+)
+
+// Total de notificaciones activas
+const totalActiveNotifications = computed(() => 
+  recentlyConfirmedBookings.value.length + recentlyRejectedBookings.value.length
 )
 
 // Contadores
@@ -198,6 +282,16 @@ const formatTime = (dateString: string) => {
   return new Date(dateString).toLocaleTimeString('es-HN', {
     hour: '2-digit',
     minute: '2-digit'
+  })
+}
+
+const formatDateTime = (dateString: string) => {
+  return new Date(dateString).toLocaleString('es-HN', {
+    day: 'numeric',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
   })
 }
 
@@ -392,6 +486,102 @@ const canCancel = (booking: Booking) => {
           </div>
         </div>
 
+        <!-- Alertas de notificaciones - Estilo compacto tipo notificación móvil -->
+        <div v-if="totalActiveNotifications > 0" class="mb-6">
+          <!-- Header de notificaciones -->
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-gray-500 !text-[20px]">notifications</span>
+              <span class="text-sm font-semibold text-gray-700">
+                {{ totalActiveNotifications }} {{ totalActiveNotifications === 1 ? 'notificación' : 'notificaciones' }}
+              </span>
+            </div>
+            <button
+              v-if="totalActiveNotifications > 1"
+              @click="dismissAllNotifications"
+              class="text-xs text-gray-500 hover:text-gray-700 font-medium transition-colors"
+            >
+              Descartar todas
+            </button>
+          </div>
+
+          <div class="space-y-2">
+            <!-- Notificaciones de reservas confirmadas -->
+            <TransitionGroup name="notification">
+              <div 
+                v-for="booking in recentlyConfirmedBookings"
+                :key="'confirmed-' + booking._id"
+                class="group flex items-center gap-3 bg-white rounded-xl p-3 shadow-sm ring-1 ring-emerald-200 hover:shadow-md transition-all"
+              >
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 flex-shrink-0">
+                  <span class="material-symbols-outlined text-emerald-600 !text-[20px]">check_circle</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-semibold text-gray-900 truncate">
+                    ¡Reserva confirmada!
+                  </p>
+                  <p class="text-xs text-gray-500 truncate">
+                    {{ booking.space?.name }} · {{ formatDateTime(booking.confirmedAt!) }}
+                  </p>
+                </div>
+                <div class="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    @click.stop="viewBooking(booking._id)"
+                    class="p-2 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors"
+                    title="Ver detalles"
+                  >
+                    <span class="material-symbols-outlined !text-[20px]">visibility</span>
+                  </button>
+                  <button
+                    @click.stop="dismissNotification(booking._id)"
+                    class="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100"
+                    title="Descartar"
+                  >
+                    <span class="material-symbols-outlined !text-[20px]">close</span>
+                  </button>
+                </div>
+              </div>
+            </TransitionGroup>
+
+            <!-- Notificaciones de reservas rechazadas -->
+            <TransitionGroup name="notification">
+              <div 
+                v-for="booking in recentlyRejectedBookings"
+                :key="'rejected-' + booking._id"
+                class="group flex items-center gap-3 bg-white rounded-xl p-3 shadow-sm ring-1 ring-rose-200 hover:shadow-md transition-all"
+              >
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 flex-shrink-0">
+                  <span class="material-symbols-outlined text-rose-600 !text-[20px]">cancel</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-semibold text-gray-900 truncate">
+                    Reserva rechazada
+                  </p>
+                  <p class="text-xs text-gray-500 truncate">
+                    {{ booking.space?.name }} · {{ booking.rejectionReason || 'Sin motivo especificado' }}
+                  </p>
+                </div>
+                <div class="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    @click.stop="viewBooking(booking._id)"
+                    class="p-2 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors"
+                    title="Ver detalles"
+                  >
+                    <span class="material-symbols-outlined !text-[20px]">visibility</span>
+                  </button>
+                  <button
+                    @click.stop="dismissNotification(booking._id)"
+                    class="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100"
+                    title="Descartar"
+                  >
+                    <span class="material-symbols-outlined !text-[20px]">close</span>
+                  </button>
+                </div>
+              </div>
+            </TransitionGroup>
+          </div>
+        </div>
+
         <!-- Filters - Estilo moderno -->
         <div class="bg-white rounded-2xl p-5 shadow-sm ring-1 ring-black/5 mb-8">
           <div class="flex flex-col gap-4">
@@ -575,6 +765,19 @@ const canCancel = (booking: Booking) => {
                       >
                         <span class="material-symbols-outlined !text-[16px]">{{ getStatusIcon(booking.status) }}</span>
                         {{ getStatusLabel(booking.status) }}
+                      </div>
+                    </div>
+
+                    <!-- Alerta de confirmación por el propietario -->
+                    <div 
+                      v-if="booking.status === 'confirmed' && booking.confirmedAt"
+                      class="p-3 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 ring-1 ring-emerald-200"
+                    >
+                      <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-emerald-600 !text-[18px]">verified</span>
+                        <p class="text-sm font-medium text-emerald-700">
+                          Confirmada por el propietario el {{ formatDateTime(booking.confirmedAt) }}
+                        </p>
                       </div>
                     </div>
 
@@ -1012,5 +1215,28 @@ const canCancel = (booking: Booking) => {
 .modal-enter-from > div:last-child,
 .modal-leave-to > div:last-child {
   transform: scale(0.95) translateY(10px);
+}
+
+/* Notification transitions */
+.notification-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+.notification-leave-active {
+  transition: all 0.25s ease-in;
+}
+
+.notification-enter-from {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+.notification-leave-to {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.notification-move {
+  transition: transform 0.25s ease;
 }
 </style>

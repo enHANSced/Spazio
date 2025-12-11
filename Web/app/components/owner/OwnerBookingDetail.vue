@@ -44,8 +44,49 @@
               </span>
             </div>
 
+            <!-- Información de reserva cancelada/rechazada -->
+            <div v-if="booking.status === 'cancelled'" class="bg-gradient-to-br from-rose-50 to-red-50 border-2 border-rose-300 rounded-xl p-5">
+              <div class="flex items-start gap-4">
+                <div class="h-12 w-12 rounded-full bg-rose-200 flex items-center justify-center flex-shrink-0">
+                  <span class="material-symbols-outlined text-rose-700 text-2xl">cancel</span>
+                </div>
+                <div class="flex-1">
+                  <p class="font-bold text-rose-900 text-lg">
+                    {{ booking.rejectedAt ? 'Reserva Rechazada' : 'Reserva Cancelada' }}
+                  </p>
+                  
+                  <!-- Quién canceló -->
+                  <div class="mt-2 text-sm text-rose-800">
+                    <p v-if="booking.rejectedAt" class="flex items-center gap-2">
+                      <span class="material-symbols-outlined !text-[18px]">person</span>
+                      <span><strong>Rechazada por:</strong> Tú (propietario)</span>
+                    </p>
+                    <p v-else class="flex items-center gap-2">
+                      <span class="material-symbols-outlined !text-[18px]">person</span>
+                      <span><strong>Cancelada por:</strong> {{ booking.userId === booking.user?.id ? 'El cliente' : 'Sistema' }}</span>
+                    </p>
+                  </div>
+                  
+                  <!-- Fecha de cancelación -->
+                  <p class="mt-2 text-xs text-rose-700 flex items-center gap-1">
+                    <span class="material-symbols-outlined !text-[16px]">schedule</span>
+                    {{ booking.rejectedAt ? formatDateTime(booking.rejectedAt) : formatDateTime(booking.updatedAt) }}
+                  </p>
+                  
+                  <!-- Motivo si existe -->
+                  <div v-if="booking.rejectionReason" class="mt-3 p-3 bg-white/60 rounded-lg border border-rose-200">
+                    <p class="text-xs font-semibold text-rose-700 mb-1">Motivo del rechazo:</p>
+                    <p class="text-sm text-rose-800">"{{ booking.rejectionReason }}"</p>
+                  </div>
+                  <div v-else-if="booking.rejectedAt" class="mt-3 p-3 bg-white/60 rounded-lg border border-rose-200">
+                    <p class="text-sm text-rose-600 italic">No se proporcionó un motivo</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Alerta de reserva pendiente de confirmación (NO transferencia con comprobante pendiente) -->
-            <div v-if="booking.status === 'pending' && !showIntegratedTransferApproval" class="bg-amber-50 border-2 border-amber-300 rounded-xl p-4">
+            <div v-else-if="booking.status === 'pending' && !showIntegratedTransferApproval" class="bg-amber-50 border-2 border-amber-300 rounded-xl p-4">
               <div class="flex items-start gap-3">
                 <div class="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
                   <span class="material-symbols-outlined text-amber-600">hourglass_empty</span>
@@ -263,8 +304,8 @@
               </div>
             </div>
 
-            <!-- Comprobante de Transferencia -->
-            <div v-if="booking.paymentMethod === 'transfer'" class="border-t border-gray-200 pt-6">
+            <!-- Comprobante de Transferencia (solo si no está cancelada) -->
+            <div v-if="booking.paymentMethod === 'transfer' && booking.status !== 'cancelled'" class="border-t border-gray-200 pt-6">
               <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <span class="material-symbols-outlined text-primary">receipt_long</span>
                 Comprobante de Transferencia
