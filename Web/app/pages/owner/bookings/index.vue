@@ -28,6 +28,11 @@ const spaceFilter = ref<string>('all')
 const selectedBooking = ref<Booking | null>(null)
 const showDetailModal = ref(false)
 
+// Estados para colapsar/expandir alertas
+const showTransfersAlert = ref(false)
+const showPendingBookingsAlert = ref(false)
+const showCashPaymentsAlert = ref(false)
+
 const filteredBookings = computed(() => {
   let filtered = bookings.value
 
@@ -289,139 +294,181 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Pending Transfer Verifications Alert -->
-    <div v-if="pendingTransfers.length > 0" class="rounded-xl border-2 border-amber-300 bg-amber-50 p-5">
-      <div class="flex items-start gap-4">
-        <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-amber-200">
-          <span class="material-symbols-outlined text-2xl text-amber-700">receipt_long</span>
+    <!-- Pending Transfer Verifications Alert (Colapsable) -->
+    <div v-if="pendingTransfers.length > 0" class="rounded-xl border-2 border-amber-300 bg-amber-50 overflow-hidden">
+      <!-- Header - siempre visible -->
+      <button 
+        @click="showTransfersAlert = !showTransfersAlert"
+        class="w-full p-4 flex items-center justify-between hover:bg-amber-100/50 transition-colors"
+      >
+        <div class="flex items-center gap-3">
+          <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-amber-200">
+            <span class="material-symbols-outlined text-xl text-amber-700">receipt_long</span>
+          </div>
+          <div class="text-left">
+            <h3 class="text-base font-bold text-amber-900">
+              {{ pendingTransfers.length }} {{ pendingTransfers.length === 1 ? 'comprobante pendiente' : 'comprobantes pendientes' }} de verificación
+            </h3>
+            <p class="text-xs text-amber-700">Clic para {{ showTransfersAlert ? 'ocultar' : 'ver' }} detalles</p>
+          </div>
         </div>
-        <div class="flex-1">
-          <h3 class="text-lg font-bold text-amber-900">
-            {{ pendingTransfers.length }} {{ pendingTransfers.length === 1 ? 'comprobante pendiente' : 'comprobantes pendientes' }} de verificación
-          </h3>
-          <p class="mt-1 text-sm text-amber-800">
-            Los siguientes clientes han subido comprobantes de transferencia que requieren tu verificación.
-          </p>
-          
-          <div class="mt-4 space-y-3">
-            <div 
-              v-for="transfer in pendingTransfers" 
-              :key="transfer._id"
-              class="flex items-center justify-between rounded-lg bg-white p-3 shadow-sm border border-amber-200"
-            >
-              <div class="flex items-center gap-3">
-                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100">
-                  <span class="material-symbols-outlined text-amber-600">person</span>
-                </div>
-                <div>
-                  <p class="font-semibold text-slate-900">{{ transfer.user?.name || 'Usuario' }}</p>
-                  <p class="text-xs text-slate-600">
-                    {{ transfer.space?.name }} · {{ formatDate(transfer.startTime) }}
-                  </p>
-                </div>
+        <span class="material-symbols-outlined text-amber-700 transition-transform" :class="{ 'rotate-180': showTransfersAlert }">
+          expand_more
+        </span>
+      </button>
+      
+      <!-- Contenido expandible -->
+      <div v-show="showTransfersAlert" class="px-4 pb-4 border-t border-amber-200">
+        <p class="mt-3 text-sm text-amber-800">
+          Los siguientes clientes han subido comprobantes de transferencia que requieren tu verificación.
+        </p>
+        
+        <div class="mt-4 space-y-3">
+          <div 
+            v-for="transfer in pendingTransfers" 
+            :key="transfer._id"
+            class="flex items-center justify-between rounded-lg bg-white p-3 shadow-sm border border-amber-200"
+          >
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100">
+                <span class="material-symbols-outlined text-amber-600">person</span>
               </div>
-              <button
-                @click="handleViewDetail(transfer)"
-                class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 transition-colors flex items-center gap-1"
-              >
-                <span class="material-symbols-outlined !text-[18px]">visibility</span>
-                Revisar
-              </button>
+              <div>
+                <p class="font-semibold text-slate-900">{{ transfer.user?.name || 'Usuario' }}</p>
+                <p class="text-xs text-slate-600">
+                  {{ transfer.space?.name }} · {{ formatDate(transfer.startTime) }}
+                </p>
+              </div>
             </div>
+            <button
+              @click.stop="handleViewDetail(transfer)"
+              class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 transition-colors flex items-center gap-1"
+            >
+              <span class="material-symbols-outlined !text-[18px]">visibility</span>
+              Revisar
+            </button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Pending Bookings Alert (reservas que requieren confirmación del owner) -->
-    <div v-if="pendingBookings.length > 0" class="rounded-xl border-2 border-blue-300 bg-blue-50 p-5">
-      <div class="flex items-start gap-4">
-        <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-blue-200">
-          <span class="material-symbols-outlined text-2xl text-blue-700">hourglass_empty</span>
+    <!-- Pending Bookings Alert (Colapsable) -->
+    <div v-if="pendingBookings.length > 0" class="rounded-xl border-2 border-blue-300 bg-blue-50 overflow-hidden">
+      <!-- Header - siempre visible -->
+      <button 
+        @click="showPendingBookingsAlert = !showPendingBookingsAlert"
+        class="w-full p-4 flex items-center justify-between hover:bg-blue-100/50 transition-colors"
+      >
+        <div class="flex items-center gap-3">
+          <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-200">
+            <span class="material-symbols-outlined text-xl text-blue-700">hourglass_empty</span>
+          </div>
+          <div class="text-left">
+            <h3 class="text-base font-bold text-blue-900">
+              {{ pendingBookings.length }} {{ pendingBookings.length === 1 ? 'reserva pendiente' : 'reservas pendientes' }} de confirmación
+            </h3>
+            <p class="text-xs text-blue-700">Clic para {{ showPendingBookingsAlert ? 'ocultar' : 'ver' }} detalles</p>
+          </div>
         </div>
-        <div class="flex-1">
-          <h3 class="text-lg font-bold text-blue-900">
-            {{ pendingBookings.length }} {{ pendingBookings.length === 1 ? 'reserva pendiente' : 'reservas pendientes' }} de confirmación
-          </h3>
-          <p class="mt-1 text-sm text-blue-800">
-            Los siguientes clientes han solicitado reservar tus espacios y están esperando tu confirmación.
-          </p>
-          
-          <div class="mt-4 space-y-3">
-            <div 
-              v-for="booking in pendingBookings" 
-              :key="booking._id"
-              class="flex items-center justify-between rounded-lg bg-white p-3 shadow-sm border border-blue-200"
-            >
-              <div class="flex items-center gap-3">
-                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
-                  <span class="material-symbols-outlined text-blue-600">person</span>
-                </div>
-                <div>
-                  <p class="font-semibold text-slate-900">{{ booking.user?.name || 'Usuario' }}</p>
-                  <p class="text-xs text-slate-600">
-                    {{ booking.space?.name }} · {{ formatDate(booking.startTime) }}
-                  </p>
-                  <p class="text-xs text-blue-600 font-medium">
-                    Método: {{ booking.paymentMethod === 'cash' ? 'Efectivo' : booking.paymentMethod === 'transfer' ? 'Transferencia' : 'Tarjeta' }}
-                  </p>
-                </div>
+        <span class="material-symbols-outlined text-blue-700 transition-transform" :class="{ 'rotate-180': showPendingBookingsAlert }">
+          expand_more
+        </span>
+      </button>
+      
+      <!-- Contenido expandible -->
+      <div v-show="showPendingBookingsAlert" class="px-4 pb-4 border-t border-blue-200">
+        <p class="mt-3 text-sm text-blue-800">
+          Los siguientes clientes han solicitado reservar tus espacios y están esperando tu confirmación.
+        </p>
+        
+        <div class="mt-4 space-y-3">
+          <div 
+            v-for="booking in pendingBookings" 
+            :key="booking._id"
+            class="flex items-center justify-between rounded-lg bg-white p-3 shadow-sm border border-blue-200"
+          >
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
+                <span class="material-symbols-outlined text-blue-600">person</span>
               </div>
-              <button
-                @click="handleViewDetail(booking)"
-                class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors flex items-center gap-1"
-              >
-                <span class="material-symbols-outlined !text-[18px]">visibility</span>
-                Revisar
-              </button>
+              <div>
+                <p class="font-semibold text-slate-900">{{ booking.user?.name || 'Usuario' }}</p>
+                <p class="text-xs text-slate-600">
+                  {{ booking.space?.name }} · {{ formatDate(booking.startTime) }}
+                </p>
+                <p class="text-xs text-blue-600 font-medium">
+                  Método: {{ booking.paymentMethod === 'cash' ? 'Efectivo' : booking.paymentMethod === 'transfer' ? 'Transferencia' : 'Tarjeta' }}
+                </p>
+              </div>
             </div>
+            <button
+              @click.stop="handleViewDetail(booking)"
+              class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors flex items-center gap-1"
+            >
+              <span class="material-symbols-outlined !text-[18px]">visibility</span>
+              Revisar
+            </button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Pending Cash Payments Alert (reservas confirmadas pendientes de pago en efectivo) -->
-    <div v-if="pendingCashPayments.length > 0" class="rounded-xl border-2 border-orange-300 bg-orange-50 p-5">
-      <div class="flex items-start gap-4">
-        <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-orange-200">
-          <span class="material-symbols-outlined text-2xl text-orange-700">payments</span>
+    <!-- Pending Cash Payments Alert (Colapsable) -->
+    <div v-if="pendingCashPayments.length > 0" class="rounded-xl border-2 border-orange-300 bg-orange-50 overflow-hidden">
+      <!-- Header - siempre visible -->
+      <button 
+        @click="showCashPaymentsAlert = !showCashPaymentsAlert"
+        class="w-full p-4 flex items-center justify-between hover:bg-orange-100/50 transition-colors"
+      >
+        <div class="flex items-center gap-3">
+          <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-orange-200">
+            <span class="material-symbols-outlined text-xl text-orange-700">payments</span>
+          </div>
+          <div class="text-left">
+            <h3 class="text-base font-bold text-orange-900">
+              {{ pendingCashPayments.length }} {{ pendingCashPayments.length === 1 ? 'pago en efectivo pendiente' : 'pagos en efectivo pendientes' }}
+            </h3>
+            <p class="text-xs text-orange-700">Clic para {{ showCashPaymentsAlert ? 'ocultar' : 'ver' }} detalles</p>
+          </div>
         </div>
-        <div class="flex-1">
-          <h3 class="text-lg font-bold text-orange-900">
-            {{ pendingCashPayments.length }} {{ pendingCashPayments.length === 1 ? 'pago en efectivo pendiente' : 'pagos en efectivo pendientes' }}
-          </h3>
-          <p class="mt-1 text-sm text-orange-800">
-            Las siguientes reservas ya fueron confirmadas y están pendientes de recibir el pago en efectivo.
-          </p>
-          
-          <div class="mt-4 space-y-3">
-            <div 
-              v-for="booking in pendingCashPayments" 
-              :key="booking._id"
-              class="flex items-center justify-between rounded-lg bg-white p-3 shadow-sm border border-orange-200"
-            >
-              <div class="flex items-center gap-3">
-                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100">
-                  <span class="material-symbols-outlined text-orange-600">person</span>
-                </div>
-                <div>
-                  <p class="font-semibold text-slate-900">{{ booking.user?.name || 'Usuario' }}</p>
-                  <p class="text-xs text-slate-600">
-                    {{ booking.space?.name }} · {{ formatDate(booking.startTime) }}
-                  </p>
-                  <p class="text-xs text-orange-700 font-bold">
-                    {{ formatCurrency(booking.totalAmount || 0) }}
-                  </p>
-                </div>
+        <span class="material-symbols-outlined text-orange-700 transition-transform" :class="{ 'rotate-180': showCashPaymentsAlert }">
+          expand_more
+        </span>
+      </button>
+      
+      <!-- Contenido expandible -->
+      <div v-show="showCashPaymentsAlert" class="px-4 pb-4 border-t border-orange-200">
+        <p class="mt-3 text-sm text-orange-800">
+          Las siguientes reservas ya fueron confirmadas y están pendientes de recibir el pago en efectivo.
+        </p>
+        
+        <div class="mt-4 space-y-3">
+          <div 
+            v-for="booking in pendingCashPayments" 
+            :key="booking._id"
+            class="flex items-center justify-between rounded-lg bg-white p-3 shadow-sm border border-orange-200"
+          >
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100">
+                <span class="material-symbols-outlined text-orange-600">person</span>
               </div>
-              <button
-                @click="handleViewDetail(booking)"
-                class="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700 transition-colors flex items-center gap-1"
-              >
-                <span class="material-symbols-outlined !text-[18px]">payments</span>
-                Registrar pago
-              </button>
+              <div>
+                <p class="font-semibold text-slate-900">{{ booking.user?.name || 'Usuario' }}</p>
+                <p class="text-xs text-slate-600">
+                  {{ booking.space?.name }} · {{ formatDate(booking.startTime) }}
+                </p>
+                <p class="text-xs text-orange-700 font-bold">
+                  {{ formatCurrency(booking.totalAmount || 0) }}
+                </p>
+              </div>
             </div>
+            <button
+              @click.stop="handleViewDetail(booking)"
+              class="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700 transition-colors flex items-center gap-1"
+            >
+              <span class="material-symbols-outlined !text-[18px]">payments</span>
+              Registrar pago
+            </button>
           </div>
         </div>
       </div>
