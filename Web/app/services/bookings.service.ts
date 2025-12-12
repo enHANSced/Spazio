@@ -19,6 +19,18 @@ class BookingsService {
     }
   }
 
+  private getAuthHeaders() {
+    if (process.client) {
+      const tokenCookie = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('spazio_token='))
+      const token = tokenCookie ? tokenCookie.split('=')[1] : null
+
+      return token ? { Authorization: `Bearer ${token}` } : {}
+    }
+    return {}
+  }
+
   private getApiUrl(path: string = '') {
     const config = useRuntimeConfig()
     const baseUrl = config.public.apiBaseUrl
@@ -105,6 +117,89 @@ class BookingsService {
       headers: this.getHeaders(),
       body: data
     })
+    return response.data
+  }
+
+  /**
+   * Subir comprobante de transferencia
+   */
+  async uploadTransferProof(id: string, file: File): Promise<Booking> {
+    const formData = new FormData()
+    formData.append('proof', file)
+
+    const response = await $fetch<{ success: boolean; data: Booking; message: string }>(
+      this.getApiUrl(`/${id}/transfer-proof`),
+      {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: formData
+      }
+    )
+    return response.data
+  }
+
+  /**
+   * Obtener reservas pendientes de confirmación (owner)
+   */
+  async getPendingBookings(): Promise<Booking[]> {
+    const response = await $fetch<BookingsApiResponse>(this.getApiUrl('/owner/pending'), {
+      headers: this.getHeaders()
+    })
+    return response.data
+  }
+
+  /**
+   * Obtener reservas pendientes de verificación de transferencia (owner)
+   */
+  async getPendingTransfers(): Promise<Booking[]> {
+    const response = await $fetch<BookingsApiResponse>(this.getApiUrl('/owner/pending-transfers'), {
+      headers: this.getHeaders()
+    })
+    return response.data
+  }
+
+  /**
+   * Confirmar reserva pendiente (owner)
+   */
+  async confirmBooking(id: string, markAsPaid: boolean = false): Promise<Booking> {
+    const response = await $fetch<{ success: boolean; data: Booking; message: string }>(
+      this.getApiUrl(`/owner/${id}/confirm`),
+      {
+        method: 'PATCH',
+        headers: this.getHeaders(),
+        body: { markAsPaid }
+      }
+    )
+    return response.data
+  }
+
+  /**
+   * Rechazar reserva pendiente (owner)
+   */
+  async rejectBooking(id: string, reason: string): Promise<Booking> {
+    const response = await $fetch<{ success: boolean; data: Booking; message: string }>(
+      this.getApiUrl(`/owner/${id}/reject`),
+      {
+        method: 'PATCH',
+        headers: this.getHeaders(),
+        body: { reason }
+      }
+    )
+    return response.data
+  }
+
+  /**
+   * Verificar comprobante de transferencia (owner)
+   */
+  async verifyTransfer(id: string, approved: boolean, rejectionReason?: string): Promise<Booking> {
+    const response = await $fetch<{ success: boolean; data: Booking; message: string }>(
+      this.getApiUrl(`/${id}/verify-transfer`),
+      {
+        method: 'PATCH',
+        headers: this.getHeaders(),
+        body: { approved, rejectionReason }
+      }
+    )
     return response.data
   }
 }

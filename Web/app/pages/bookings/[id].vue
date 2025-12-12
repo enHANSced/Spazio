@@ -25,8 +25,10 @@ const booking = computed(() => bookingData.value)
 const showCancelModal = ref(false)
 const showRescheduleModal = ref(false)
 const showPaymentModal = ref(false)
+const showTransferModal = ref(false)
 const isProcessing = ref(false)
 const actionError = ref('')
+const uploadSuccess = ref('')
 
 // Datos de reprogramación
 const newDate = ref('')
@@ -35,6 +37,10 @@ const newHours = ref(1)
 
 // Datos de pago
 const selectedPaymentMethod = ref<PaymentMethod>('cash')
+
+// Datos de transferencia
+const transferProofFile = ref<File | null>(null)
+const transferProofPreview = ref<string | null>(null)
 
 // Utilidades
 const formatDate = (dateString: string) => {
@@ -62,42 +68,48 @@ const formatCurrency = (value?: number) => {
   }).format(value)
 }
 
-const getStatusColor = (status: string) => {
+const getStatusConfig = (status: string) => {
   switch (status) {
     case 'confirmed':
-      return 'bg-green-100 text-green-800 border-green-200'
+      return {
+        bg: 'bg-gradient-to-r from-emerald-500 to-emerald-600',
+        bgLight: 'bg-emerald-50',
+        text: 'text-emerald-700',
+        border: 'ring-emerald-600/20',
+        icon: 'check_circle',
+        label: 'Confirmada',
+        description: 'Tu reserva ha sido confirmada por el propietario'
+      }
     case 'pending':
-      return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      return {
+        bg: 'bg-gradient-to-r from-amber-400 to-amber-500',
+        bgLight: 'bg-amber-50',
+        text: 'text-amber-700',
+        border: 'ring-amber-600/20',
+        icon: 'schedule',
+        label: 'Pendiente de confirmación',
+        description: 'El propietario está revisando tu solicitud de reserva'
+      }
     case 'cancelled':
-      return 'bg-red-100 text-red-800 border-red-200'
+      return {
+        bg: 'bg-gradient-to-r from-rose-500 to-rose-600',
+        bgLight: 'bg-rose-50',
+        text: 'text-rose-700',
+        border: 'ring-rose-600/20',
+        icon: 'cancel',
+        label: 'Cancelada',
+        description: 'Esta reserva ha sido cancelada'
+      }
     default:
-      return 'bg-gray-100 text-gray-800 border-gray-200'
-  }
-}
-
-const getStatusIcon = (status: string) => {
-  switch (status) {
-    case 'confirmed':
-      return 'check_circle'
-    case 'pending':
-      return 'schedule'
-    case 'cancelled':
-      return 'cancel'
-    default:
-      return 'help'
-  }
-}
-
-const getStatusLabel = (status: string) => {
-  switch (status) {
-    case 'confirmed':
-      return 'Confirmada'
-    case 'pending':
-      return 'Pendiente de confirmación'
-    case 'cancelled':
-      return 'Cancelada'
-    default:
-      return status
+      return {
+        bg: 'bg-gradient-to-r from-gray-400 to-gray-500',
+        bgLight: 'bg-gray-50',
+        text: 'text-gray-700',
+        border: 'ring-gray-600/20',
+        icon: 'help',
+        label: status,
+        description: ''
+      }
   }
 }
 
@@ -122,10 +134,39 @@ const getPaymentMethodLabel = (method?: string) => {
       return 'Tarjeta de crédito/débito'
     case 'transfer':
       return 'Transferencia bancaria'
+    case 'pending':
+      return 'Por definir (Pagar después)'
     default:
       return 'No especificado'
   }
 }
+
+// Estado de transferencia
+const transferStatus = computed(() => {
+  if (!booking.value) return null
+  // Solo aplica si el método es transfer o si ya hay un comprobante subido
+  if (booking.value.paymentMethod !== 'transfer' && !booking.value.transferProofUrl) return null
+  
+  if (booking.value.paymentStatus === 'paid') return 'verified'
+  if (booking.value.transferRejectedAt) return 'rejected'
+  if (booking.value.transferProofUrl) return 'pending_verification'
+  return 'awaiting_proof'
+})
+
+// Puede subir comprobante si:
+// - El método es 'transfer', 'pending', o 'cash' (para cambiar a transfer)
+// - El pago está pendiente
+// - La reserva no está cancelada
+// - No hay comprobante ya subido o fue rechazado
+const canUploadProof = computed(() => {
+  if (!booking.value) return false
+  const method = booking.value.paymentMethod
+  const canChangeToTransfer = method === 'transfer' || method === 'pending' || method === 'cash'
+  return canChangeToTransfer && 
+         booking.value.paymentStatus === 'pending' &&
+         booking.value.status !== 'cancelled' &&
+         (!booking.value.transferProofUrl || booking.value.transferRejectedAt)
+})
 
 const canCancel = computed(() => {
   if (!booking.value) return false
@@ -139,6 +180,8 @@ const canReschedule = computed(() => {
 
 const canPay = computed(() => {
   if (!booking.value) return false
+  // No mostrar "Pagar ahora" si ya hay comprobante pendiente de verificación
+  if (booking.value.transferProofUrl && !booking.value.transferRejectedAt) return false
   return booking.value.paymentStatus === 'pending' && booking.value.status !== 'cancelled'
 })
 
@@ -146,6 +189,53 @@ const isUpcoming = computed(() => {
   if (!booking.value) return false
   return new Date(booking.value.startTime) > new Date()
 })
+
+// Información bancaria del propietario
+const ownerBankInfo = computed(() => {
+  const owner = booking.value?.space?.owner
+  if (!owner) return null
+  if (!owner.bankName && !owner.bankAccountNumber) return null
+  return {
+    bankName: owner.bankName,
+    accountType: owner.bankAccountType,
+    accountNumber: owner.bankAccountNumber,
+    accountHolder: owner.bankAccountHolder
+  }
+})
+
+const formatBankAccountType = (type: string | null | undefined): string => {
+  const types: Record<string, string> = {
+    'ahorro_lempiras': 'Ahorro (Lempiras)',
+    'ahorro_dolares': 'Ahorro (Dólares)',
+    'corriente_lempiras': 'Corriente (Lempiras)',
+    'corriente_dolares': 'Corriente (Dólares)'
+  }
+  return types[type || ''] || type || ''
+}
+
+const toast = useToast()
+const copyBankInfo = async () => {
+  if (!ownerBankInfo.value) return
+  
+  const info = ownerBankInfo.value
+  let bankText = `Datos para Transferencia:\n`
+  bankText += `Banco: ${info.bankName || ''}\n`
+  if (info.accountType) {
+    bankText += `Tipo: ${formatBankAccountType(info.accountType)}\n`
+  }
+  bankText += `Cuenta: ${info.accountNumber || ''}\n`
+  if (info.accountHolder) {
+    bankText += `Titular: ${info.accountHolder}`
+  }
+  
+  try {
+    await navigator.clipboard.writeText(bankText.trim())
+    toast.success('Datos bancarios copiados al portapapeles')
+  } catch (error) {
+    console.error('Error al copiar:', error)
+    toast.error('No se pudo copiar al portapapeles')
+  }
+}
 
 // Acciones
 const handleCancel = async () => {
@@ -212,25 +302,108 @@ const handleReschedule = async () => {
 const handlePayment = async () => {
   if (!booking.value) return
 
+  // Si es transferencia, abrir el modal de transferencia directamente
+  // El backend actualizará el paymentMethod a 'transfer' automáticamente
+  if (selectedPaymentMethod.value === 'transfer') {
+    showPaymentModal.value = false
+    showTransferModal.value = true
+    return
+  }
+
+  // Para efectivo o tarjeta (simulado), actualizar directamente
   isProcessing.value = true
   actionError.value = ''
 
   try {
     const updatedBooking = await BookingsService.updatePayment(booking.value._id, {
       paymentMethod: selectedPaymentMethod.value,
-      paymentStatus: 'paid'
+      paymentStatus: selectedPaymentMethod.value === 'cash' ? 'pending' : 'paid'
     })
     
     await refresh()
     showPaymentModal.value = false
     
-    alert('¡Pago procesado exitosamente! (Simulado)')
+    if (selectedPaymentMethod.value === 'cash') {
+      alert('Has seleccionado pago en efectivo. Deberás pagar al propietario el día de tu reserva.')
+    } else {
+      alert('¡Pago procesado exitosamente! (Simulado)')
+    }
   } catch (error: any) {
     console.error('Error al procesar pago:', error)
     actionError.value = error?.data?.message || 'Error al procesar el pago'
   } finally {
     isProcessing.value = false
   }
+}
+
+// Manejar selección de archivo de comprobante
+const handleFileSelect = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  
+  if (file) {
+    // Validar tipo de archivo
+    if (!file.type.startsWith('image/')) {
+      actionError.value = 'Por favor selecciona una imagen válida'
+      return
+    }
+    
+    // Validar tamaño (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      actionError.value = 'La imagen no debe superar los 5MB'
+      return
+    }
+    
+    transferProofFile.value = file
+    actionError.value = ''
+    
+    // Crear preview
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      transferProofPreview.value = e.target?.result as string
+    }
+    reader.readAsDataURL(file)
+  }
+}
+
+// Subir comprobante de transferencia
+const handleUploadProof = async () => {
+  if (!booking.value || !transferProofFile.value) {
+    actionError.value = 'Por favor selecciona una imagen del comprobante'
+    return
+  }
+
+  isProcessing.value = true
+  actionError.value = ''
+  uploadSuccess.value = ''
+
+  try {
+    await BookingsService.uploadTransferProof(booking.value._id, transferProofFile.value)
+    
+    await refresh()
+    showTransferModal.value = false
+    transferProofFile.value = null
+    transferProofPreview.value = null
+    uploadSuccess.value = '¡Comprobante subido exitosamente! El propietario lo revisará pronto.'
+    
+    // Limpiar mensaje de éxito después de 5 segundos
+    setTimeout(() => {
+      uploadSuccess.value = ''
+    }, 5000)
+  } catch (error: any) {
+    console.error('Error al subir comprobante:', error)
+    actionError.value = error?.data?.message || 'Error al subir el comprobante'
+  } finally {
+    isProcessing.value = false
+  }
+}
+
+// Cerrar modal de transferencia
+const closeTransferModal = () => {
+  showTransferModal.value = false
+  transferProofFile.value = null
+  transferProofPreview.value = null
+  actionError.value = ''
 }
 
 const goBack = () => {
@@ -245,93 +418,105 @@ const viewSpace = () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <div class="px-4 sm:px-6 lg:px-8 py-8 max-w-5xl mx-auto">
-      <!-- Header -->
-      <div class="mb-6">
+  <div class="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
+    <!-- Hero Header con gradiente dinámico basado en status -->
+    <div 
+      class="relative overflow-hidden"
+      :class="booking ? getStatusConfig(booking.status).bg : 'bg-gradient-to-r from-primary via-primary-dark to-blue-900'"
+    >
+      <!-- Patrón decorativo -->
+      <div class="absolute inset-0 opacity-10">
+        <div class="absolute -left-20 -top-20 h-80 w-80 rounded-full bg-white/20 blur-3xl" />
+        <div class="absolute -bottom-20 right-10 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
+      </div>
+      
+      <div class="relative px-4 sm:px-6 lg:px-8 py-8 max-w-5xl mx-auto">
+        <!-- Back button -->
         <button
           type="button"
-          class="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition"
+          class="inline-flex items-center gap-2 text-white/80 hover:text-white mb-6 transition-colors"
           @click="goBack"
         >
           <span class="material-symbols-outlined">arrow_back</span>
-          <span class="font-semibold">Volver a mis reservas</span>
+          <span class="font-medium">Volver a mis reservas</span>
         </button>
-        <h1 class="text-3xl font-black text-gray-900">Detalle de Reserva</h1>
+        
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-3 mb-3">
+              <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
+                <span class="material-symbols-outlined text-3xl text-white">
+                  {{ booking ? getStatusConfig(booking.status).icon : 'calendar_month' }}
+                </span>
+              </div>
+              <div>
+                <h1 class="text-2xl font-bold text-white">Detalle de Reserva</h1>
+                <p v-if="booking" class="text-white/70">
+                  {{ getStatusConfig(booking.status).label }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+    </div>
 
+    <div class="px-4 sm:px-6 lg:px-8 py-8 max-w-5xl mx-auto -mt-6">
       <!-- Loading -->
-      <div v-if="pending" class="bg-white rounded-xl p-8 shadow-sm border border-gray-200 animate-pulse">
+      <div v-if="pending" class="bg-white rounded-2xl p-8 shadow-sm ring-1 ring-black/5 animate-pulse">
         <div class="space-y-4">
-          <div class="h-8 w-1/3 bg-gray-200 rounded"></div>
-          <div class="h-4 w-1/2 bg-gray-200 rounded"></div>
-          <div class="h-4 w-2/3 bg-gray-200 rounded"></div>
+          <div class="h-8 w-1/3 bg-gray-200 rounded-lg"></div>
+          <div class="h-4 w-1/2 bg-gray-200 rounded-lg"></div>
+          <div class="h-4 w-2/3 bg-gray-200 rounded-lg"></div>
         </div>
       </div>
 
       <!-- Error -->
-      <div v-else-if="error || !booking" class="bg-red-50 border border-red-200 rounded-xl p-6">
-        <div class="flex items-start gap-3">
-          <span class="material-symbols-outlined text-red-600">error</span>
+      <div v-else-if="error || !booking" class="bg-white rounded-2xl p-8 shadow-sm ring-1 ring-rose-200">
+        <div class="flex items-start gap-4">
+          <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-100">
+            <span class="material-symbols-outlined text-2xl text-rose-600">error</span>
+          </div>
           <div>
-            <h3 class="font-semibold text-red-900 mb-1">Reserva no encontrada</h3>
-            <p class="text-sm text-red-800">La reserva que buscas no existe o no tienes acceso a ella.</p>
+            <h3 class="text-lg font-bold text-gray-900 mb-1">Reserva no encontrada</h3>
+            <p class="text-gray-600">La reserva que buscas no existe o no tienes acceso a ella.</p>
           </div>
         </div>
       </div>
 
       <!-- Content -->
       <div v-else class="space-y-6">
-        <!-- Status Banner -->
-        <div
-          class="rounded-xl p-6 border-2"
-          :class="booking.status === 'confirmed' 
-            ? 'bg-green-50 border-green-200' 
-            : booking.status === 'pending' 
-              ? 'bg-yellow-50 border-yellow-200' 
-              : 'bg-red-50 border-red-200'"
+        <!-- Status Banner Card -->
+        <div 
+          class="bg-white rounded-2xl p-6 shadow-sm ring-1 ring-black/5"
+          :class="getStatusConfig(booking.status).bgLight"
         >
-          <div class="flex items-center gap-3">
-            <span
-              class="material-symbols-outlined text-4xl"
-              :class="booking.status === 'confirmed' 
-                ? 'text-green-600' 
-                : booking.status === 'pending' 
-                  ? 'text-yellow-600' 
-                  : 'text-red-600'"
+          <div class="flex items-center gap-4">
+            <div 
+              class="flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
+              :class="getStatusConfig(booking.status).bg"
             >
-              {{ getStatusIcon(booking.status) }}
-            </span>
+              <span class="material-symbols-outlined text-3xl text-white">
+                {{ getStatusConfig(booking.status).icon }}
+              </span>
+            </div>
             <div class="flex-1">
-              <h2 class="text-xl font-bold" :class="booking.status === 'confirmed' 
-                ? 'text-green-900' 
-                : booking.status === 'pending' 
-                  ? 'text-yellow-900' 
-                  : 'text-red-900'">
-                {{ getStatusLabel(booking.status) }}
+              <h2 class="text-xl font-bold text-gray-900">
+                {{ getStatusConfig(booking.status).label }}
               </h2>
-              <p class="text-sm" :class="booking.status === 'confirmed' 
-                ? 'text-green-700' 
-                : booking.status === 'pending' 
-                  ? 'text-yellow-700' 
-                  : 'text-red-700'">
-                {{ booking.status === 'confirmed' 
-                  ? 'Tu reserva ha sido confirmada por el propietario' 
-                  : booking.status === 'pending' 
-                    ? 'El propietario está revisando tu solicitud de reserva' 
-                    : 'Esta reserva ha sido cancelada' 
-                }}
+              <p class="text-gray-600">
+                {{ getStatusConfig(booking.status).description }}
               </p>
             </div>
           </div>
         </div>
 
-        <!-- Main Info -->
-        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+        <!-- Main Info Card -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm ring-1 ring-black/5">
           <div class="flex items-start justify-between mb-6">
             <div class="flex-1">
               <h2 class="text-2xl font-bold text-gray-900 mb-2">{{ booking.space?.name || 'Espacio no disponible' }}</h2>
-              <p class="text-gray-600 flex items-center gap-1">
+              <p class="text-gray-500 flex items-center gap-1.5">
                 <span class="material-symbols-outlined !text-[18px]">location_on</span>
                 {{ booking.space?.address || 'Dirección no disponible' }}
               </p>
@@ -339,7 +524,7 @@ const viewSpace = () => {
             <button
               v-if="booking.space"
               type="button"
-              class="px-4 py-2 rounded-lg bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/20 transition flex items-center gap-1"
+              class="px-4 py-2.5 rounded-xl bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/20 transition-all flex items-center gap-2"
               @click="viewSpace"
             >
               <span class="material-symbols-outlined !text-[18px]">visibility</span>
@@ -347,33 +532,37 @@ const viewSpace = () => {
             </button>
           </div>
 
-          <!-- Date & Time -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 p-4 bg-gray-50 rounded-xl">
-            <div>
-              <p class="text-sm text-gray-600 mb-1 flex items-center gap-1">
-                <span class="material-symbols-outlined !text-[16px]">event</span>
-                Fecha
-              </p>
-              <p class="text-lg font-bold text-gray-900">{{ formatDate(booking.startTime) }}</p>
+          <!-- Date & Time Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="flex items-center gap-4 p-4 rounded-xl bg-gray-50">
+              <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dark">
+                <span class="material-symbols-outlined text-white">event</span>
+              </div>
+              <div>
+                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Fecha</p>
+                <p class="text-lg font-bold text-gray-900">{{ formatDate(booking.startTime) }}</p>
+              </div>
             </div>
-            <div>
-              <p class="text-sm text-gray-600 mb-1 flex items-center gap-1">
-                <span class="material-symbols-outlined !text-[16px]">schedule</span>
-                Horario
-              </p>
-              <p class="text-lg font-bold text-gray-900">
-                {{ formatTime(booking.startTime) }} - {{ formatTime(booking.endTime) }}
-              </p>
-              <p class="text-sm text-gray-600">{{ booking.durationHours || 1 }} {{ (booking.durationHours || 1) === 1 ? 'hora' : 'horas' }}</p>
+            <div class="flex items-center gap-4 p-4 rounded-xl bg-gray-50">
+              <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dark">
+                <span class="material-symbols-outlined text-white">schedule</span>
+              </div>
+              <div>
+                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Horario</p>
+                <p class="text-lg font-bold text-gray-900">
+                  {{ formatTime(booking.startTime) }} - {{ formatTime(booking.endTime) }}
+                </p>
+                <p class="text-sm text-gray-500">{{ booking.durationHours || 1 }} {{ (booking.durationHours || 1) === 1 ? 'hora' : 'horas' }}</p>
+              </div>
             </div>
           </div>
 
           <!-- Actions -->
-          <div v-if="isUpcoming" class="flex flex-wrap gap-3">
+          <div v-if="isUpcoming" class="flex flex-wrap gap-3 pt-4 border-t border-gray-100">
             <button
               v-if="canReschedule"
               type="button"
-              class="flex-1 min-w-[200px] px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition flex items-center justify-center gap-2"
+              class="flex-1 min-w-[180px] px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all flex items-center justify-center gap-2"
               @click="showRescheduleModal = true"
             >
               <span class="material-symbols-outlined">event_repeat</span>
@@ -382,7 +571,7 @@ const viewSpace = () => {
             <button
               v-if="canPay"
               type="button"
-              class="flex-1 min-w-[200px] px-6 py-3 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition flex items-center justify-center gap-2"
+              class="flex-1 min-w-[180px] px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/30 transition-all flex items-center justify-center gap-2"
               @click="showPaymentModal = true"
             >
               <span class="material-symbols-outlined">payments</span>
@@ -391,7 +580,7 @@ const viewSpace = () => {
             <button
               v-if="canCancel"
               type="button"
-              class="flex-1 min-w-[200px] px-6 py-3 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition flex items-center justify-center gap-2"
+              class="flex-1 min-w-[180px] px-6 py-3 rounded-xl bg-rose-50 text-rose-700 font-semibold ring-1 ring-rose-200 hover:bg-rose-100 transition-all flex items-center justify-center gap-2"
               @click="showCancelModal = true"
             >
               <span class="material-symbols-outlined">cancel</span>
@@ -400,116 +589,240 @@ const viewSpace = () => {
           </div>
         </div>
 
-        <!-- Payment Info -->
-        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-          <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <span class="material-symbols-outlined text-primary">receipt</span>
-            Información de Pago
-          </h3>
+        <!-- Payment Info Card -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm ring-1 ring-black/5">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dark">
+              <span class="material-symbols-outlined text-white">receipt</span>
+            </div>
+            <h3 class="text-lg font-bold text-gray-900">Información de Pago</h3>
+          </div>
 
           <div class="space-y-4">
             <!-- Payment breakdown -->
-            <div class="space-y-2">
-              <div class="flex justify-between text-gray-700">
+            <div class="space-y-3 p-4 rounded-xl bg-gray-50">
+              <div class="flex justify-between text-gray-600">
                 <span>Precio por hora</span>
-                <span class="font-semibold">{{ formatCurrency(booking.pricePerHour) }}</span>
+                <span class="font-semibold text-gray-900">{{ formatCurrency(booking.pricePerHour) }}</span>
               </div>
-              <div class="flex justify-between text-gray-700">
+              <div class="flex justify-between text-gray-600">
                 <span>Duración ({{ booking.durationHours || 1 }} {{ (booking.durationHours || 1) === 1 ? 'hora' : 'horas' }})</span>
-                <span class="font-semibold">{{ formatCurrency(booking.subtotal) }}</span>
+                <span class="font-semibold text-gray-900">{{ formatCurrency(booking.subtotal) }}</span>
               </div>
-              <div class="flex justify-between text-gray-700">
+              <div class="flex justify-between text-gray-600">
                 <span>Tarifa de servicio (8%)</span>
-                <span class="font-semibold">{{ formatCurrency(booking.serviceFee) }}</span>
+                <span class="font-semibold text-gray-900">{{ formatCurrency(booking.serviceFee) }}</span>
               </div>
-              <div class="flex justify-between text-xl font-bold text-gray-900 border-t-2 border-gray-200 pt-2">
+              <div class="flex justify-between text-xl font-bold text-gray-900 border-t-2 border-gray-200 pt-3 mt-3">
                 <span>Total</span>
-                <span class="text-primary">{{ formatCurrency(booking.totalAmount) }}</span>
+                <span class="bg-gradient-to-r from-primary to-primary-dark bg-clip-text text-transparent">
+                  {{ formatCurrency(booking.totalAmount) }}
+                </span>
               </div>
             </div>
 
             <!-- Payment status -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-xl">
-              <div>
-                <p class="text-sm text-gray-600 mb-1">Estado del pago</p>
-                <p class="font-bold" :class="booking.paymentStatus === 'paid' ? 'text-green-600' : 'text-yellow-600'">
-                  {{ getPaymentStatusLabel(booking.paymentStatus) }}
-                </p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="flex items-center gap-3 p-4 rounded-xl bg-gray-50">
+                <span 
+                  class="material-symbols-outlined text-2xl"
+                  :class="booking.paymentStatus === 'paid' ? 'text-emerald-600' : 'text-amber-500'"
+                >
+                  {{ booking.paymentStatus === 'paid' ? 'check_circle' : 'schedule' }}
+                </span>
+                <div>
+                  <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Estado del pago</p>
+                  <p class="font-bold" :class="booking.paymentStatus === 'paid' ? 'text-emerald-600' : 'text-amber-600'">
+                    {{ getPaymentStatusLabel(booking.paymentStatus) }}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p class="text-sm text-gray-600 mb-1">Método de pago</p>
-                <p class="font-bold text-gray-900">{{ getPaymentMethodLabel(booking.paymentMethod) }}</p>
+              <div class="flex items-center gap-3 p-4 rounded-xl bg-gray-50">
+                <span class="material-symbols-outlined text-2xl text-primary">account_balance</span>
+                <div>
+                  <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Método de pago</p>
+                  <p class="font-bold text-gray-900">{{ getPaymentMethodLabel(booking.paymentMethod) }}</p>
+                </div>
               </div>
             </div>
 
-            <!-- Payment note -->
-            <div v-if="booking.paymentStatus === 'pending'" class="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <span class="material-symbols-outlined text-yellow-600 !text-[20px]">info</span>
-              <p class="text-sm text-yellow-800">
+            <!-- Transfer Status Section -->
+            <div v-if="booking.paymentMethod === 'transfer'" class="space-y-3">
+              <!-- Awaiting proof -->
+              <div v-if="transferStatus === 'awaiting_proof'" class="p-4 rounded-xl bg-blue-50 ring-1 ring-blue-200">
+                <div class="flex items-start gap-4">
+                  <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100">
+                    <span class="material-symbols-outlined text-blue-600">upload_file</span>
+                  </div>
+                  <div class="flex-1">
+                    <p class="font-bold text-blue-900">Subir comprobante de transferencia</p>
+                    <p class="text-sm text-blue-700 mt-1">
+                      Por favor realiza la transferencia al propietario y sube una foto o captura del comprobante.
+                    </p>
+                    <button
+                      type="button"
+                      class="mt-3 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-semibold shadow-lg shadow-blue-500/25 hover:shadow-xl transition-all flex items-center gap-2"
+                      @click="showTransferModal = true"
+                    >
+                      <span class="material-symbols-outlined !text-[18px]">upload</span>
+                      Subir comprobante
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Pending verification -->
+              <div v-if="transferStatus === 'pending_verification'" class="p-4 rounded-xl bg-amber-50 ring-1 ring-amber-200">
+                <div class="flex items-start gap-4">
+                  <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100">
+                    <span class="material-symbols-outlined text-amber-600">hourglass_top</span>
+                  </div>
+                  <div class="flex-1">
+                    <p class="font-bold text-amber-900">Comprobante pendiente de verificación</p>
+                    <p class="text-sm text-amber-700 mt-1">
+                      Tu comprobante ha sido enviado. El propietario lo revisará y confirmará el pago pronto.
+                    </p>
+                    <p class="text-xs text-amber-600 mt-2">
+                      Subido el {{ new Date(booking.transferProofUploadedAt!).toLocaleString('es-HN', { 
+                        year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+                      }) }}
+                    </p>
+                    <div v-if="booking.transferProofUrl" class="mt-3">
+                      <a 
+                        :href="booking.transferProofUrl" 
+                        target="_blank"
+                        class="inline-flex items-center gap-1.5 text-sm font-medium text-amber-700 hover:text-amber-900 transition-colors"
+                      >
+                        <span class="material-symbols-outlined !text-[16px]">visibility</span>
+                        Ver comprobante subido
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Rejected -->
+              <div v-if="transferStatus === 'rejected'" class="p-4 rounded-xl bg-rose-50 ring-1 ring-rose-200">
+                <div class="flex items-start gap-4">
+                  <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-100">
+                    <span class="material-symbols-outlined text-rose-600">error</span>
+                  </div>
+                  <div class="flex-1">
+                    <p class="font-bold text-rose-900">Comprobante rechazado</p>
+                    <p class="text-sm text-rose-700 mt-1">
+                      {{ booking.transferRejectionReason || 'El propietario rechazó el comprobante. Por favor sube uno nuevo.' }}
+                    </p>
+                    <button
+                      type="button"
+                      class="mt-3 px-4 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-rose-600 text-white text-sm font-semibold shadow-lg shadow-rose-500/25 hover:shadow-xl transition-all flex items-center gap-2"
+                      @click="showTransferModal = true"
+                    >
+                      <span class="material-symbols-outlined !text-[18px]">upload</span>
+                      Subir nuevo comprobante
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Verified -->
+              <div v-if="transferStatus === 'verified'" class="p-4 rounded-xl bg-emerald-50 ring-1 ring-emerald-200">
+                <div class="flex items-start gap-4">
+                  <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100">
+                    <span class="material-symbols-outlined text-emerald-600">verified</span>
+                  </div>
+                  <div class="flex-1">
+                    <p class="font-bold text-emerald-900">Transferencia verificada</p>
+                    <p class="text-sm text-emerald-700 mt-1">
+                      El propietario ha verificado tu comprobante de transferencia.
+                    </p>
+                    <p v-if="booking.transferVerifiedAt" class="text-xs text-emerald-600 mt-2">
+                      Verificado el {{ new Date(booking.transferVerifiedAt).toLocaleString('es-HN', { 
+                        year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+                      }) }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Success message -->
+            <div v-if="uploadSuccess" class="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 ring-1 ring-emerald-200">
+              <span class="material-symbols-outlined text-emerald-600">check_circle</span>
+              <p class="text-sm font-medium text-emerald-800">{{ uploadSuccess }}</p>
+            </div>
+
+            <!-- Payment notes -->
+            <div v-if="booking.paymentStatus === 'pending' && booking.paymentMethod !== 'transfer'" class="flex items-center gap-3 p-4 rounded-xl bg-amber-50 ring-1 ring-amber-200">
+              <span class="material-symbols-outlined text-amber-600">info</span>
+              <p class="text-sm text-amber-800">
                 <strong>Recuerda:</strong> Debes completar el pago antes del día de tu reserva para garantizar tu espacio.
               </p>
             </div>
 
-            <div v-if="booking.paymentStatus === 'paid' && booking.paidAt" class="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-              <span class="material-symbols-outlined text-green-600 !text-[20px]">check_circle</span>
-              <p class="text-sm text-green-800">
+            <div v-if="booking.paymentStatus === 'paid' && booking.paidAt && booking.paymentMethod !== 'transfer'" class="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 ring-1 ring-emerald-200">
+              <span class="material-symbols-outlined text-emerald-600">check_circle</span>
+              <p class="text-sm text-emerald-800">
                 <strong>Pago completado</strong> el {{ new Date(booking.paidAt).toLocaleDateString('es-HN', { year: 'numeric', month: 'long', day: 'numeric' }) }}
               </p>
             </div>
           </div>
         </div>
 
-        <!-- Space Details -->
-        <div v-if="booking.space" class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-          <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <span class="material-symbols-outlined text-primary">home_work</span>
-            Detalles del Espacio
-          </h3>
+        <!-- Space Details Card -->
+        <div v-if="booking.space" class="bg-white rounded-2xl p-6 shadow-sm ring-1 ring-black/5">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dark">
+              <span class="material-symbols-outlined text-white">home_work</span>
+            </div>
+            <h3 class="text-lg font-bold text-gray-900">Detalles del Espacio</h3>
+          </div>
 
           <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-3 p-4 rounded-xl bg-gray-50">
               <span class="material-symbols-outlined text-primary">groups</span>
               <div>
-                <p class="text-sm text-gray-600">Capacidad</p>
+                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Capacidad</p>
                 <p class="font-bold text-gray-900">{{ booking.space.capacity }} personas</p>
               </div>
             </div>
 
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-primary">square_foot</span>
+            <div v-if="booking.space.address" class="flex items-center gap-3 p-4 rounded-xl bg-gray-50">
+              <span class="material-symbols-outlined text-primary">location_on</span>
               <div>
-                <p class="text-sm text-gray-600">Área</p>
-                <p class="font-bold text-gray-900">{{ booking.space.size }} m²</p>
+                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Ubicación</p>
+                <p class="font-bold text-gray-900">{{ booking.space.city || 'Sin especificar' }}</p>
               </div>
             </div>
 
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-primary">star</span>
+            <div class="flex items-center gap-3 p-4 rounded-xl bg-gray-50">
+              <span class="material-symbols-outlined text-primary">category</span>
               <div>
-                <p class="text-sm text-gray-600">Tipo</p>
-                <p class="font-bold text-gray-900">{{ booking.space.type || 'Espacio' }}</p>
+                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Categoría</p>
+                <p class="font-bold text-gray-900">{{ booking.space.category || 'Espacio' }}</p>
               </div>
             </div>
           </div>
 
-          <div v-if="booking.space.description" class="mt-4 pt-4 border-t border-gray-200">
-            <p class="text-gray-700">{{ booking.space.description }}</p>
+          <div v-if="booking.space.description" class="mt-4 pt-4 border-t border-gray-100">
+            <p class="text-gray-600">{{ booking.space.description }}</p>
           </div>
         </div>
 
-        <!-- Booking Info -->
-        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-          <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <span class="material-symbols-outlined text-primary">info</span>
-            Información de la Reserva
-          </h3>
-
-          <div class="space-y-2 text-sm">
-            <div class="flex justify-between">
-              <span class="text-gray-600">ID de reserva</span>
-              <span class="font-mono font-semibold text-gray-900">{{ booking._id }}</span>
+        <!-- Booking Info Card -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm ring-1 ring-black/5">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-200">
+              <span class="material-symbols-outlined text-gray-600">info</span>
             </div>
-            <div class="flex justify-between">
+            <h3 class="text-lg font-bold text-gray-900">Información de la Reserva</h3>
+          </div>
+
+          <div class="space-y-3 text-sm">
+            <div class="flex justify-between items-center p-3 rounded-lg bg-gray-50">
+              <span class="text-gray-600">ID de reserva</span>
+              <span class="font-mono font-semibold text-gray-900 text-xs bg-gray-200 px-2 py-1 rounded">{{ booking._id }}</span>
+            </div>
+            <div class="flex justify-between items-center p-3 rounded-lg bg-gray-50">
               <span class="text-gray-600">Fecha de creación</span>
               <span class="font-semibold text-gray-900">
                 {{ new Date(booking.createdAt).toLocaleString('es-HN', { 
@@ -521,7 +834,7 @@ const viewSpace = () => {
                 }) }}
               </span>
             </div>
-            <div v-if="booking.updatedAt !== booking.createdAt" class="flex justify-between">
+            <div v-if="booking.updatedAt !== booking.createdAt" class="flex justify-between items-center p-3 rounded-lg bg-gray-50">
               <span class="text-gray-600">Última actualización</span>
               <span class="font-semibold text-gray-900">
                 {{ new Date(booking.updatedAt).toLocaleString('es-HN', { 
@@ -546,11 +859,11 @@ const viewSpace = () => {
           class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
           @click.self="showCancelModal = false"
         >
-          <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl">
+          <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl ring-1 ring-black/5">
             <div class="p-6">
-              <div class="flex items-center gap-3 mb-4">
-                <div class="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
-                  <span class="material-symbols-outlined text-red-600 text-2xl">cancel</span>
+              <div class="flex items-center gap-4 mb-4">
+                <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-100">
+                  <span class="material-symbols-outlined text-rose-600 text-3xl">cancel</span>
                 </div>
                 <h3 class="text-xl font-bold text-gray-900">Cancelar Reserva</h3>
               </div>
@@ -559,14 +872,14 @@ const viewSpace = () => {
                 ¿Estás seguro de que deseas cancelar esta reserva? Esta acción no se puede deshacer.
               </p>
 
-              <div v-if="actionError" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
+              <div v-if="actionError" class="mb-4 p-4 rounded-xl bg-rose-50 ring-1 ring-rose-200 text-sm text-rose-800">
                 {{ actionError }}
               </div>
 
               <div class="flex gap-3">
                 <button
                   type="button"
-                  class="flex-1 px-6 py-3 rounded-lg border-2 border-gray-300 font-semibold text-gray-700 hover:bg-gray-50 transition"
+                  class="flex-1 px-6 py-3 rounded-xl bg-gray-100 font-semibold text-gray-700 hover:bg-gray-200 transition-all"
                   :disabled="isProcessing"
                   @click="showCancelModal = false"
                 >
@@ -574,7 +887,7 @@ const viewSpace = () => {
                 </button>
                 <button
                   type="button"
-                  class="flex-1 px-6 py-3 rounded-lg bg-red-600 font-semibold text-white hover:bg-red-700 transition disabled:opacity-50"
+                  class="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-rose-500 to-rose-600 font-semibold text-white shadow-lg shadow-rose-500/25 hover:shadow-xl transition-all disabled:opacity-50"
                   :disabled="isProcessing"
                   @click="handleCancel"
                 >
@@ -595,12 +908,12 @@ const viewSpace = () => {
           class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
           @click.self="showRescheduleModal = false"
         >
-          <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+          <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl ring-1 ring-black/5 max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-2xl">
               <h3 class="text-xl font-bold text-gray-900">Reprogramar Reserva</h3>
               <button
                 type="button"
-                class="text-gray-400 hover:text-gray-600 transition"
+                class="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
                 :disabled="isProcessing"
                 @click="showRescheduleModal = false"
               >
@@ -609,53 +922,53 @@ const viewSpace = () => {
             </div>
 
             <div class="p-6 space-y-6">
-              <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div class="p-4 rounded-xl bg-blue-50 ring-1 ring-blue-200">
                 <p class="text-sm text-blue-800">
                   <strong>Nota:</strong> Se creará una nueva reserva con la fecha y hora seleccionadas. Podrás cancelar la reserva anterior si lo deseas.
                 </p>
               </div>
 
               <!-- Nueva fecha -->
-              <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-2">Nueva fecha</label>
+              <div class="space-y-2">
+                <label class="block text-sm font-semibold text-gray-700">Nueva fecha</label>
                 <input
                   v-model="newDate"
                   type="date"
                   :min="new Date().toISOString().split('T')[0]"
-                  class="w-full rounded-lg border-2 border-gray-300 px-4 py-3 focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  class="h-12 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 text-sm text-gray-900 transition-all hover:border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
 
               <!-- Nueva hora -->
-              <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-2">Nueva hora</label>
+              <div class="space-y-2">
+                <label class="block text-sm font-semibold text-gray-700">Nueva hora</label>
                 <input
                   v-model="newTime"
                   type="time"
-                  class="w-full rounded-lg border-2 border-gray-300 px-4 py-3 focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  class="h-12 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 text-sm text-gray-900 transition-all hover:border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
 
               <!-- Duración -->
-              <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-2">Duración (horas)</label>
+              <div class="space-y-2">
+                <label class="block text-sm font-semibold text-gray-700">Duración (horas)</label>
                 <input
                   v-model.number="newHours"
                   type="number"
                   min="1"
                   max="24"
-                  class="w-full rounded-lg border-2 border-gray-300 px-4 py-3 focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  class="h-12 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 text-sm text-gray-900 transition-all hover:border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
 
-              <div v-if="actionError" class="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
+              <div v-if="actionError" class="p-4 rounded-xl bg-rose-50 ring-1 ring-rose-200 text-sm text-rose-800">
                 {{ actionError }}
               </div>
 
               <div class="flex gap-3">
                 <button
                   type="button"
-                  class="flex-1 px-6 py-3 rounded-lg border-2 border-gray-300 font-semibold text-gray-700 hover:bg-gray-50 transition"
+                  class="flex-1 px-6 py-3 rounded-xl bg-gray-100 font-semibold text-gray-700 hover:bg-gray-200 transition-all"
                   :disabled="isProcessing"
                   @click="showRescheduleModal = false"
                 >
@@ -663,7 +976,7 @@ const viewSpace = () => {
                 </button>
                 <button
                   type="button"
-                  class="flex-1 px-6 py-3 rounded-lg bg-primary font-semibold text-white hover:bg-primary/90 transition disabled:opacity-50"
+                  class="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-primary-dark font-semibold text-white shadow-lg shadow-primary/25 hover:shadow-xl transition-all disabled:opacity-50"
                   :disabled="isProcessing || !newDate || !newTime"
                   @click="handleReschedule"
                 >
@@ -684,12 +997,12 @@ const viewSpace = () => {
           class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
           @click.self="showPaymentModal = false"
         >
-          <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl">
-            <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+          <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl ring-1 ring-black/5">
+            <div class="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-2xl">
               <h3 class="text-xl font-bold text-gray-900">Procesar Pago</h3>
               <button
                 type="button"
-                class="text-gray-400 hover:text-gray-600 transition"
+                class="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
                 :disabled="isProcessing"
                 @click="showPaymentModal = false"
               >
@@ -698,16 +1011,18 @@ const viewSpace = () => {
             </div>
 
             <div class="p-6 space-y-6">
-              <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <p class="text-sm text-yellow-800">
+              <div class="p-4 rounded-xl bg-amber-50 ring-1 ring-amber-200">
+                <p class="text-sm text-amber-800">
                   <strong>Simulación de pago:</strong> El proceso de pago es simulado para propósitos de demostración.
                 </p>
               </div>
 
               <!-- Total a pagar -->
-              <div class="text-center p-6 bg-gradient-to-br from-primary/5 to-blue-50 rounded-xl border-2 border-primary/20">
-                <p class="text-sm text-gray-600 mb-2">Total a pagar</p>
-                <p class="text-4xl font-black text-primary">{{ formatCurrency(booking?.totalAmount) }}</p>
+              <div class="text-center p-6 rounded-2xl bg-gradient-to-br from-primary/5 to-blue-50 ring-2 ring-primary/20">
+                <p class="text-sm font-medium text-gray-600 mb-2">Total a pagar</p>
+                <p class="text-4xl font-black bg-gradient-to-r from-primary to-primary-dark bg-clip-text text-transparent">
+                  {{ formatCurrency(booking?.totalAmount) }}
+                </p>
               </div>
 
               <!-- Método de pago -->
@@ -716,10 +1031,10 @@ const viewSpace = () => {
                 <div class="grid grid-cols-3 gap-3">
                   <button
                     type="button"
-                    class="flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition"
+                    class="flex flex-col items-center gap-2 p-4 rounded-xl ring-2 transition-all"
                     :class="selectedPaymentMethod === 'cash' 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-gray-200 hover:border-gray-300'"
+                      ? 'ring-primary bg-primary/5 shadow-lg shadow-primary/10' 
+                      : 'ring-gray-200 hover:ring-gray-300'"
                     @click="selectedPaymentMethod = 'cash'"
                   >
                     <span class="material-symbols-outlined text-2xl" :class="selectedPaymentMethod === 'cash' ? 'text-primary' : 'text-gray-400'">
@@ -732,10 +1047,10 @@ const viewSpace = () => {
 
                   <button
                     type="button"
-                    class="flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition"
+                    class="flex flex-col items-center gap-2 p-4 rounded-xl ring-2 transition-all"
                     :class="selectedPaymentMethod === 'card' 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-gray-200 hover:border-gray-300'"
+                      ? 'ring-primary bg-primary/5 shadow-lg shadow-primary/10' 
+                      : 'ring-gray-200 hover:ring-gray-300'"
                     @click="selectedPaymentMethod = 'card'"
                   >
                     <span class="material-symbols-outlined text-2xl" :class="selectedPaymentMethod === 'card' ? 'text-primary' : 'text-gray-400'">
@@ -748,10 +1063,10 @@ const viewSpace = () => {
 
                   <button
                     type="button"
-                    class="flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition"
+                    class="flex flex-col items-center gap-2 p-4 rounded-xl ring-2 transition-all"
                     :class="selectedPaymentMethod === 'transfer' 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-gray-200 hover:border-gray-300'"
+                      ? 'ring-primary bg-primary/5 shadow-lg shadow-primary/10' 
+                      : 'ring-gray-200 hover:ring-gray-300'"
                     @click="selectedPaymentMethod = 'transfer'"
                   >
                     <span class="material-symbols-outlined text-2xl" :class="selectedPaymentMethod === 'transfer' ? 'text-primary' : 'text-gray-400'">
@@ -764,14 +1079,43 @@ const viewSpace = () => {
                 </div>
               </div>
 
-              <div v-if="actionError" class="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
+              <div v-if="actionError" class="p-4 rounded-xl bg-rose-50 ring-1 ring-rose-200 text-sm text-rose-800">
                 {{ actionError }}
+              </div>
+
+              <!-- Notas según método -->
+              <div v-if="selectedPaymentMethod === 'cash'" class="p-4 rounded-xl bg-emerald-50 ring-1 ring-emerald-200 text-sm text-emerald-800 space-y-2">
+                <p class="font-semibold flex items-center gap-2">
+                  <span class="material-symbols-outlined !text-[18px]">info</span>
+                  Pago en efectivo
+                </p>
+                <ul class="list-disc list-inside space-y-1 text-emerald-700">
+                  <li>Pagarás directamente al propietario <strong>el día de tu reserva</strong></li>
+                  <li>Llega con el monto exacto de preferencia</li>
+                  <li>El propietario confirmará el pago una vez recibido</li>
+                </ul>
+              </div>
+
+              <div v-if="selectedPaymentMethod === 'transfer'" class="p-4 rounded-xl bg-blue-50 ring-1 ring-blue-200 text-sm text-blue-800 space-y-2">
+                <p class="font-semibold flex items-center gap-2">
+                  <span class="material-symbols-outlined !text-[18px]">account_balance</span>
+                  Pago por transferencia
+                </p>
+                <ul class="list-disc list-inside space-y-1 text-blue-700">
+                  <li>Realiza la transferencia con los datos del propietario</li>
+                  <li>Sube el comprobante para verificación</li>
+                  <li>El propietario confirmará una vez verificado</li>
+                </ul>
+              </div>
+
+              <div v-if="selectedPaymentMethod === 'card'" class="p-4 rounded-xl bg-amber-50 ring-1 ring-amber-200 text-sm text-amber-800">
+                <strong>Nota:</strong> El pago con tarjeta aún no está disponible. Por favor selecciona otro método de pago.
               </div>
 
               <div class="flex gap-3">
                 <button
                   type="button"
-                  class="flex-1 px-6 py-3 rounded-lg border-2 border-gray-300 font-semibold text-gray-700 hover:bg-gray-50 transition"
+                  class="flex-1 px-6 py-3 rounded-xl bg-gray-100 font-semibold text-gray-700 hover:bg-gray-200 transition-all"
                   :disabled="isProcessing"
                   @click="showPaymentModal = false"
                 >
@@ -779,11 +1123,176 @@ const viewSpace = () => {
                 </button>
                 <button
                   type="button"
-                  class="flex-1 px-6 py-3 rounded-lg bg-green-600 font-semibold text-white hover:bg-green-700 transition disabled:opacity-50"
-                  :disabled="isProcessing"
+                  class="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 font-semibold text-white shadow-lg shadow-emerald-500/25 hover:shadow-xl transition-all disabled:opacity-50"
+                  :disabled="isProcessing || selectedPaymentMethod === 'card'"
                   @click="handlePayment"
                 >
-                  {{ isProcessing ? 'Procesando...' : 'Pagar ahora' }}
+                  {{ isProcessing ? 'Procesando...' : selectedPaymentMethod === 'transfer' ? 'Continuar' : 'Confirmar' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Modal: Subir comprobante de transferencia -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div
+          v-if="showTransferModal"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          @click.self="closeTransferModal"
+        >
+          <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl ring-1 ring-black/5 max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+              <h3 class="text-xl font-bold text-gray-900">Subir Comprobante de Transferencia</h3>
+              <button
+                type="button"
+                class="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
+                :disabled="isProcessing"
+                @click="closeTransferModal"
+              >
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div class="p-6 space-y-6">
+              <!-- Información bancaria del propietario -->
+              <div v-if="ownerBankInfo" class="p-4 rounded-xl bg-gradient-to-br from-primary/5 to-blue-50 ring-2 ring-primary/20">
+                <div class="flex items-center justify-between mb-3">
+                  <h4 class="font-bold text-gray-900 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">account_balance</span>
+                    Datos para transferencia
+                  </h4>
+                  <button
+                    type="button"
+                    class="text-xs px-3 py-1.5 rounded-lg bg-white ring-1 ring-gray-200 font-semibold text-gray-600 hover:bg-gray-50 transition-all flex items-center gap-1"
+                    @click="copyBankInfo"
+                  >
+                    <span class="material-symbols-outlined !text-[14px]">content_copy</span>
+                    Copiar
+                  </button>
+                </div>
+                <div class="space-y-2 text-sm">
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Banco:</span>
+                    <span class="font-semibold text-gray-900">{{ ownerBankInfo.bankName || 'No especificado' }}</span>
+                  </div>
+                  <div v-if="ownerBankInfo.accountType" class="flex justify-between">
+                    <span class="text-gray-600">Tipo de cuenta:</span>
+                    <span class="font-semibold text-gray-900">{{ formatBankAccountType(ownerBankInfo.accountType) }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Número de cuenta:</span>
+                    <span class="font-semibold text-gray-900 font-mono">{{ ownerBankInfo.accountNumber || 'No especificado' }}</span>
+                  </div>
+                  <div v-if="ownerBankInfo.accountHolder" class="flex justify-between">
+                    <span class="text-gray-600">Titular:</span>
+                    <span class="font-semibold text-gray-900">{{ ownerBankInfo.accountHolder }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Aviso si no hay info bancaria -->
+              <div v-else class="p-4 rounded-xl bg-amber-50 ring-1 ring-amber-200">
+                <p class="text-sm text-amber-800 flex items-center gap-2">
+                  <span class="material-symbols-outlined !text-[18px]">warning</span>
+                  <span><strong>Nota:</strong> El propietario no ha configurado sus datos bancarios. Contáctalo directamente para obtener la información de transferencia.</span>
+                </p>
+              </div>
+
+              <!-- Instrucciones -->
+              <div class="p-4 rounded-xl bg-blue-50 ring-1 ring-blue-200">
+                <h4 class="font-semibold text-blue-900 mb-2">Pasos a seguir</h4>
+                <ol class="text-sm text-blue-800 list-decimal list-inside space-y-1">
+                  <li>Realiza una transferencia con los datos anteriores</li>
+                  <li>Toma una captura de pantalla o foto del comprobante</li>
+                  <li>Sube la imagen aquí para que el propietario la verifique</li>
+                </ol>
+              </div>
+
+              <!-- Total a pagar -->
+              <div class="text-center p-4 rounded-2xl bg-gradient-to-br from-primary/5 to-blue-50 ring-2 ring-primary/20">
+                <p class="text-sm font-medium text-gray-600 mb-1">Monto a transferir</p>
+                <p class="text-3xl font-black bg-gradient-to-r from-primary to-primary-dark bg-clip-text text-transparent">
+                  {{ formatCurrency(booking?.totalAmount) }}
+                </p>
+              </div>
+
+              <!-- Input de archivo -->
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Comprobante de transferencia</label>
+                <div 
+                  class="border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer"
+                  :class="transferProofFile ? 'border-primary bg-primary/5' : 'border-gray-300 hover:border-primary/50'"
+                  @click="($refs.fileInput as HTMLInputElement)?.click()"
+                >
+                  <input
+                    ref="fileInput"
+                    type="file"
+                    accept="image/*"
+                    class="hidden"
+                    @change="handleFileSelect"
+                  />
+                  
+                  <div v-if="!transferProofPreview">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 mx-auto mb-3">
+                      <span class="material-symbols-outlined text-3xl text-gray-400">cloud_upload</span>
+                    </div>
+                    <p class="text-sm font-medium text-gray-700">
+                      Haz clic para seleccionar una imagen
+                    </p>
+                    <p class="text-xs text-gray-500 mt-1">
+                      PNG, JPG o JPEG (máx. 5MB)
+                    </p>
+                  </div>
+                  
+                  <div v-else>
+                    <img 
+                      :src="transferProofPreview" 
+                      alt="Preview del comprobante" 
+                      class="max-h-48 mx-auto rounded-xl shadow-sm"
+                    />
+                    <p class="mt-3 text-sm text-primary font-semibold">
+                      {{ transferProofFile?.name }}
+                    </p>
+                    <p class="text-xs text-gray-500">
+                      Haz clic para cambiar la imagen
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Error -->
+              <div v-if="actionError" class="p-4 rounded-xl bg-rose-50 ring-1 ring-rose-200 text-sm text-rose-800">
+                {{ actionError }}
+              </div>
+
+              <!-- Botones -->
+              <div class="flex gap-3">
+                <button
+                  type="button"
+                  class="flex-1 px-6 py-3 rounded-xl bg-gray-100 font-semibold text-gray-700 hover:bg-gray-200 transition-all"
+                  :disabled="isProcessing"
+                  @click="closeTransferModal"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  class="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-primary-dark font-semibold text-white shadow-lg shadow-primary/25 hover:shadow-xl transition-all disabled:opacity-50"
+                  :disabled="isProcessing || !transferProofFile"
+                  @click="handleUploadProof"
+                >
+                  <span v-if="isProcessing" class="flex items-center justify-center gap-2">
+                    <span class="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    Subiendo...
+                  </span>
+                  <span v-else class="flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined !text-[18px]">upload</span>
+                    Subir comprobante
+                  </span>
                 </button>
               </div>
             </div>
@@ -812,6 +1321,6 @@ const viewSpace = () => {
 
 .modal-enter-from > div,
 .modal-leave-to > div {
-  transform: scale(0.9);
+  transform: scale(0.95);
 }
 </style>

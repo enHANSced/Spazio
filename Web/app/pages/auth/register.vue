@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue'
+import { reactive, ref, watch, computed } from 'vue'
 import type { RegisterPayload } from '../../types/auth'
 
 definePageMeta({
@@ -23,6 +23,7 @@ const form = reactive({
   role: 'user' as RegisterPayload['role'],
   businessName: '',
   businessDescription: '',
+  phone: '',
   acceptTerms: false,
   subscribe: true
 })
@@ -32,7 +33,27 @@ const fieldErrors = reactive({
   email: '',
   password: '',
   businessName: '',
+  phone: '',
   acceptTerms: ''
+})
+
+// Indicador de fortaleza de contraseña
+const passwordStrength = computed(() => {
+  const password = form.password
+  if (!password) return { level: 0, text: '', color: '' }
+  
+  let score = 0
+  if (password.length >= 6) score++
+  if (password.length >= 8) score++
+  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++
+  if (/\d/.test(password)) score++
+  if (/[^a-zA-Z0-9]/.test(password)) score++
+  
+  if (score <= 1) return { level: 1, text: 'Débil', color: 'bg-rose-500' }
+  if (score <= 2) return { level: 2, text: 'Regular', color: 'bg-orange-500' }
+  if (score <= 3) return { level: 3, text: 'Buena', color: 'bg-yellow-500' }
+  if (score <= 4) return { level: 4, text: 'Fuerte', color: 'bg-emerald-500' }
+  return { level: 5, text: 'Excelente', color: 'bg-emerald-600' }
 })
 
 watch(error, (value) => {
@@ -51,10 +72,12 @@ const validate = () => {
   fieldErrors.email = ''
   fieldErrors.password = ''
   fieldErrors.acceptTerms = ''
+  fieldErrors.businessName = ''
+  fieldErrors.phone = ''
   let isValid = true
 
   if (!form.name.trim()) {
-    fieldErrors.name = 'El nombre es obligatorio'
+    fieldErrors.name = form.role === 'owner' ? 'El nombre del encargado es obligatorio' : 'El nombre es obligatorio'
     isValid = false
   }
 
@@ -79,9 +102,18 @@ const validate = () => {
     isValid = false
   }
 
-  if (form.role === 'owner' && !form.businessName.trim()) {
-    fieldErrors.businessName = 'El nombre del negocio es obligatorio para propietarios'
-    isValid = false
+  if (form.role === 'owner') {
+    if (!form.businessName.trim()) {
+      fieldErrors.businessName = 'El nombre del negocio es obligatorio para propietarios'
+      isValid = false
+    }
+    if (!form.phone.trim()) {
+      fieldErrors.phone = 'El teléfono de contacto es obligatorio para propietarios'
+      isValid = false
+    } else if (!/^[+]?[0-9\s-]{8,20}$/.test(form.phone.trim())) {
+      fieldErrors.phone = 'Ingresa un número de teléfono válido'
+      isValid = false
+    }
   }
 
   return isValid
@@ -102,6 +134,7 @@ const handleSubmit = async () => {
 
     if (form.role === 'owner') {
       payload.businessName = form.businessName.trim()
+      payload.phone = form.phone.trim()
       if (form.businessDescription.trim()) {
         payload.businessDescription = form.businessDescription.trim()
       }
@@ -116,181 +149,364 @@ const handleSubmit = async () => {
 
 <template>
   <section class="flex w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5">
-    <div class="hidden w-1/2 flex-col justify-between bg-gradient-to-b from-primary to-primary-dark p-10 text-white lg:flex">
-      <div>
-        <p class="text-sm uppercase tracking-[0.3em] text-white/70">Spazio</p>
-        <h2 class="mt-3 text-4xl font-bold leading-tight">Gestiona espacios sin complicaciones</h2>
-        <p class="mt-4 text-base text-white/80">
-          Registra tu cuenta y accede al ecosistema inteligente que evita dobles reservas y te mantiene en control.
-        </p>
+    <!-- Panel izquierdo - Solo visible en lg+ -->
+    <div class="relative hidden w-1/2 overflow-hidden lg:block">
+      <!-- Fondo con gradiente -->
+      <div class="absolute inset-0 bg-gradient-to-br from-primary via-primary-dark to-blue-900" />
+      
+      <!-- Patrón decorativo -->
+      <div class="absolute inset-0 opacity-10">
+        <div class="absolute -left-20 top-1/4 h-80 w-80 rounded-full bg-white/20 blur-3xl" />
+        <div class="absolute -right-20 bottom-1/4 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
       </div>
-      <div class="rounded-2xl bg-white/10 p-5 backdrop-blur">
-        <p class="text-sm uppercase tracking-wide text-white/70">Beneficios</p>
-        <ul class="mt-3 space-y-2 text-base">
-          <li class="flex items-start gap-2">
-            <span class="material-symbols-outlined text-xl">event_available</span>
-            <span>Calendario en tiempo real para tus espacios</span>
-          </li>
-          <li class="flex items-start gap-2">
-            <span class="material-symbols-outlined text-xl">verified_user</span>
-            <span>Roles y verificaciones para propietarios</span>
-          </li>
-          <li class="flex items-start gap-2">
-            <span class="material-symbols-outlined text-xl">flash_on</span>
-            <span>Reservas confirmadas en segundos</span>
-          </li>
-        </ul>
+      
+      <!-- Contenido -->
+      <div class="relative flex h-full min-h-[700px] flex-col justify-between p-10 text-white">
+        <div>
+          <div class="mb-8 flex items-center gap-3">
+            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
+              <span class="material-symbols-outlined text-2xl">home_work</span>
+            </div>
+            <span class="text-2xl font-bold">Spazio</span>
+          </div>
+          
+          <h2 class="text-4xl font-bold leading-tight">
+            Únete a la comunidad<br>
+            <span class="text-white/80">de espacios inteligentes</span>
+          </h2>
+          
+          <p class="mt-6 text-lg text-white/70">
+            Crea tu cuenta y descubre un mundo de posibilidades para reservar 
+            o gestionar espacios de trabajo.
+          </p>
+        </div>
+        
+        <!-- Beneficios -->
+        <div class="space-y-3">
+          <p class="text-sm font-medium uppercase tracking-wider text-white/60">Lo que obtendrás</p>
+          
+          <div class="flex items-center gap-4 rounded-2xl bg-white/10 p-4 backdrop-blur-sm">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
+              <span class="material-symbols-outlined text-lg">calendar_month</span>
+            </div>
+            <div>
+              <p class="font-semibold">Reservas en tiempo real</p>
+              <p class="text-sm text-white/70">Calendario siempre actualizado</p>
+            </div>
+          </div>
+          
+          <div class="flex items-center gap-4 rounded-2xl bg-white/10 p-4 backdrop-blur-sm">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
+              <span class="material-symbols-outlined text-lg">shield</span>
+            </div>
+            <div>
+              <p class="font-semibold">Pagos seguros</p>
+              <p class="text-sm text-white/70">Transacciones protegidas</p>
+            </div>
+          </div>
+          
+          <div class="flex items-center gap-4 rounded-2xl bg-white/10 p-4 backdrop-blur-sm">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
+              <span class="material-symbols-outlined text-lg">support_agent</span>
+            </div>
+            <div>
+              <p class="font-semibold">Soporte dedicado</p>
+              <p class="text-sm text-white/70">Ayuda cuando la necesites</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="w-full px-6 py-10 sm:px-10 lg:w-1/2 lg:px-12">
+    <!-- Panel derecho - Formulario -->
+    <div class="w-full px-6 py-8 sm:px-10 lg:w-1/2 lg:px-12 lg:py-10">
+      <!-- Header -->
       <header class="text-center">
-        <div class="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-          <span class="material-symbols-outlined text-2xl">sparkles</span>
+        <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary-dark shadow-lg shadow-primary/30">
+          <span class="material-symbols-outlined text-2xl text-white">person_add</span>
         </div>
-        <p class="text-sm font-semibold uppercase tracking-[0.35em] text-primary">Spazio</p>
-        <h1 class="mt-2 text-3xl font-bold text-[#111418]">Crea tu cuenta</h1>
-        <p class="mt-2 text-base text-slate-500">Empieza a reservar tus espacios favoritos en minutos.</p>
+        <h1 class="text-2xl font-bold text-gray-900">Crea tu cuenta</h1>
+        <p class="mt-1 text-sm text-gray-500">Completa el formulario para comenzar</p>
       </header>
 
-      <form class="mt-8 space-y-5" novalidate @submit.prevent="handleSubmit">
+      <form class="mt-4 space-y-3" novalidate @submit.prevent="handleSubmit">
+        <!-- Tipo de cuenta -->
         <div class="space-y-2">
-          <label class="text-sm font-medium text-[#111418]">Tipo de cuenta</label>
-          <div class="flex gap-3">
-            <label class="flex flex-1 cursor-pointer items-center gap-3 rounded-xl border-2 p-4 transition" :class="form.role === 'user' ? 'border-primary bg-primary/5' : 'border-slate-200 hover:border-slate-300'">
-              <input v-model="form.role" type="radio" value="user" class="h-4 w-4 text-primary focus:ring-primary/40" />
+          <label class="text-sm font-medium text-gray-700">Tipo de cuenta</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label 
+              class="group relative flex cursor-pointer items-center gap-2 rounded-xl border-2 p-3 transition-all"
+              :class="form.role === 'user' 
+                ? 'border-primary bg-primary/5 shadow-sm' 
+                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'"
+            >
+              <input v-model="form.role" type="radio" value="user" class="sr-only" />
+              <div 
+                class="flex h-9 w-9 items-center justify-center rounded-lg transition-all"
+                :class="form.role === 'user' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500'"
+              >
+                <span class="material-symbols-outlined text-xl">person</span>
+              </div>
               <div class="flex-1">
-                <p class="text-sm font-semibold text-[#111418]">Usuario</p>
-                <p class="text-xs text-slate-500">Reservar espacios</p>
+                <p class="text-sm font-semibold text-gray-900">Usuario</p>
+                <p class="text-xs text-gray-500">Reservar espacios</p>
+              </div>
+              <div 
+                v-if="form.role === 'user'"
+                class="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white"
+              >
+                <span class="material-symbols-outlined text-sm">check</span>
               </div>
             </label>
-            <label class="flex flex-1 cursor-pointer items-center gap-3 rounded-xl border-2 p-4 transition" :class="form.role === 'owner' ? 'border-primary bg-primary/5' : 'border-slate-200 hover:border-slate-300'">
-              <input v-model="form.role" type="radio" value="owner" class="h-4 w-4 text-primary focus:ring-primary/40" />
+            
+            <label 
+              class="group relative flex cursor-pointer items-center gap-2 rounded-xl border-2 p-3 transition-all"
+              :class="form.role === 'owner' 
+                ? 'border-primary bg-primary/5 shadow-sm' 
+                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'"
+            >
+              <input v-model="form.role" type="radio" value="owner" class="sr-only" />
+              <div 
+                class="flex h-9 w-9 items-center justify-center rounded-lg transition-all"
+                :class="form.role === 'owner' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500'"
+              >
+                <span class="material-symbols-outlined text-xl">store</span>
+              </div>
               <div class="flex-1">
-                <p class="text-sm font-semibold text-[#111418]">Propietario</p>
-                <p class="text-xs text-slate-500">Gestionar espacios</p>
+                <p class="text-sm font-semibold text-gray-900">Propietario</p>
+                <p class="text-xs text-gray-500">Gestionar espacios</p>
+              </div>
+              <div 
+                v-if="form.role === 'owner'"
+                class="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white"
+              >
+                <span class="material-symbols-outlined text-sm">check</span>
               </div>
             </label>
           </div>
         </div>
 
-        <div class="space-y-2">
-          <label for="name" class="text-sm font-medium text-[#111418]">Nombre completo</label>
-          <input
-            id="name"
-            v-model.trim="form.name"
-            type="text"
-            class="h-12 w-full rounded-xl border border-slate-200 bg-white/80 px-4 text-base text-[#111418] shadow-sm placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            placeholder="Ingresa tu nombre completo"
-            autocomplete="name"
-          />
-          <p v-if="fieldErrors.name" class="text-sm text-rose-600">{{ fieldErrors.name }}</p>
+        <!-- Nombre -->
+        <div class="space-y-1">
+          <label for="name" class="text-sm font-medium text-gray-700">
+            {{ form.role === 'owner' ? 'Nombre del encargado' : 'Nombre completo' }}
+            <span class="text-rose-500">*</span>
+          </label>
+          <div class="group relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 transition-colors group-focus-within:text-primary">
+              <span class="material-symbols-outlined text-xl">badge</span>
+            </span>
+            <input
+              id="name"
+              v-model.trim="form.name"
+              type="text"
+              class="h-11 w-full rounded-xl border border-gray-200 bg-gray-50/50 pl-12 pr-4 text-sm text-gray-900 transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+              :placeholder="form.role === 'owner' ? 'Persona de contacto' : 'Ingresa tu nombre completo'"
+              autocomplete="name"
+            />
+          </div>
+          <p v-if="fieldErrors.name" class="flex items-center gap-1.5 text-xs text-rose-600">
+            <span class="material-symbols-outlined text-sm">error</span>
+            {{ fieldErrors.name }}
+          </p>
         </div>
 
-        <div class="space-y-2">
-          <label for="email" class="text-sm font-medium text-[#111418]">Correo electrónico</label>
-          <input
-            id="email"
-            v-model.trim="form.email"
-            type="email"
-            class="h-12 w-full rounded-xl border border-slate-200 bg-white/80 px-4 text-base text-[#111418] shadow-sm placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            placeholder="tu@correo.com"
-            autocomplete="email"
-          />
-          <p v-if="fieldErrors.email" class="text-sm text-rose-600">{{ fieldErrors.email }}</p>
+        <!-- Email -->
+        <div class="space-y-1">
+          <label for="email" class="text-sm font-medium text-gray-700">Correo electrónico</label>
+          <div class="group relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 transition-colors group-focus-within:text-primary">
+              <span class="material-symbols-outlined text-xl">mail</span>
+            </span>
+            <input
+              id="email"
+              v-model.trim="form.email"
+              type="email"
+              class="h-11 w-full rounded-xl border border-gray-200 bg-gray-50/50 pl-12 pr-4 text-sm text-gray-900 transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+              placeholder="tu@correo.com"
+              autocomplete="email"
+            />
+          </div>
+          <p v-if="fieldErrors.email" class="flex items-center gap-1.5 text-xs text-rose-600">
+            <span class="material-symbols-outlined text-sm">error</span>
+            {{ fieldErrors.email }}
+          </p>
         </div>
 
-        <div v-if="form.role === 'owner'" class="space-y-2">
-          <label for="businessName" class="text-sm font-medium text-[#111418]">Nombre del negocio <span class="text-rose-500">*</span></label>
-          <input
-            id="businessName"
-            v-model.trim="form.businessName"
-            type="text"
-            class="h-12 w-full rounded-xl border border-slate-200 bg-white/80 px-4 text-base text-[#111418] shadow-sm placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            placeholder="Ej: Cowork Central, Salas Premium"
-            autocomplete="organization"
-          />
-          <p v-if="fieldErrors.businessName" class="text-sm text-rose-600">{{ fieldErrors.businessName }}</p>
-        </div>
+        <!-- Campos de propietario -->
+        <template v-if="form.role === 'owner'">
+          <div class="grid gap-3 sm:grid-cols-2">
+            <div class="space-y-1">
+              <label for="businessName" class="text-sm font-medium text-gray-700">
+                Nombre del negocio <span class="text-rose-500">*</span>
+              </label>
+              <div class="group relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 transition-colors group-focus-within:text-primary">
+                  <span class="material-symbols-outlined text-xl">storefront</span>
+                </span>
+                <input
+                  id="businessName"
+                  v-model.trim="form.businessName"
+                  type="text"
+                  class="h-11 w-full rounded-xl border border-gray-200 bg-gray-50/50 pl-12 pr-4 text-sm text-gray-900 transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  placeholder="Ej: CoWork Central"
+                  autocomplete="organization"
+                />
+              </div>
+              <p v-if="fieldErrors.businessName" class="flex items-center gap-1.5 text-xs text-rose-600">
+                <span class="material-symbols-outlined text-sm">error</span>
+                {{ fieldErrors.businessName }}
+              </p>
+            </div>
 
-        <div v-if="form.role === 'owner'" class="space-y-2">
-          <label for="businessDescription" class="text-sm font-medium text-[#111418]">Descripción del negocio <span class="text-xs text-slate-400">(opcional)</span></label>
-          <textarea
-            id="businessDescription"
-            v-model.trim="form.businessDescription"
-            rows="3"
-            class="w-full rounded-xl border border-slate-200 bg-white/80 px-4 py-3 text-base text-[#111418] shadow-sm placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            placeholder="Describe brevemente tu negocio y los espacios que ofreces"
-          />
-        </div>
+            <div class="space-y-1">
+              <label for="phone" class="text-sm font-medium text-gray-700">
+                Teléfono de contacto <span class="text-rose-500">*</span>
+              </label>
+              <div class="group relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 transition-colors group-focus-within:text-primary">
+                  <span class="material-symbols-outlined text-xl">phone</span>
+                </span>
+                <input
+                  id="phone"
+                  v-model.trim="form.phone"
+                  type="tel"
+                  class="h-11 w-full rounded-xl border border-gray-200 bg-gray-50/50 pl-12 pr-4 text-sm text-gray-900 transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  placeholder="+504 9999-9999"
+                  autocomplete="tel"
+                />
+              </div>
+              <p v-if="fieldErrors.phone" class="flex items-center gap-1.5 text-xs text-rose-600">
+                <span class="material-symbols-outlined text-sm">error</span>
+                {{ fieldErrors.phone }}
+              </p>
+            </div>
+          </div>
 
-        <div class="space-y-2">
-          <label for="password" class="text-sm font-medium text-[#111418]">Contraseña</label>
-          <div class="relative">
+          <div class="space-y-1">
+            <label for="businessDescription" class="text-sm font-medium text-gray-700">
+              Descripción <span class="text-xs text-gray-400">(opcional)</span>
+            </label>
+            <textarea
+              id="businessDescription"
+              v-model.trim="form.businessDescription"
+              rows="2"
+              class="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-sm text-gray-900 transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+              placeholder="Describe brevemente tu negocio..."
+            />
+          </div>
+        </template>
+
+        <!-- Contraseña -->
+        <div class="space-y-1">
+          <label for="password" class="text-sm font-medium text-gray-700">Contraseña</label>
+          <div class="group relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 transition-colors group-focus-within:text-primary">
+              <span class="material-symbols-outlined text-xl">lock</span>
+            </span>
             <input
               id="password"
               v-model="form.password"
               :type="showPassword ? 'text' : 'password'"
-              class="h-12 w-full rounded-xl border border-slate-200 bg-white/80 px-4 pr-12 text-base text-[#111418] shadow-sm placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              class="h-11 w-full rounded-xl border border-gray-200 bg-gray-50/50 pl-12 pr-12 text-sm text-gray-900 transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
               placeholder="Crea una contraseña segura"
               autocomplete="new-password"
             />
             <button
               type="button"
-              class="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-primary"
+              class="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-400 transition-colors hover:text-gray-600"
               @click="showPassword = !showPassword"
             >
               <span class="material-symbols-outlined text-xl">{{ showPassword ? 'visibility_off' : 'visibility' }}</span>
             </button>
           </div>
-          <p v-if="fieldErrors.password" class="text-sm text-rose-600">{{ fieldErrors.password }}</p>
-          <p class="text-xs text-slate-400">Mínimo 6 caracteres. Usa letras, números y símbolos si es posible.</p>
+          
+          <!-- Indicador de fortaleza -->
+          <div v-if="form.password" class="space-y-1">
+            <div class="flex gap-1">
+              <div 
+                v-for="i in 5" 
+                :key="i" 
+                class="h-1 flex-1 rounded-full transition-all"
+                :class="i <= passwordStrength.level ? passwordStrength.color : 'bg-gray-200'"
+              />
+            </div>
+            <p class="text-xs" :class="passwordStrength.level >= 3 ? 'text-emerald-600' : 'text-gray-500'">
+              Seguridad: {{ passwordStrength.text }}
+            </p>
+          </div>
+          
+          <p v-if="fieldErrors.password" class="flex items-center gap-1.5 text-xs text-rose-600">
+            <span class="material-symbols-outlined text-sm">error</span>
+            {{ fieldErrors.password }}
+          </p>
         </div>
 
-        <div class="space-y-3">
-          <label class="flex items-start gap-3">
-            <input
-              v-model="form.acceptTerms"
-              type="checkbox"
-              class="mt-1 h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary/40"
-            />
-            <span class="text-sm text-slate-600">
+        <!-- Términos y condiciones -->
+        <div class="space-y-2 pt-1">
+          <label class="flex cursor-pointer items-start gap-3">
+            <div class="relative mt-0.5">
+              <input
+                v-model="form.acceptTerms"
+                type="checkbox"
+                class="peer h-5 w-5 cursor-pointer appearance-none rounded-md border-2 border-gray-300 transition-all checked:border-primary checked:bg-primary hover:border-gray-400"
+              />
+              <span class="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 transition-opacity peer-checked:opacity-100">
+                <span class="material-symbols-outlined text-sm font-bold">check</span>
+              </span>
+            </div>
+            <span class="text-sm text-gray-600">
               Acepto los
-              <NuxtLink to="#" class="font-semibold text-primary hover:underline">Términos y Condiciones</NuxtLink>
+              <NuxtLink to="#" class="font-medium text-primary hover:underline">Términos y Condiciones</NuxtLink>
               y la
-              <NuxtLink to="#" class="font-semibold text-primary hover:underline">Política de privacidad</NuxtLink>.
+              <NuxtLink to="#" class="font-medium text-primary hover:underline">Política de privacidad</NuxtLink>
             </span>
           </label>
-          <p v-if="fieldErrors.acceptTerms" class="text-sm text-rose-600">{{ fieldErrors.acceptTerms }}</p>
+          <p v-if="fieldErrors.acceptTerms" class="flex items-center gap-1.5 text-xs text-rose-600">
+            <span class="material-symbols-outlined text-sm">error</span>
+            {{ fieldErrors.acceptTerms }}
+          </p>
 
-          <label class="flex items-start gap-3">
-            <input
-              v-model="form.subscribe"
-              type="checkbox"
-              class="mt-1 h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary/40"
-            />
-            <span class="text-sm text-slate-600">Deseo recibir novedades y consejos exclusivos en mi correo.</span>
+          <label class="flex cursor-pointer items-start gap-3">
+            <div class="relative mt-0.5">
+              <input
+                v-model="form.subscribe"
+                type="checkbox"
+                class="peer h-5 w-5 cursor-pointer appearance-none rounded-md border-2 border-gray-300 transition-all checked:border-primary checked:bg-primary hover:border-gray-400"
+              />
+              <span class="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 transition-opacity peer-checked:opacity-100">
+                <span class="material-symbols-outlined text-sm font-bold">check</span>
+              </span>
+            </div>
+            <span class="text-sm text-gray-600">Recibir novedades y consejos en mi correo</span>
           </label>
         </div>
 
-        <div v-if="serverError" class="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          {{ serverError }}
+        <!-- Error del servidor -->
+        <div v-if="serverError" class="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3">
+          <span class="material-symbols-outlined text-rose-500">error</span>
+          <p class="text-sm text-rose-700">{{ serverError }}</p>
         </div>
 
+        <!-- Botón submit -->
         <button
           type="submit"
-          class="flex h-12 w-full items-center justify-center rounded-xl bg-primary text-base font-semibold text-white shadow-lg shadow-primary/30 transition hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/40"
+          class="group relative flex h-11 w-full items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r from-primary to-primary-dark font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-70"
           :disabled="loading"
         >
-          <span v-if="!loading">Crear cuenta</span>
+          <span v-if="!loading" class="flex items-center gap-2">
+            Crear cuenta
+            <span class="material-symbols-outlined text-xl transition-transform group-hover:translate-x-1">arrow_forward</span>
+          </span>
           <span v-else class="flex items-center gap-2">
-            <span class="h-4 w-4 animate-spin rounded-full border-2 border-white/50 border-t-white" />
+            <span class="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
             Creando cuenta...
           </span>
         </button>
       </form>
 
-      <p class="mt-8 text-center text-sm text-slate-500">
+      <!-- Footer -->
+      <p class="mt-4 text-center text-sm text-gray-500">
         ¿Ya tienes una cuenta?
         <NuxtLink to="/auth/login" class="font-semibold text-primary hover:underline">Inicia sesión</NuxtLink>
       </p>

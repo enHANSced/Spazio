@@ -103,6 +103,81 @@ Cancelar reserva.
 
 ---
 
+## Reseñas y Calificaciones
+
+### GET /api/reviews/owner/:ownerId/stats
+Obtener estadísticas de un propietario (público).
+**Response**:
+```json
+{
+  "owner": {
+    "id": "uuid",
+    "name": "string",
+    "businessName": "string | null",
+    "isVerified": boolean,
+    "memberSince": "ISO date"
+  },
+  "stats": {
+    "spacesCount": number,
+    "totalBookings": number,
+    "completedBookings": number,
+    "totalReviews": number,
+    "averageRating": number,
+    "ratingDistribution": { "1": n, "2": n, "3": n, "4": n, "5": n }
+  }
+}
+```
+
+### GET /api/reviews/owner/:ownerId
+Obtener reseñas de un propietario (público).  
+**Query params**: `page`, `limit`
+
+### GET /api/reviews/space/:spaceId/stats
+Obtener estadísticas de un espacio (público).
+
+### GET /api/reviews/space/:spaceId
+Obtener reseñas de un espacio (público).  
+**Query params**: `page`, `limit`
+
+### GET /api/reviews/can-review/:bookingId
+Verificar si el usuario puede dejar reseña.  
+**Auth**: Required
+
+### GET /api/reviews/my-reviews
+Obtener reseñas del usuario autenticado.  
+**Auth**: Required  
+**Query params**: `page`, `limit`
+
+### POST /api/reviews
+Crear nueva reseña.  
+**Auth**: Required
+```json
+{
+  "bookingId": "ObjectId",
+  "rating": 1-5,
+  "comment": "string (opcional, max 1000)"
+}
+```
+**Validaciones**:
+- Reserva confirmada y terminada
+- Usuario es quien hizo la reserva
+- No existe reseña previa para esta reserva
+
+### POST /api/reviews/:reviewId/respond
+Propietario responde a una reseña.  
+**Auth**: Required (owner verificado)
+```json
+{
+  "response": "string"
+}
+```
+
+### DELETE /api/reviews/:reviewId
+Eliminar reseña (soft-delete).  
+**Auth**: Required (autor o admin)
+
+---
+
 ## Health Check
 
 ### GET /
@@ -133,3 +208,4 @@ Para endpoints protegidos:
 Authorization: Bearer <token>
 Content-Type: application/json
 ```
+

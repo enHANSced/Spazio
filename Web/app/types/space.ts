@@ -1,16 +1,29 @@
+import type { BankAccountType, HondurasBank } from './auth'
+
 export interface SpaceOwner {
   id: string
   name?: string | null
+  email?: string | null
   businessName?: string | null
   businessDescription?: string | null
   phone?: string | null
   whatsappNumber?: string | null
+  instagram?: string | null
+  facebook?: string | null
+  linkedin?: string | null
+  // Información bancaria para mostrar al usuario en transferencias
+  bankName?: HondurasBank | null
+  bankAccountType?: BankAccountType | null
+  bankAccountNumber?: string | null
+  bankAccountHolder?: string | null
 }
 
 export interface WorkingHours {
   start: string
   end: string
 }
+
+export type SpaceCategory = 'private' | 'meetings' | 'teams' | 'events' | 'coworking' | 'studio' | 'training'
 
 export interface Space {
   id: string
@@ -19,6 +32,7 @@ export interface Space {
   capacity: number
   ownerId: string
   isActive: boolean
+  category?: SpaceCategory | null
   pricePerHour?: number | null
   amenities?: string[] | null
   rules?: string | null
@@ -58,6 +72,7 @@ export interface CreateSpacePayload {
   name: string
   description?: string
   capacity: number
+  category?: SpaceCategory
   pricePerHour?: number
   amenities?: string[]
   rules?: string
@@ -82,6 +97,7 @@ export interface UpdateSpacePayload {
   description?: string
   capacity?: number
   isActive?: boolean
+  category?: SpaceCategory
   pricePerHour?: number
   amenities?: string[]
   rules?: string

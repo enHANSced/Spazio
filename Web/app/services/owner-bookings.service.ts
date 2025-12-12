@@ -79,6 +79,22 @@ export const ownerBookingsService = {
     }
   },
 
+  async getPendingTransferVerifications() {
+    const token = useCookie('spazio_token').value
+    if (!token) throw new Error('No autenticado')
+    
+    try {
+      const url = buildApiUrl('/bookings/owner/pending-transfers')
+      const response = await $fetch<BookingsApiResponse>(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      return { success: response.success, data: response.data, message: response.message }
+    } catch (error: any) {
+      return { success: false, data: [], message: extractApiErrorMessage(error) }
+    }
+  },
+
   async update(bookingId: string, updates: Partial<Booking>) {
     const token = useCookie('spazio_token').value
     if (!token) throw new Error('No autenticado')
@@ -86,9 +102,27 @@ export const ownerBookingsService = {
     try {
       const url = buildApiUrl(`/bookings/${bookingId}`)
       const response = await $fetch<{ success: boolean; data?: Booking; message?: string }>(url, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` },
         body: updates
+      })
+
+      return { success: response.success, data: response.data, message: response.message }
+    } catch (error: any) {
+      return { success: false, message: extractApiErrorMessage(error) }
+    }
+  },
+
+  async verifyTransfer(bookingId: string, approved: boolean, rejectionReason?: string) {
+    const token = useCookie('spazio_token').value
+    if (!token) throw new Error('No autenticado')
+    
+    try {
+      const url = buildApiUrl(`/bookings/${bookingId}/verify-transfer`)
+      const response = await $fetch<{ success: boolean; data?: Booking; message?: string }>(url, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+        body: { approved, rejectionReason }
       })
 
       return { success: response.success, data: response.data, message: response.message }
@@ -102,15 +136,120 @@ export const ownerBookingsService = {
     if (!token) throw new Error('No autenticado')
     
     try {
-      const url = buildApiUrl(`/bookings/${bookingId}/cancel`)
+      const url = buildApiUrl(`/bookings/${bookingId}`)
       const response = await $fetch<{ success: boolean; data?: Booking; message?: string }>(url, {
-        method: 'PUT',
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+        body: { status: 'cancelled' }
+      })
+
+      return { success: response.success, data: response.data, message: response.message }
+    } catch (error: any) {
+      return { success: false, message: extractApiErrorMessage(error) }
+    }
+  },
+
+  /**
+   * Obtener reservas pendientes de confirmación (status='pending')
+   */
+  async getPendingBookings() {
+    const token = useCookie('spazio_token').value
+    if (!token) throw new Error('No autenticado')
+    
+    try {
+      const url = buildApiUrl('/bookings/owner/pending')
+      const response = await $fetch<BookingsApiResponse>(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      return { success: response.success, data: response.data, message: response.message }
+    } catch (error: any) {
+      return { success: false, data: [], message: extractApiErrorMessage(error) }
+    }
+  },
+
+  /**
+   * Confirmar una reserva pendiente
+   */
+  async confirmBooking(bookingId: string) {
+    const token = useCookie('spazio_token').value
+    if (!token) throw new Error('No autenticado')
+    
+    try {
+      const url = buildApiUrl(`/bookings/owner/${bookingId}/confirm`)
+      const response = await $fetch<{ success: boolean; data?: Booking; message?: string }>(url, {
+        method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` }
       })
 
       return { success: response.success, data: response.data, message: response.message }
     } catch (error: any) {
       return { success: false, message: extractApiErrorMessage(error) }
+    }
+  },
+
+  /**
+   * Rechazar una reserva pendiente
+   */
+  async rejectBooking(bookingId: string, reason?: string) {
+    const token = useCookie('spazio_token').value
+    if (!token) throw new Error('No autenticado')
+    
+    try {
+      const url = buildApiUrl(`/bookings/owner/${bookingId}/reject`)
+      const body: { reason?: string } = {}
+      if (reason && reason.trim()) {
+        body.reason = reason.trim()
+      }
+      
+      const response = await $fetch<{ success: boolean; data?: Booking; message?: string }>(url, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+        body
+      })
+
+      return { success: response.success, data: response.data, message: response.message }
+    } catch (error: any) {
+      return { success: false, message: extractApiErrorMessage(error) }
+    }
+  },
+
+  /**
+   * Marcar reserva como pagada (para efectivo)
+   */
+  async markAsPaid(bookingId: string) {
+    const token = useCookie('spazio_token').value
+    if (!token) throw new Error('No autenticado')
+    
+    try {
+      const url = buildApiUrl(`/bookings/owner/${bookingId}/mark-paid`)
+      const response = await $fetch<{ success: boolean; data?: Booking; message?: string }>(url, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      return { success: response.success, data: response.data, message: response.message }
+    } catch (error: any) {
+      return { success: false, message: extractApiErrorMessage(error) }
+    }
+  },
+
+  /**
+   * Obtener reservas confirmadas pendientes de pago en efectivo
+   */
+  async getPendingCashPayments() {
+    const token = useCookie('spazio_token').value
+    if (!token) throw new Error('No autenticado')
+    
+    try {
+      const url = buildApiUrl('/bookings/owner/pending-cash')
+      const response = await $fetch<BookingsApiResponse>(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      return { success: response.success, data: response.data, message: response.message }
+    } catch (error: any) {
+      return { success: false, data: [], message: extractApiErrorMessage(error) }
     }
   }
 }

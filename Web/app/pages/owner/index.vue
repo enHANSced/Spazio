@@ -93,9 +93,10 @@ const formatDate = (dateString: string) => {
 
 const formatTime = (dateString: string) => {
   const date = new Date(dateString)
-  return date.toLocaleTimeString('es-ES', { 
-    hour: '2-digit', 
-    minute: '2-digit'
+  return date.toLocaleTimeString('es-HN', { 
+    hour: 'numeric', 
+    minute: '2-digit',
+    hour12: true
   })
 }
 

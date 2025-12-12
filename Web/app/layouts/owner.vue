@@ -7,33 +7,46 @@ const route = useRoute()
 
 const sidebarOpen = ref(true)
 
-const navigation = [
+const allNavigation = [
   {
     name: 'Dashboard',
     path: '/owner',
-    icon: 'dashboard'
+    icon: 'dashboard',
+    requiresVerification: false
   },
   {
     name: 'Mis Espacios',
     path: '/owner/spaces',
-    icon: 'store'
+    icon: 'store',
+    requiresVerification: true
   },
   {
     name: 'Reservas',
     path: '/owner/bookings',
-    icon: 'event_note'
+    icon: 'event_note',
+    requiresVerification: true
   },
   {
     name: 'Calendario',
     path: '/owner/calendar',
-    icon: 'calendar_month'
+    icon: 'calendar_month',
+    requiresVerification: true
   },
   {
     name: 'Perfil',
     path: '/owner/profile',
-    icon: 'person'
+    icon: 'person',
+    requiresVerification: true
   }
 ]
+
+// Filtrar navegación según estado de verificación
+const navigation = computed(() => {
+  if (authStore.isVerifiedOwner) {
+    return allNavigation
+  }
+  return allNavigation.filter(item => !item.requiresVerification)
+})
 
 const isActive = (path: string) => {
   if (path === '/owner') {

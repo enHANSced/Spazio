@@ -1,4 +1,4 @@
-import type { AuthUser } from '../types/auth'
+import type { AuthUser, BankAccountType, HondurasBank } from '../types/auth'
 import { buildApiUrl, extractApiErrorMessage } from '../utils/http'
 
 interface UserApiResponse {
@@ -11,6 +11,16 @@ interface UpdateProfilePayload {
   name?: string
   businessName?: string
   businessDescription?: string
+  phone?: string
+  whatsappNumber?: string
+  instagram?: string
+  facebook?: string
+  linkedin?: string
+  // Campos bancarios para owners
+  bankName?: HondurasBank | string | null
+  bankAccountType?: BankAccountType | null
+  bankAccountNumber?: string | null
+  bankAccountHolder?: string | null
 }
 
 export class UsersService {

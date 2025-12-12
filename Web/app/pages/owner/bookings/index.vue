@@ -16,6 +16,9 @@ useSeoMeta({
 })
 
 const bookings = ref<Booking[]>([])
+const pendingTransfers = ref<Booking[]>([])
+const pendingBookings = ref<Booking[]>([])
+const pendingCashPayments = ref<Booking[]>([])
 const spaces = ref<Space[]>([])
 const loading = ref(true)
 const error = ref('')
@@ -24,6 +27,11 @@ const statusFilter = ref<'all' | 'pending' | 'confirmed' | 'cancelled' | 'comple
 const spaceFilter = ref<string>('all')
 const selectedBooking = ref<Booking | null>(null)
 const showDetailModal = ref(false)
+
+// Estados para colapsar/expandir alertas
+const showTransfersAlert = ref(false)
+const showPendingBookingsAlert = ref(false)
+const showCashPaymentsAlert = ref(false)
 
 const filteredBookings = computed(() => {
   let filtered = bookings.value
@@ -65,9 +73,12 @@ const loadBookings = async () => {
   error.value = ''
   
   try {
-    const [bookingsResponse, spacesResponse] = await Promise.all([
+    const [bookingsResponse, spacesResponse, pendingTransfersResponse, pendingBookingsResponse, pendingCashResponse] = await Promise.all([
       ownerBookingsService.getOwnerBookings(),
-      ownerSpacesService.getMySpaces()
+      ownerSpacesService.getMySpaces(),
+      ownerBookingsService.getPendingTransferVerifications(),
+      ownerBookingsService.getPendingBookings(),
+      ownerBookingsService.getPendingCashPayments()
     ])
     
     if (bookingsResponse.success && bookingsResponse.data) {
@@ -76,6 +87,18 @@ const loadBookings = async () => {
     
     if (spacesResponse.success && spacesResponse.data) {
       spaces.value = spacesResponse.data
+    }
+
+    if (pendingTransfersResponse.success && pendingTransfersResponse.data) {
+      pendingTransfers.value = pendingTransfersResponse.data
+    }
+
+    if (pendingBookingsResponse.success && pendingBookingsResponse.data) {
+      pendingBookings.value = pendingBookingsResponse.data
+    }
+
+    if (pendingCashResponse.success && pendingCashResponse.data) {
+      pendingCashPayments.value = pendingCashResponse.data
     }
   } catch (err: any) {
     error.value = err.data?.message || err.message || 'Error al cargar reservas'
@@ -111,24 +134,85 @@ const getStatusLabel = (status: string) => {
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString)
-  return date.toLocaleDateString('es-ES', { 
+  return date.toLocaleDateString('es-HN', { 
+    day: '2-digit', 
+    month: 'long',
+    year: 'numeric'
+  })
+}
+
+const formatDateShort = (dateString: string) => {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('es-HN', { 
     day: '2-digit', 
     month: 'short',
-    year: 'numeric',
     weekday: 'short'
   })
 }
 
 const formatTime = (dateString: string) => {
   const date = new Date(dateString)
-  return date.toLocaleTimeString('es-ES', { 
-    hour: '2-digit', 
-    minute: '2-digit'
-  })
+  return date.toLocaleTimeString('es-HN', { 
+    hour: 'numeric', 
+    minute: '2-digit',
+    hour12: true
+  }).toUpperCase()
 }
 
 const formatTimeRange = (start: string, end: string) => {
   return `${formatTime(start)} - ${formatTime(end)}`
+}
+
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('es-HN', {
+    style: 'currency',
+    currency: 'HNL',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount).replace('HNL', 'L')
+}
+
+const getPaymentMethodLabel = (method: string) => {
+  const labels: Record<string, string> = {
+    cash: 'Efectivo',
+    transfer: 'Transferencia',
+    card: 'Tarjeta',
+    pending: 'Por definir'
+  }
+  return labels[method] || method
+}
+
+const getPaymentMethodIcon = (method: string) => {
+  const icons: Record<string, string> = {
+    cash: 'payments',
+    transfer: 'account_balance',
+    card: 'credit_card',
+    pending: 'schedule'
+  }
+  return icons[method] || 'payment'
+}
+
+const getPaymentStatusBadgeClass = (paymentStatus: string, paymentMethod: string) => {
+  if (paymentStatus === 'paid') {
+    return 'bg-green-100 text-green-700'
+  }
+  if (paymentStatus === 'refunded') {
+    return 'bg-purple-100 text-purple-700'
+  }
+  // Pendiente
+  if (paymentMethod === 'cash') {
+    return 'bg-orange-100 text-orange-700'
+  }
+  return 'bg-yellow-100 text-yellow-700'
+}
+
+const getPaymentStatusLabel = (paymentStatus: string) => {
+  const labels: Record<string, string> = {
+    pending: 'Pendiente',
+    paid: 'Pagado',
+    refunded: 'Reembolsado'
+  }
+  return labels[paymentStatus] || paymentStatus
 }
 
 const handleViewDetail = (booking: Booking) => {
@@ -157,50 +241,234 @@ onMounted(() => {
 
     <!-- Stats Cards -->
     <div class="grid gap-4 sm:grid-cols-4">
-      <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div class="rounded-xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-white p-5 shadow-sm hover:shadow-md transition-shadow">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm text-slate-600">Pendientes</p>
+            <p class="text-sm font-medium text-amber-700">Pendientes</p>
             <p class="mt-1 text-3xl font-bold text-amber-600">{{ statusCounts.pending }}</p>
+            <p class="text-xs text-amber-600 mt-1">Requieren atención</p>
           </div>
-          <div class="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
-            <span class="material-symbols-outlined text-2xl text-amber-600">pending</span>
+          <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 shadow-inner">
+            <span class="material-symbols-outlined text-3xl text-amber-600">pending</span>
           </div>
         </div>
       </div>
 
-      <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div class="rounded-xl border-2 border-green-200 bg-gradient-to-br from-green-50 to-white p-5 shadow-sm hover:shadow-md transition-shadow">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm text-slate-600">Confirmadas</p>
+            <p class="text-sm font-medium text-green-700">Confirmadas</p>
             <p class="mt-1 text-3xl font-bold text-green-600">{{ statusCounts.confirmed }}</p>
+            <p class="text-xs text-green-600 mt-1">Pagos verificados</p>
           </div>
-          <div class="flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-            <span class="material-symbols-outlined text-2xl text-green-600">check_circle</span>
+          <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-green-100 shadow-inner">
+            <span class="material-symbols-outlined text-3xl text-green-600">check_circle</span>
           </div>
         </div>
       </div>
 
-      <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div class="rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-white p-5 shadow-sm hover:shadow-md transition-shadow">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm text-slate-600">Completadas</p>
+            <p class="text-sm font-medium text-blue-700">Completadas</p>
             <p class="mt-1 text-3xl font-bold text-blue-600">{{ statusCounts.completed }}</p>
+            <p class="text-xs text-blue-600 mt-1">Finalizadas</p>
           </div>
-          <div class="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
-            <span class="material-symbols-outlined text-2xl text-blue-600">task_alt</span>
+          <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100 shadow-inner">
+            <span class="material-symbols-outlined text-3xl text-blue-600">task_alt</span>
           </div>
         </div>
       </div>
 
-      <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div class="rounded-xl border-2 border-rose-200 bg-gradient-to-br from-rose-50 to-white p-5 shadow-sm hover:shadow-md transition-shadow">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm text-slate-600">Canceladas</p>
+            <p class="text-sm font-medium text-rose-700">Canceladas</p>
             <p class="mt-1 text-3xl font-bold text-rose-600">{{ statusCounts.cancelled }}</p>
+            <p class="text-xs text-rose-600 mt-1">Sin actividad</p>
           </div>
-          <div class="flex h-12 w-12 items-center justify-center rounded-full bg-rose-100">
-            <span class="material-symbols-outlined text-2xl text-rose-600">cancel</span>
+          <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-100 shadow-inner">
+            <span class="material-symbols-outlined text-3xl text-rose-600">cancel</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pending Transfer Verifications Alert (Colapsable) -->
+    <div v-if="pendingTransfers.length > 0" class="rounded-xl border-2 border-amber-300 bg-amber-50 overflow-hidden">
+      <!-- Header - siempre visible -->
+      <button 
+        @click="showTransfersAlert = !showTransfersAlert"
+        class="w-full p-4 flex items-center justify-between hover:bg-amber-100/50 transition-colors"
+      >
+        <div class="flex items-center gap-3">
+          <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-amber-200">
+            <span class="material-symbols-outlined text-xl text-amber-700">receipt_long</span>
+          </div>
+          <div class="text-left">
+            <h3 class="text-base font-bold text-amber-900">
+              {{ pendingTransfers.length }} {{ pendingTransfers.length === 1 ? 'comprobante pendiente' : 'comprobantes pendientes' }} de verificación
+            </h3>
+            <p class="text-xs text-amber-700">Clic para {{ showTransfersAlert ? 'ocultar' : 'ver' }} detalles</p>
+          </div>
+        </div>
+        <span class="material-symbols-outlined text-amber-700 transition-transform" :class="{ 'rotate-180': showTransfersAlert }">
+          expand_more
+        </span>
+      </button>
+      
+      <!-- Contenido expandible -->
+      <div v-show="showTransfersAlert" class="px-4 pb-4 border-t border-amber-200">
+        <p class="mt-3 text-sm text-amber-800">
+          Los siguientes clientes han subido comprobantes de transferencia que requieren tu verificación.
+        </p>
+        
+        <div class="mt-4 space-y-3">
+          <div 
+            v-for="transfer in pendingTransfers" 
+            :key="transfer._id"
+            class="flex items-center justify-between rounded-lg bg-white p-3 shadow-sm border border-amber-200"
+          >
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100">
+                <span class="material-symbols-outlined text-amber-600">person</span>
+              </div>
+              <div>
+                <p class="font-semibold text-slate-900">{{ transfer.user?.name || 'Usuario' }}</p>
+                <p class="text-xs text-slate-600">
+                  {{ transfer.space?.name }} · {{ formatDate(transfer.startTime) }}
+                </p>
+              </div>
+            </div>
+            <button
+              @click.stop="handleViewDetail(transfer)"
+              class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 transition-colors flex items-center gap-1"
+            >
+              <span class="material-symbols-outlined !text-[18px]">visibility</span>
+              Revisar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pending Bookings Alert (Colapsable) -->
+    <div v-if="pendingBookings.length > 0" class="rounded-xl border-2 border-blue-300 bg-blue-50 overflow-hidden">
+      <!-- Header - siempre visible -->
+      <button 
+        @click="showPendingBookingsAlert = !showPendingBookingsAlert"
+        class="w-full p-4 flex items-center justify-between hover:bg-blue-100/50 transition-colors"
+      >
+        <div class="flex items-center gap-3">
+          <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-200">
+            <span class="material-symbols-outlined text-xl text-blue-700">hourglass_empty</span>
+          </div>
+          <div class="text-left">
+            <h3 class="text-base font-bold text-blue-900">
+              {{ pendingBookings.length }} {{ pendingBookings.length === 1 ? 'reserva pendiente' : 'reservas pendientes' }} de confirmación
+            </h3>
+            <p class="text-xs text-blue-700">Clic para {{ showPendingBookingsAlert ? 'ocultar' : 'ver' }} detalles</p>
+          </div>
+        </div>
+        <span class="material-symbols-outlined text-blue-700 transition-transform" :class="{ 'rotate-180': showPendingBookingsAlert }">
+          expand_more
+        </span>
+      </button>
+      
+      <!-- Contenido expandible -->
+      <div v-show="showPendingBookingsAlert" class="px-4 pb-4 border-t border-blue-200">
+        <p class="mt-3 text-sm text-blue-800">
+          Los siguientes clientes han solicitado reservar tus espacios y están esperando tu confirmación.
+        </p>
+        
+        <div class="mt-4 space-y-3">
+          <div 
+            v-for="booking in pendingBookings" 
+            :key="booking._id"
+            class="flex items-center justify-between rounded-lg bg-white p-3 shadow-sm border border-blue-200"
+          >
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
+                <span class="material-symbols-outlined text-blue-600">person</span>
+              </div>
+              <div>
+                <p class="font-semibold text-slate-900">{{ booking.user?.name || 'Usuario' }}</p>
+                <p class="text-xs text-slate-600">
+                  {{ booking.space?.name }} · {{ formatDate(booking.startTime) }}
+                </p>
+                <p class="text-xs text-blue-600 font-medium">
+                  Método: {{ booking.paymentMethod === 'cash' ? 'Efectivo' : booking.paymentMethod === 'transfer' ? 'Transferencia' : 'Tarjeta' }}
+                </p>
+              </div>
+            </div>
+            <button
+              @click.stop="handleViewDetail(booking)"
+              class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors flex items-center gap-1"
+            >
+              <span class="material-symbols-outlined !text-[18px]">visibility</span>
+              Revisar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pending Cash Payments Alert (Colapsable) -->
+    <div v-if="pendingCashPayments.length > 0" class="rounded-xl border-2 border-orange-300 bg-orange-50 overflow-hidden">
+      <!-- Header - siempre visible -->
+      <button 
+        @click="showCashPaymentsAlert = !showCashPaymentsAlert"
+        class="w-full p-4 flex items-center justify-between hover:bg-orange-100/50 transition-colors"
+      >
+        <div class="flex items-center gap-3">
+          <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-orange-200">
+            <span class="material-symbols-outlined text-xl text-orange-700">payments</span>
+          </div>
+          <div class="text-left">
+            <h3 class="text-base font-bold text-orange-900">
+              {{ pendingCashPayments.length }} {{ pendingCashPayments.length === 1 ? 'pago en efectivo pendiente' : 'pagos en efectivo pendientes' }}
+            </h3>
+            <p class="text-xs text-orange-700">Clic para {{ showCashPaymentsAlert ? 'ocultar' : 'ver' }} detalles</p>
+          </div>
+        </div>
+        <span class="material-symbols-outlined text-orange-700 transition-transform" :class="{ 'rotate-180': showCashPaymentsAlert }">
+          expand_more
+        </span>
+      </button>
+      
+      <!-- Contenido expandible -->
+      <div v-show="showCashPaymentsAlert" class="px-4 pb-4 border-t border-orange-200">
+        <p class="mt-3 text-sm text-orange-800">
+          Las siguientes reservas ya fueron confirmadas y están pendientes de recibir el pago en efectivo.
+        </p>
+        
+        <div class="mt-4 space-y-3">
+          <div 
+            v-for="booking in pendingCashPayments" 
+            :key="booking._id"
+            class="flex items-center justify-between rounded-lg bg-white p-3 shadow-sm border border-orange-200"
+          >
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100">
+                <span class="material-symbols-outlined text-orange-600">person</span>
+              </div>
+              <div>
+                <p class="font-semibold text-slate-900">{{ booking.user?.name || 'Usuario' }}</p>
+                <p class="text-xs text-slate-600">
+                  {{ booking.space?.name }} · {{ formatDate(booking.startTime) }}
+                </p>
+                <p class="text-xs text-orange-700 font-bold">
+                  {{ formatCurrency(booking.totalAmount || 0) }}
+                </p>
+              </div>
+            </div>
+            <button
+              @click.stop="handleViewDetail(booking)"
+              class="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700 transition-colors flex items-center gap-1"
+            >
+              <span class="material-symbols-outlined !text-[18px]">payments</span>
+              Registrar pago
+            </button>
           </div>
         </div>
       </div>
@@ -322,22 +590,22 @@ onMounted(() => {
         <table class="w-full">
           <thead class="border-b border-slate-200 bg-slate-50">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                Usuario
+              <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-slate-700 bg-slate-50">
+                Cliente
               </th>
-              <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-slate-700 bg-slate-50">
                 Espacio
               </th>
-              <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                Fecha
+              <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-slate-700 bg-slate-50">
+                Fecha y Hora
               </th>
-              <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                Horario
+              <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-slate-700 bg-slate-50">
+                Pago
               </th>
-              <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-slate-700 bg-slate-50">
                 Estado
               </th>
-              <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <th class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wide text-slate-700 bg-slate-50">
                 Acciones
               </th>
             </tr>
@@ -350,41 +618,67 @@ onMounted(() => {
             >
               <td class="px-6 py-4">
                 <div class="flex items-center gap-3">
-                  <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
-                    <span class="material-symbols-outlined text-xl text-primary">person</span>
+                  <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 shadow-sm">
+                    <span class="material-symbols-outlined text-lg text-primary">person</span>
                   </div>
-                  <div>
-                    <p class="text-sm font-semibold text-[#111418]">
+                  <div class="min-w-0">
+                    <p class="text-sm font-bold text-[#111418] truncate">
                       {{ booking.user?.name || 'Usuario' }}
                     </p>
-                    <p class="text-xs text-slate-600">
+                    <p class="text-xs text-slate-600 truncate">
                       {{ booking.user?.email || '' }}
                     </p>
                   </div>
                 </div>
               </td>
               <td class="px-6 py-4">
-                <p class="text-sm font-medium text-[#111418]">
+                <p class="text-sm font-bold text-[#111418]">
                   {{ booking.space?.name || 'Espacio' }}
                 </p>
               </td>
               <td class="px-6 py-4">
-                <p class="text-sm text-slate-900">
-                  {{ formatDate(booking.startTime) }}
-                </p>
+                <div class="flex flex-col">
+                  <p class="text-sm font-semibold text-slate-900">
+                    {{ formatDateShort(booking.startTime) }}
+                  </p>
+                  <p class="text-xs text-slate-500 mt-0.5">
+                    {{ formatTimeRange(booking.startTime, booking.endTime) }}
+                  </p>
+                </div>
               </td>
               <td class="px-6 py-4">
-                <p class="text-sm text-slate-900">
-                  {{ formatTimeRange(booking.startTime, booking.endTime) }}
-                </p>
+                <div class="flex flex-col gap-1.5">
+                  <!-- Método de pago -->
+                  <div class="flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-slate-400 !text-[16px]">{{ getPaymentMethodIcon(booking.paymentMethod || 'cash') }}</span>
+                    <span class="text-xs font-medium text-slate-700">{{ getPaymentMethodLabel(booking.paymentMethod || 'cash') }}</span>
+                  </div>
+                  <!-- Estado del pago -->
+                  <span 
+                    class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold w-fit"
+                    :class="getPaymentStatusBadgeClass(booking.paymentStatus || 'pending', booking.paymentMethod || 'cash')"
+                  >
+                    <span class="material-symbols-outlined !text-[12px]">
+                      {{ booking.paymentStatus === 'paid' ? 'check' : 'schedule' }}
+                    </span>
+                    {{ getPaymentStatusLabel(booking.paymentStatus || 'pending') }}
+                  </span>
+                  <!-- Monto -->
+                  <span class="text-xs font-bold text-slate-900">
+                    {{ formatCurrency(booking.totalAmount || 0) }}
+                  </span>
+                </div>
               </td>
               <td class="px-6 py-4">
-                <span 
-                  class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold"
-                  :class="getStatusBadgeClass(booking.status)"
-                >
-                  {{ getStatusLabel(booking.status) }}
-                </span>
+                <div class="flex flex-col gap-1.5">
+                  <span 
+                    class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold w-fit"
+                    :class="getStatusBadgeClass(booking.status)"
+                  >
+                    <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
+                    {{ getStatusLabel(booking.status) }}
+                  </span>
+                </div>
               </td>
               <td class="px-6 py-4">
                 <div class="flex items-center justify-end gap-2">
@@ -394,7 +688,7 @@ onMounted(() => {
                     title="Ver detalle"
                   >
                     <span class="material-symbols-outlined !text-[18px]">visibility</span>
-                    Ver detalle
+                    Ver
                   </button>
                 </div>
               </td>

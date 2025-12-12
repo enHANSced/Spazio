@@ -4,7 +4,7 @@ const User = require('../entities/User');
 class AuthUseCase {
   // Registrar nuevo usuario
   async register(userData) {
-    const { name, email, password, role, businessName, businessDescription } = userData;
+    const { name, email, password, role, businessName, businessDescription, phone } = userData;
 
     // Validar datos
     if (!name || !email || !password) {
@@ -20,8 +20,13 @@ class AuthUseCase {
     }
 
     // Si es owner, validar campos de negocio
-    if (userRole === 'owner' && !businessName) {
-      throw new Error('El nombre del negocio es requerido para propietarios');
+    if (userRole === 'owner') {
+      if (!businessName) {
+        throw new Error('El nombre del negocio es requerido para propietarios');
+      }
+      if (!phone) {
+        throw new Error('El teléfono de contacto es requerido para propietarios');
+      }
     }
 
     // Verificar si el usuario ya existe
@@ -38,6 +43,7 @@ class AuthUseCase {
       role: userRole,
       businessName: userRole === 'owner' ? businessName : null,
       businessDescription: userRole === 'owner' ? businessDescription : null,
+      phone: userRole === 'owner' ? phone : null,
       isVerified: userRole === 'owner' ? false : true // Owners requieren aprobación
     });
 

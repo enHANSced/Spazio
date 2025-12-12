@@ -35,6 +35,15 @@ const Space = sequelize.define('Space', {
     type: DataTypes.BOOLEAN,
     defaultValue: true
   },
+  category: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    defaultValue: 'meetings',
+    validate: {
+      isIn: [['private', 'meetings', 'teams', 'events', 'coworking', 'studio', 'training']]
+    },
+    comment: 'Categoría del espacio: private, meetings, teams, events, coworking, studio, training'
+  },
   images: {
     type: DataTypes.JSON,
     allowNull: true,

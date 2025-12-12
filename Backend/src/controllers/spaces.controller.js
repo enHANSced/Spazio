@@ -69,6 +69,43 @@ class SpacesController {
       res.status(500).json({ success: false, message: error.message });
     }
   }
+
+  /**
+   * Listar todos los espacios con paginación (admin)
+   */
+  async listAll(req, res) {
+    try {
+      const filters = {
+        isActive: req.query.isActive === 'true' ? true : req.query.isActive === 'false' ? false : undefined,
+        search: req.query.search,
+        ownerId: req.query.ownerId
+      };
+
+      const pagination = {
+        page: req.query.page,
+        limit: req.query.limit
+      };
+
+      const data = await spacesUseCase.listAllPaginated(filters, pagination);
+      res.status(200).json({ success: true, data: data.spaces, pagination: data.pagination });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  /**
+   * Activar/desactivar espacio (admin)
+   */
+  async toggleActive(req, res) {
+    try {
+      const data = await spacesUseCase.toggleActive(req.params.id);
+      const message = data.isActive ? 'Espacio activado' : 'Espacio desactivado';
+      res.status(200).json({ success: true, message, data });
+    } catch (error) {
+      const status = error.message.includes('no encontrado') ? 404 : 400;
+      res.status(status).json({ success: false, message: error.message });
+    }
+  }
 }
 
 module.exports = new SpacesController();

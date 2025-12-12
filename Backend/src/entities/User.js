@@ -56,6 +56,42 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING(20),
     allowNull: true,
     comment: 'Número de WhatsApp (formato internacional recomendado: +504XXXXXXXX)'
+  },
+  instagram: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'URL de perfil de Instagram'
+  },
+  facebook: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'URL de perfil de Facebook'
+  },
+  linkedin: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'URL de perfil de LinkedIn'
+  },
+  // Campos de información bancaria para owners
+  bankName: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: 'Nombre del banco (BAC Honduras, Atlántida, Ficohsa, etc.)'
+  },
+  bankAccountType: {
+    type: DataTypes.ENUM('ahorro_lempiras', 'ahorro_dolares', 'corriente_lempiras', 'corriente_dolares'),
+    allowNull: true,
+    comment: 'Tipo de cuenta bancaria'
+  },
+  bankAccountNumber: {
+    type: DataTypes.STRING(30),
+    allowNull: true,
+    comment: 'Número de cuenta bancaria'
+  },
+  bankAccountHolder: {
+    type: DataTypes.STRING(150),
+    allowNull: true,
+    comment: 'Nombre del titular de la cuenta'
   }
 }, {
   tableName: 'users',

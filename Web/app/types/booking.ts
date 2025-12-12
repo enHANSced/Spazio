@@ -2,7 +2,7 @@ import type { Space } from './space'
 import type { AuthUser } from './auth'
 
 export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed'
-export type PaymentMethod = 'cash' | 'card' | 'transfer'
+export type PaymentMethod = 'cash' | 'card' | 'transfer' | 'pending'
 export type PaymentStatus = 'pending' | 'paid' | 'refunded'
 
 export interface Booking {
@@ -24,6 +24,19 @@ export interface Booking {
   durationHours?: number
   paidAt?: string
   notes?: string
+  // Campos de transferencia
+  transferProofUrl?: string
+  transferProofUploadedAt?: string
+  transferVerifiedAt?: string
+  transferVerifiedBy?: string
+  transferRejectedAt?: string
+  transferRejectionReason?: string
+  // Campos de confirmación por owner
+  confirmedAt?: string
+  confirmedBy?: string
+  rejectedAt?: string
+  rejectedBy?: string
+  rejectionReason?: string
   // Enriquecido con datos relacionados
   space?: Space
   user?: AuthUser

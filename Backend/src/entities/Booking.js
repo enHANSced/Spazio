@@ -34,8 +34,8 @@ const bookingSchema = new mongoose.Schema({
   // Campos de pago
   paymentMethod: {
     type: String,
-    enum: ['cash', 'card', 'transfer'],
-    default: 'cash'
+    enum: ['cash', 'card', 'transfer', 'pending'],
+    default: 'pending'
   },
   paymentStatus: {
     type: String,
@@ -65,6 +65,52 @@ const bookingSchema = new mongoose.Schema({
   },
   paidAt: {
     type: Date
+  },
+  // Campos específicos para transferencia
+  transferProofUrl: {
+    type: String,
+    default: null
+  },
+  transferProofUploadedAt: {
+    type: Date,
+    default: null
+  },
+  transferVerifiedAt: {
+    type: Date,
+    default: null
+  },
+  transferVerifiedBy: {
+    type: String,
+    default: null
+  },
+  transferRejectedAt: {
+    type: Date,
+    default: null
+  },
+  transferRejectionReason: {
+    type: String,
+    default: null
+  },
+  // Campos para confirmación/rechazo de reserva por owner
+  confirmedAt: {
+    type: Date,
+    default: null
+  },
+  confirmedBy: {
+    type: String,
+    default: null
+  },
+  rejectedAt: {
+    type: Date,
+    default: null
+  },
+  rejectedBy: {
+    type: String,
+    default: null
+  },
+  rejectionReason: {
+    type: String,
+    default: null
   }
 }, {
   timestamps: true

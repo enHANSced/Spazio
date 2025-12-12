@@ -20,7 +20,12 @@ class SpacesUseCase {
       include: [{
         model: User,
         as: 'owner',
-        attributes: ['id', 'businessName', 'name', 'businessDescription']
+        attributes: [
+          'id', 'businessName', 'name', 'businessDescription', 
+          'whatsappNumber', 'instagram', 'facebook', 'linkedin',
+          // Campos bancarios para mostrar al usuario en transferencias
+          'bankName', 'bankAccountType', 'bankAccountNumber', 'bankAccountHolder'
+        ]
       }]
     });
     if (!space || !space.isActive) {
@@ -31,7 +36,7 @@ class SpacesUseCase {
 
   async create(data) {
     const { 
-      name, description, capacity, ownerId, images,
+      name, description, capacity, ownerId, images, category,
       pricePerHour, amenities, rules, virtualTourUrl, cancellationPolicy,
       address, city, state, country, latitude, longitude, zipCode,
       workingHours, videos, images360
@@ -69,6 +74,7 @@ class SpacesUseCase {
       description, 
       capacity, 
       ownerId, 
+      category: category || 'meetings',
       images: processedImages,
       pricePerHour: pricePerHour || 0,
       amenities: amenities || [],
@@ -98,7 +104,7 @@ class SpacesUseCase {
     }
     
     const fields = [
-      'name', 'description', 'capacity', 'isActive',
+      'name', 'description', 'capacity', 'isActive', 'category',
       'pricePerHour', 'amenities', 'rules', 'virtualTourUrl', 'cancellationPolicy',
       'address', 'city', 'state', 'country', 'latitude', 'longitude', 'zipCode',
       'workingHours', 'videos', 'images360'
@@ -172,6 +178,74 @@ class SpacesUseCase {
       order: [['createdAt', 'DESC']]
     });
     return spaces.map(s => s.toJSON());
+  }
+
+  /**
+   * Listar todos los espacios con paginación (admin)
+   */
+  async listAllPaginated(filters = {}, pagination = {}) {
+    const { Op } = require('sequelize');
+    const where = {};
+
+    // Filtro por estado activo/inactivo
+    if (filters.isActive !== undefined) {
+      where.isActive = filters.isActive;
+    }
+
+    // Filtro por búsqueda
+    if (filters.search) {
+      where[Op.or] = [
+        { name: { [Op.like]: `%${filters.search}%` } },
+        { city: { [Op.like]: `%${filters.search}%` } },
+        { address: { [Op.like]: `%${filters.search}%` } }
+      ];
+    }
+
+    // Filtro por owner
+    if (filters.ownerId) {
+      where.ownerId = filters.ownerId;
+    }
+
+    const page = parseInt(pagination.page) || 1;
+    const limit = parseInt(pagination.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    const { count, rows } = await Space.findAndCountAll({
+      where,
+      order: [['createdAt', 'DESC']],
+      limit,
+      offset,
+      include: [{
+        model: User,
+        as: 'owner',
+        attributes: ['id', 'businessName', 'name', 'email']
+      }]
+    });
+
+    return {
+      spaces: rows.map(s => s.toJSON()),
+      pagination: {
+        total: count,
+        page,
+        limit,
+        totalPages: Math.ceil(count / limit)
+      }
+    };
+  }
+
+  /**
+   * Activar/desactivar espacio (admin)
+   */
+  async toggleActive(id) {
+    const space = await Space.findByPk(id);
+    if (!space) {
+      throw new Error('Espacio no encontrado');
+    }
+
+    space.isActive = !space.isActive;
+    await space.save();
+    
+    return space.toJSON();
   }
 }
 
